@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "elvote-max",
+    "slug": "elvote-max",
+    "platforms": [
+      "android",
+      "ios",
+      "web"
+    ],
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB3WL5l4lentTA0skZ71jEiZ3IsMq4jHps"
+        }
+      },
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.akamit.elvotemax"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "icon": "./assets/adaptive-icon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ab4733a5-f49e-4a7b-9f16-bfa95ffaa649"
+      }
+    },
+    "plugins": [
+      "@react-native-community/datetimepicker"
+    ]
+  }
+}
