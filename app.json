@@ -43,7 +43,26 @@
       }
     },
     "plugins": [
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-localization",
+      "expo-secure-store",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "ElVote uses your location to put your booth on the map and, on polling day, to show your team that you are at your booth.",
+          "locationAlwaysAndWhenInUsePermission": "On polling day, during voting hours only, ElVote checks that you are at your booth so your team knows, even when the app is in the background.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true,
+          "isIosBackgroundLocationEnabled": true
+        }
+      ],
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "color": "#1B5E20"
+        }
+      ]
     ]
   }
 }

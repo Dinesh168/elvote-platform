@@ -47,3 +47,4 @@ krishnakutumb-*.json
 .env
 .env.*
 !backend/example.env
+dist-v2/

@@ -1,0 +1,58 @@
+import type { ReactNode } from 'react';
+import { themed } from '@/design/theme';
+import { ScrollView, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { AppText, BackLink, Icon, LangPill, Screen } from '@/design/components';
+import { useLayout } from '@/design/layout';
+import { colors, radius, spacing, web } from '@/design/tokens';
+
+/** W5: sign-in frame. Phone: the normal screen. Web desktop: brand panel + centred form card. */
+export function AuthScreen({ children, back }: { children: ReactNode; back?: string }) {
+  const { t } = useTranslation();
+  const layout = useLayout();
+  if (layout === 'phone') return <Screen back={back} trailing={<LangPill />}>{children}</Screen>;
+  return (
+    <View style={s.root}>
+      {layout === 'desktop' ? (
+        <View style={s.brand}>
+          <View style={s.logoRow}>
+            <View style={s.logo}><AppText variant="title2" color={colors.accent}>E</AppText></View>
+            <AppText variant="title2" color={colors.textOnAccent}>ElVote</AppText>
+          </View>
+          <View style={s.pitch}>
+            <AppText variant="largeTitle" color={colors.textOnAccent} style={s.title}>{t('web.brandTitle')}</AppText>
+            {(['brand1', 'brand2', 'brand3'] as const).map((k) => (
+              <View key={k} style={s.point}>
+                <Icon name="checkmark-circle" size={22} color={colors.textOnAccent} />
+                <AppText variant="body" color={colors.textOnAccent} style={s.flex}>{t(`web.${k}`)}</AppText>
+              </View>
+            ))}
+          </View>
+          <View />
+        </View>
+      ) : null}
+      <ScrollView style={s.flex} contentContainerStyle={s.formWrap}>
+        <View style={s.lang}><LangPill /></View>
+        <View style={s.card}>
+          {back ? <View style={s.back}><BackLink label={back} /></View> : null}
+          {children}
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const s = themed(() => StyleSheet.create({
+  root: { flex: 1, flexDirection: 'row', backgroundColor: colors.bg },
+  brand: { width: '42%', maxWidth: 560, backgroundColor: colors.accent, padding: 48, justifyContent: 'space-between' },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  logo: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  pitch: { gap: spacing.lg, maxWidth: 420 },
+  title: { fontSize: 36, lineHeight: 44, marginBottom: spacing.sm },
+  point: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  flex: { flex: 1 },
+  formWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
+  back: { paddingHorizontal: spacing.sm },
+  lang: { position: 'absolute', top: spacing.xl, right: spacing.xl },
+  card: { width: '100%', maxWidth: 440, backgroundColor: colors.surface, borderRadius: radius.lg + 4, borderWidth: 1, borderColor: web.border, paddingVertical: spacing.lg, overflow: 'hidden' },
+}));

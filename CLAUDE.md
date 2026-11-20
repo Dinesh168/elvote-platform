@@ -15,6 +15,14 @@ Production API: `https://elvote.krishnakutumb.com/api` (Cloudflare → DigitalOc
 
 A feature usually touches four places: a backend route (`backend/src/routes/controllers/`) → Manager (`backend/src/businesslogic/`) → Model / SQL (`backend/src/models/`), then the client service (`services/`) → saga → component.
 
+## Mandatory workflow for every change (owner's rule)
+
+**Procedure → user confirmation → spec/md → test cases → code → verify → ship.** Never write code first, and never write specs before the user confirms the restated requirements. The full steps are in the `elvote-change` skill (`.claude/skills/elvote-change/SKILL.md`); load it for any request to add, change, remove or fix something.
+
+**Quality bar: a proper production app** (Android, iOS, Web) with a **scalable backend**, not a prototype. Every change must meet the `elvote-production` skill (security, privacy/DPDP, offline, performance budgets, backend scalability for 15M voters and 10k concurrent polling-day users, tests + CI, a11y, i18n, observability, store compliance, release engineering) and its Definition of Done. UI work also follows the `elvote-ui` skill.
+
+The UI is being rebuilt from scratch on `docs/DESIGN_SYSTEM.md` (plan: `docs/REDESIGN_PLAN.md`). Don't extend the old `theme.js` / react-native-paper screens.
+
 ## Where to look
 
 | Task | Read first |

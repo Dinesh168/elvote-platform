@@ -1,3 +1,7 @@
+> **v2 backend (2026-11-19):** `backend-v2/` (TypeScript, Fastify, PostgreSQL 16; central + per-state databases) with sample data; see `backend-v2/README.md`. The v2 app now talks to it by default (`EXPO_PUBLIC_API_MODE=mock` for the in-memory data). Added screens: sign-in (OTP), join, waiting, role switch; admin (Dashboard with charts, Map, Team approvals, Tasks/drives, More → Polling day, Zones, Branding, join code); super-admin (All states, Parties, party AC with max zones and clear data, voter-roll upload, super-admins).
+>
+> **v2 app (in progress, branch `feature/app-v2-frontend`):** the new iOS-style app lives in `src/` (spec `docs/specs/app-v2-frontend.md`). Built so far, on mock data: Home (next voter + task picker, booth sheet, numbers, More numbers detail pages), Voters (search, house/serial views, chips, filters from Home, inline voter card with group buttons, auto-next and Undo, lives here, needs help, mobile, same address, slip share, call), Polling day (serial keypad, ✓ Voted, Undo, already-voted warning, not-voted counts, needs-help link) and a basic Me (language). V4 added 2026-11-19: Tasks list (status, progress, days left), Surnames, Voter slip (PDF share / print / text), Help-to-vote list with Voted + Undo, full Me (sync, booth GPS location, switch role, log out). Still to do: Firebase sign-in in the app, store builds. The rest of this file describes the **old** app at the repo root.
+
 # Feature inventory
 
 Status legend: **Live** = wired to the API · **Static** = UI with hard-coded or empty data · **Placeholder** = image or "coming soon" · **Dead** = file exists but can't be reached.
@@ -80,3 +84,42 @@ Live-voting variant (`LiveVotingVoterListItem`): mark voted.
 | `ROUTES` entries without a screen | `VOTER_SLIP_PRINTING`, `LIVE_VOTING`, `RESPONSE_ANALYSIS`, `CASTE_EQUATIONS`, `SCHEDULE_MEETING`, `ISSUES`, `HOUSE_NUMBER_SORTED_VOTERS`, … |
 
 To re-enable a dead screen, add a `<Drawer.Screen>` in `InitStack.js` with the right role guard, then update this table.
+
+## Web desktop layout and account deletion (2026-11-19)
+
+- **Web desktop (spec `docs/specs/web-desktop.md`):** on the website at ≥ 1024 px, every role gets a left sidebar (icons-only 768–1023 px), page header with breadcrumbs, content up to 1200 px, desktop type scale, sortable tables (admin booth table, Team), 2-column grids (dashboard charts, volunteer Home, super-admin overview), centred dialogs (Esc closes), hover and keyboard focus states, browser-tab titles, and a split-screen sign-in. Phone apps (Android/iOS) and phone-size web are unchanged. Code: `src/design/layout.ts`, `src/design/components/Desktop.tsx`, `src/features/shell/AppShell.tsx`, `AuthScreen.tsx`.
+- **Account deletion (spec `docs/specs/account-deletion.md`):** volunteer Me and admin More → Delete account (`/delete-account`): type DELETE + SMS code; signed out everywhere at once; erased after 7 days unless the user signs in again. The person is removed; their voter work stays as "Deleted user". The only admin of an AC is blocked. API: `POST /v1/me/delete/code`, `POST /v1/me/delete`; worker `eraseDueAccounts` every 10 min; migration `core/002_account_deletion.sql`.
+
+## Customer settings (CMS), users and vote trace (2026-11-19)
+
+Spec `docs/specs/customer-cms.md`. The super-admin (ElVote, the seller) controls each **customer** (one party in one assembly):
+
+- **Super-admin website:** *Customers* list → *Customer settings* (`/platform/customer/[id]`) with Look (app name, logo upload, party colour), Candidate (name, photo, ballot no., slogan), Features (Map, Polling day, Zones, Tasks, Voter slip, Surnames, Help list, Booth GPS; Basic/Pro/All presets), Language (default + allowed), Plan & limits (status, valid until, max zones/volunteers/admins), Messages (candidate message on Home, WhatsApp slip text), live phone preview, copy from another customer. *Users* (`/platform/users`): search, block/unblock (reason), sign out everywhere, change role, change booths, remove from a team. *Vote trace* (`/platform/trace`): who changed a voter, all parties.
+- **Admin:** the Branding page is removed. *Vote trace* added (own party, own AC). Features that are off are hidden.
+- **Team app:** party colour across the app (auto-darkened for readability), logo and app name in the web sidebar, candidate banner + message on Home, branded voter slip, hidden features, "Subscription ended" page, blocked users signed out with a message.
+- **Server:** `core/003_customer_cms.sql`; `/v1/admin/customers*`, `/v1/admin/users*`, `/v1/admin/memberships/:id`, `/v1/admin/trace`, `/v1/m/:mid/trace`, public `/files/<random>.png|jpg|webp`; checks `feature_off`, `subscription_ended`, `user_blocked`, `limit_volunteers`, `limit_admins`. `PATCH/GET /v1/m/:mid/settings` removed.
+- **Not tracked:** no screen-view, activity or "last active" tracking. `audit_log` keeps management actions only and has no screen.
+
+## Sync modes and offline safety (2026-11-19)
+
+Spec `docs/specs/sync-modes.md`. The super-admin sets each customer's sync mode (Customer settings → Sync): **Live** (default; send at once, keep and resend when back online, retry every 30 s), **Offline** (keep on the phone until Sync now), **Scheduled** (every 1–120 min, plus on reconnect when due).
+- On the phone: the volunteer's booths, voters, tasks, branding and profile are kept in SQLite (`expo-sqlite/kv-store`; IndexedDB on the web), so the app opens and works without internet. Every change is queued first with its phone time; batches of 100 (`POST /v1/m/:mid/changes/batch`); refused changes go to *Needs attention* in Me (retry/remove); logout and account deletion are blocked while changes are unsent.
+- Server: per-field conflict rule (later phone time wins; Voted never undone by an older undo); `voter_contacts.field_at`; `party_constituencies.sync_mode/sync_minutes`; `memberships.last_sync_at/unsent` shown on the admin Team list.
+- Status chip: Synced · Saving… · Offline · N waiting · Next sync in N min · Offline mode · N saved · N need attention.
+
+## Polling day: location check and booth attendance (2026-11-20)
+
+Spec `docs/specs/polling-day.md`, tests `docs/test-cases/polling-day.md`.
+
+| Who | Where | What |
+|---|---|---|
+| Super-admin | Polling days (`/platform/elections`) | Poll date per state, all or some assemblies, voting hours (India time); edit, cancel, restore |
+| Super-admin | Booth locations (`/platform/booths`) | Lat/long per booth, missing-only filter, edit/remove, CSV upload with check before saving |
+| Super-admin | Customer settings → Polling day tab | At-booth distance per customer (50–2,000 m, default 300); link to that customer's attendance page |
+| Volunteer | Whole app, inside the window | Location required (only the location screen until allowed); background check on phones; away banner + phone notification; Me shows the status |
+| Admin | Booth attendance (`/admin/polling`) | Tiles, map with booth circles, filterable list (tap to call), alerts with unread badge, set missing booth locations; push notifications on phones |
+
+API: `/v1/admin/elections`, `/v1/admin/booths`, `/v1/admin/booths/locations`, `/v1/admin/customers/:id/polling`, `/v1/m/:mid/presence`, `/v1/m/:mid/polling`, `/v1/m/:mid/polling/alerts(/seen)`, `/v1/me/push-token`; `/v1/me` memberships gain `pollingDay` and `boothRadiusM`.
+DB: core `005_polling_day.sql` (`booth_radius_m`, `field_presence`, `presence_events`, `presence_seen`, `push_tokens`), state `003_polling_day.sql` (`elections.ac_nos/opens_at/closes_at`, status `cancelled`, booth location source `edited`).
+Needs a phone build to verify background location and push (Google Play background-location declaration before release).
+

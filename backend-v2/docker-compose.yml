@@ -1,0 +1,12 @@
+# Optional: PostgreSQL 16 in Docker instead of `npm run db:start` (same port and password as .env.example).
+services:
+  postgres:
+    image: postgres:16.10
+    environment:
+      POSTGRES_PASSWORD: local-dev-only
+    ports:
+      - "127.0.0.1:5544:5432"
+    volumes:
+      - elvote-pg:/var/lib/postgresql/data
+volumes:
+  elvote-pg:
