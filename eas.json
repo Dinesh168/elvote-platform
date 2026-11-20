@@ -26,7 +26,8 @@
         "EXPO_PUBLIC_AUTH_MODE": "firebase",
         "EAS_PROJECT_ID": "cf30fc3e-caf9-4362-9cf6-9ff710cb5afb"
       },
-      "channel": "demo"
+      "channel": "demo",
+      "node": "24.13.1"
     }
   },
   "submit": {
