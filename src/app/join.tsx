@@ -9,6 +9,7 @@ import { AppText, Button, Field, LargeTitle } from '@/design/components';
 import { AuthScreen } from '@/features/shell/AuthScreen';
 import { colors, radius, spacing } from '@/design/tokens';
 import { loadMe, logout } from '@/features/session/session';
+import { useSession } from '@/stores/session';
 
 type Ac = Awaited<ReturnType<typeof authApi.checkCode>>;
 
@@ -17,7 +18,8 @@ export default function Join() {
   const { t } = useTranslation();
   const [code, setCode] = useState('');
   const [ac, setAc] = useState<Ac | null>(null);
-  const [name, setName] = useState('');
+  // spec accounts-access AC4: the name comes from Your details (still editable here).
+  const [name, setName] = useState(useSession.getState().me?.user.name ?? '');
   const [booths, setBooths] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -53,7 +55,7 @@ export default function Join() {
               {ac.booths.map((b) => {
                 const on = booths.includes(b.no);
                 return (
-                  <Pressable key={b.no} accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={`${t('common.booth', { no: b.no })}, ${b.name}`} onPress={() => toggle(b.no)} style={[s.chip, on && s.chipOn]}>
+                  <Pressable key={b.no} accessibilityRole="checkbox" accessibilityState={{ checked: on }} aria-checked={on} accessibilityLabel={`${t('common.booth', { no: b.no })}, ${b.name}`} onPress={() => toggle(b.no)} style={[s.chip, on && s.chipOn]}>
                     <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${b.no}`}</AppText>
                   </Pressable>
                 );

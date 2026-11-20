@@ -13,6 +13,7 @@ import { AppText, Button, DataTable, Field, Group, Icon, Row, Sheet, type Column
 import { useWide } from '@/design/layout';
 import { themed } from '@/design/theme';
 import { colors, fonts, radius, spacing, web } from '@/design/tokens';
+import { localeOf } from '@/i18n';
 
 type Filter = 'all' | 'sharing' | PdStatus;
 const FILTERS: Filter[] = ['all', 'at_booth', 'away', 'not_reporting', 'location_off', 'not_shared', 'no_booth_location'];
@@ -50,7 +51,7 @@ export function useAgo() {
   };
 }
 
-const fmtDate = (d: string, lang: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(lang === 'pa' ? 'pa-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const fmtDate = (d: string, lang: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(localeOf(lang), { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
 
 export function PollingView({
   data, alerts, onSetLocation, onOpenAlerts,
@@ -141,7 +142,7 @@ export function PollingView({
         <Group header={`${t('pd.alerts')}${data.unseen ? ` · ${t('pd.newAlerts', { n: data.unseen })}` : ''}`} footer={alerts.length ? undefined : t('pd.noAlerts')}>
           {alerts.slice(0, 8).map((a, i, arr) => (
             <Row key={a.id} title={t(`pd.alert.${a.kind}`, { name: a.name, no: a.partNo ?? '' })}
-              subtitle={`${a.distanceM != null && (a.kind === 'left' || a.kind === 'still_away') ? `${t('pd.mAway', { m: a.distanceM })} · ` : ''}${new Date(a.at).toLocaleTimeString(i18n.language === 'pa' ? 'pa-IN' : 'en-IN', { hour: 'numeric', minute: '2-digit' })}`}
+              subtitle={`${a.distanceM != null && (a.kind === 'left' || a.kind === 'still_away') ? `${t('pd.mAway', { m: a.distanceM })} · ` : ''}${new Date(a.at).toLocaleTimeString(localeOf(i18n.language), { hour: 'numeric', minute: '2-digit' })}`}
               leading={<View style={s.alertIcon}><Icon name={alertIcon(a.kind)} size={22} color={alertColor(a.kind)} /></View>}
               last={i === arr.length - 1 && !(alerts.length > 8 && onOpenAlerts)} />
           ))}

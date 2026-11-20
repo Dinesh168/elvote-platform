@@ -26,6 +26,7 @@ export function GroupPicker({ value, labels, voterName, onPick }: GroupPickerPro
             accessibilityRole="radio"
             accessibilityLabel={labels[g]}
             accessibilityState={{ selected: on, checked: on }}
+            aria-checked={on}
             onPress={() => {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               onPick(g);

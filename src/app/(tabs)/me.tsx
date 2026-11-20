@@ -20,6 +20,8 @@ import { activeMembership, useSession } from '@/stores/session';
 import { usePollingDay } from '@/features/pollingDay/PollingGate';
 import { useAgo } from '@/features/pollingDay/PollingView';
 import { usePresence } from '@/features/pollingDay/tracker';
+import { localeOf , LANG_LABEL } from '@/i18n';
+
 
 /** V-GEN-3 Me: who I am, my booths, language, sync, booth location (D17), switch role, log out. */
 export default function MeScreen() {
@@ -34,7 +36,7 @@ export default function MeScreen() {
   const problems = useOutbox((s) => s.problems);
   const lastSyncedAt = useOutbox((s) => s.lastSyncedAt);
   const sync = useSyncStatus();
-  const when = (iso: string) => new Date(iso).toLocaleString(i18n.language === 'pa' ? 'pa-IN' : 'en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+  const when = (iso: string) => new Date(iso).toLocaleString(localeOf(i18n.language), { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
   const [confirm, setConfirm] = useState(false);
   const gpsOn = useFeature('boothGps');
   const langs = useAllowedLangs();
@@ -76,7 +78,7 @@ export default function MeScreen() {
             variant="answer"
             label={t('me.language')}
             value={i18n.language as Lang}
-            options={langs.map((l) => ({ value: l, label: l === 'pa' ? 'ਪੰਜਾਬੀ' : 'English' }))}
+            options={langs.map((l) => ({ value: l, label: LANG_LABEL[l] }))}
             onChange={(l) => { setLang(l); void initI18n(l); }}
           />
         </Group>
@@ -149,7 +151,7 @@ function PollingDayMe() {
   const lastSentAt = usePresence((st) => st.lastSentAt);
   const ago = useAgo();
   if (!day) return null;
-  const date = new Date(`${day.date}T12:00:00Z`).toLocaleDateString(i18n.language === 'pa' ? 'pa-IN' : 'en-IN', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+  const date = new Date(`${day.date}T12:00:00Z`).toLocaleDateString(localeOf(i18n.language), { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
   if (!active) {
     return (
       <Group header={t('pd.meTitle')}>

@@ -15,6 +15,7 @@ import { saveVoter, useBooths, useVoters, type SaveHandle } from '@/features/dat
 import { evaluateEntry, pressKey, type Key } from '@/features/poll/keypad';
 import { notVotedByGroup } from '@/features/stats/selectors';
 import { usePrefs } from '@/stores/prefs';
+import { relText } from '@/features/voters/rel';
 
 const KEYS: (Key | 'ok')[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', 'ok'];
 const R = 19;
@@ -167,7 +168,7 @@ export default function PollScreen() {
                   <AppText variant="title2">{entry.voter.name}</AppText>
                   <GroupTag code={entry.voter.group} label={entry.voter.group ? t(`groups.${entry.voter.group}`) : t('groups.none')} />
                 </View>
-                <AppText variant="callout" color={colors.textSecondary}>{`S.No ${entry.voter.sno} · ${entry.voter.relation} ${entry.voter.relative} · ${entry.voter.age} · H.No ${entry.voter.house}`}</AppText>
+                <AppText variant="callout" color={colors.textSecondary}>{`S.No ${entry.voter.sno} · ${relText(t, entry.voter.relation)} ${entry.voter.relative} · ${entry.voter.age} · ${t('voters.houseShort', { house: entry.voter.house })}`}</AppText>
               </>
             ) : (
               <AppText variant="callout" weight="medium" color={tone.fg}>{msg}</AppText>

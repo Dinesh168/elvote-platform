@@ -41,14 +41,27 @@ const FIELDS = [
 ] as const;
 
 /**
+ * spec bilingual-roll U8: a roll update moved this voter to another booth (or out of the roll) after the volunteer saved the
+ * change offline. Accept it when the volunteer had the voter's booth at that time, so nothing is lost.
+ */
+function movedFromMine(m: Membership, v: { part_no: number; prev_part_no: number | null; moved_at: Date | null; hidden_at: Date | null; status: string }, clientAt?: string) {
+  if (m.role === 'admin' || !clientAt) return false;
+  const at = Date.parse(clientAt);
+  if (v.moved_at && v.prev_part_no != null && m.booths.includes(v.prev_part_no) && at < v.moved_at.getTime()) return true;
+  if (v.status === 'not_in_roll' && v.hidden_at && m.booths.includes(v.part_no) && at < v.hidden_at.getTime()) return true;
+  return false;
+}
+
+/**
  * Applies one change inside the caller's transaction (party scope already set).
  * Returns 'duplicate' when this opId was applied before. Throws ApiError for permanent problems.
  */
 export async function applyChange(c: pg.PoolClient, m: Membership, electionId: string | null, op: Op): Promise<{ status: 'ok' | 'duplicate'; boothId: string }> {
-  const v = await c.query<{ part_no: number; booth_id: string }>('SELECT part_no, booth_id FROM voters WHERE ac_no = $1 AND id = $2', [m.acNo, op.voterId]);
+  const v = await c.query<{ part_no: number; booth_id: string; status: string; prev_part_no: number | null; moved_at: Date | null; hidden_at: Date | null }>(
+    'SELECT part_no, booth_id, status, prev_part_no, moved_at, hidden_at FROM voters WHERE ac_no = $1 AND id = $2', [m.acNo, op.voterId]);
   if (!v.rowCount) throw notFound('voter_not_found');
   const { part_no: partNo, booth_id: boothId } = v.rows[0];
-  requireBooth(m, partNo);
+  if (!movedFromMine(m, v.rows[0], op.clientAt)) requireBooth(m, partNo);
   const p = op.patch;
   if ('votedAt' in p) requireFeature(m, 'poll');
 

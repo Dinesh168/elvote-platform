@@ -10,9 +10,11 @@ import { useWide } from '@/design/layout';
 import { accentFrom, contrastOnWhite } from '@/design/theme';
 import { brandSwatches, colors, fonts, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
+import { VolunteerRequests } from '@/features/admin/VolunteerRequests';
 import { BrandPreview } from '@/features/customers/BrandPreview';
 import { ColourPicker } from '@/features/customers/ColourPicker';
 import { fileUrl } from '@/features/session/customer';
+import { LANG_LABEL } from '@/i18n';
 
 type Tab = 'look' | 'candidate' | 'features' | 'language' | 'limits' | 'messages' | 'sync' | 'polling';
 const FEATURES: FeatureKey[] = ['tasks', 'surnames', 'map', 'zones', 'slip', 'help', 'boothGps', 'poll'];
@@ -98,6 +100,7 @@ export default function CustomerPage() {
 
   const form = (
     <View style={s.formCol}>
+      <VolunteerRequests customerId={d.id} />
       <View style={s.tabs}>
         <SegmentedControl<Tab> label={t('cms.sections')} value={tab} onChange={setTab}
           options={(['look', 'candidate', 'features', 'language', 'sync', 'polling', 'limits', 'messages'] as Tab[]).map((k) => ({ value: k, label: t(`cms.tab.${k}`) }))} />
@@ -164,10 +167,10 @@ export default function CustomerPage() {
 
       {tab === 'language' ? (
         <Group header={t('cms.tab.language')} footer={t('cms.langHint')}>
-          {(['pa', 'en'] as const).map((l, i) => {
+          {(['pa', 'hi', 'en'] as const).map((l, i) => {
             const on = d.languages.includes(l);
             return (
-              <Row key={l} title={l === 'pa' ? 'ਪੰਜਾਬੀ (Punjabi)' : 'English'} last={i === 1}
+              <Row key={l} title={l === 'en' ? 'English' : `${LANG_LABEL[l]} (${l === 'pa' ? 'Punjabi' : 'Hindi'})`} last={i === 2}
                 subtitle={d.defaultLang === l ? t('cms.default') : undefined}
                 trailing={
                   <View style={s.langCtl}>

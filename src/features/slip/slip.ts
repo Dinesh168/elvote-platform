@@ -8,6 +8,10 @@ const esc = (s: string | number | null | undefined) =>
 export interface SlipLabels {
   ballot: string; booth: string; sno: string; name: string; relative: string; age: string; gender: string; address: string; epic: string;
   pollDay: string; genders: Record<string, string>;
+  /** Relation words in the app language (S/o → पुत्र); English when absent. */
+  rels?: Record<string, string>;
+  /** "H.No …, Ward …, …" in the app language. */
+  addr?: (v: Voter) => string;
 }
 
 export function slipRows(v: Voter, booth: Booth | undefined, l: SlipLabels): [string, string][] {
@@ -15,10 +19,10 @@ export function slipRows(v: Voter, booth: Booth | undefined, l: SlipLabels): [st
     [l.booth, `${v.booth}${booth ? ` · ${booth.name}` : ''}`],
     [l.sno, String(v.sno)],
     [l.name, v.name],
-    [l.relative, `${v.relation} ${v.relative}`],
+    [l.relative, `${l.rels?.[v.relation] ?? v.relation} ${v.relative}`],
     [l.age, String(v.age)],
     [l.gender, l.genders[v.gender] ?? v.gender],
-    [l.address, `H.No ${v.house}${v.ward ? `, Ward ${v.ward}` : ''}${v.village ? `, ${v.village}` : ''}`],
+    [l.address, l.addr ? l.addr(v) : `H.No ${v.house}${v.ward ? `, Ward ${v.ward}` : ''}${v.village ? `, ${v.village}` : ''}`],
     [l.epic, v.epic],
   ];
 }

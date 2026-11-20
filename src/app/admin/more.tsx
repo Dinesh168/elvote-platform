@@ -11,6 +11,7 @@ import { logout, rolesOf } from '@/features/session/session';
 import { initI18n, type Lang } from '@/i18n';
 import { usePrefs } from '@/stores/prefs';
 import { useActiveMembership, useSession } from '@/stores/session';
+import { LANG_LABEL } from '@/i18n';
 
 /** Admin More (D18): Polling day, Zones, Branding, join code, language, switch role, log out. */
 export default function More() {
@@ -21,6 +22,8 @@ export default function More() {
   const [code, setCode] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
   const roles = me ? rolesOf(me) : [];
+  // spec accounts-access AC9: admins of several assemblies (or a whole state) get the overview.
+  const adminAcs = (me?.memberships ?? []).filter((x) => x.role === 'admin' && x.status === 'approved').length;
   const wide = useWide();
   const poll = useFeature('poll');
   const zones = useFeature('zones');
@@ -38,7 +41,8 @@ export default function More() {
       <Group>
         {poll ? <Row title={t('admin.poll')} leading={<IconSquare name="checkbox" bg={colors.success} />} chevron onPress={() => router.push('/admin/poll')} /> : null}
         {zones ? <Row title={t('admin.zones')} subtitle={m ? `${m.zoneCount} / ${m.maxZones}` : undefined} leading={<IconSquare name="grid" bg={colors.accent} />} chevron onPress={() => router.push('/admin/zones')} /> : null}
-        <Row title={t('trace.title')} subtitle={t('trace.sub')} leading={<IconSquare name="git-commit" bg={colors.text} />} chevron onPress={() => router.push('/admin/trace')} last />
+        <Row title={t('trace.title')} subtitle={t('trace.sub')} leading={<IconSquare name="git-commit" bg={colors.text} />} chevron onPress={() => router.push('/admin/trace')} last={adminAcs < 2} />
+        {adminAcs > 1 ? <Row title={t('overview.title')} subtitle={t('overview.count', { count: adminAcs })} leading={<IconSquare name="albums" bg={colors.accent} />} chevron onPress={() => router.push('/admin/overview')} last /> : null}
       </Group>
       <Group header={t('admin.joinCode')} footer={code ? t('admin.newCodeShown', { code }) : undefined}>
         <Row title={t('admin.newCode')} leading={<IconSquare name="key" bg={colors.accent} />} onPress={() => m && void adminApi.newJoinCode(m.id).then((r) => setCode(r.code))} last />
@@ -47,7 +51,7 @@ export default function More() {
       {langs.length > 1 ? (
         <Group header={t('admin.language')} style={{ padding: spacing.md }}>
           <SegmentedControl<Lang> variant="answer" label={t('admin.language')} value={i18n.language as Lang}
-            options={langs.map((l) => ({ value: l, label: l === 'pa' ? 'ਪੰਜਾਬੀ' : 'English' }))}
+            options={langs.map((l) => ({ value: l, label: LANG_LABEL[l] }))}
             onChange={(l) => { setLang(l); void initI18n(l); }} />
         </Group>
       ) : null}

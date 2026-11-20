@@ -9,6 +9,7 @@ import { core } from './db/pools.js';
 import { assertUserActive } from './lib/access.js';
 import { verifyAccess } from './lib/auth.js';
 import { ApiError } from './lib/errors.js';
+import { accessUserRoutes } from './routes/access.js';
 import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { fieldRoutes } from './routes/field.js';
@@ -17,7 +18,7 @@ import { UPLOAD_DIR } from './routes/customers.js';
 import { platformRoutes } from './routes/platform.js';
 import { pollingRoutes } from './routes/polling.js';
 
-const PUBLIC = ['/health', '/ready', '/v1/auth/', '/files/'];
+const PUBLIC = ['/health', '/ready', '/v1/auth/', '/files/', '/v1/push/vapid-key'];
 
 export async function buildApp() {
   const app = Fastify({
@@ -77,6 +78,7 @@ export async function buildApp() {
 
   await app.register(authRoutes);
   await app.register(meRoutes);
+  await app.register(accessUserRoutes);
   await app.register(fieldRoutes);
   await app.register(adminRoutes);
   await app.register(pollingRoutes);

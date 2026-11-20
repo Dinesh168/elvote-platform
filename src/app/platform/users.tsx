@@ -2,7 +2,8 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { platformApi, type AdminUser, type Customer, type UserFilter } from '@/api/adminApi';
+import { authApi, platformApi, type AdminUser, type Customer, type UserFilter } from '@/api/adminApi';
+import { ApiError } from '@/api/http';
 import { AppText, Button, ChoiceRow, DataTable, Field, Group, Icon, LargeTitle, Row, Screen, SegmentedControl, Sheet } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { colors, fonts, radius, spacing } from '@/design/tokens';
@@ -116,6 +117,7 @@ function UserSheet({ user, onClose, onChanged }: { user: AdminUser; onClose: () 
   const { t } = useTranslation();
   const [reason, setReason] = useState('');
   const [booths, setBooths] = useState<Record<string, string>>({});
+  const [mobile, setMobile] = useState(user.mobile ?? '');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const ok = reason.trim().length >= 3;
@@ -126,7 +128,8 @@ function UserSheet({ user, onClose, onChanged }: { user: AdminUser; onClose: () 
     setMsg(null);
     try {
       await fn();
-      const fresh = user.mobile ? (await platformApi.users({ q: user.mobile, limit: 5 })).items : [];
+      const key = user.mobile ?? user.email;
+      const fresh = key ? (await platformApi.users({ q: key, limit: 5 })).items : [];
       onChanged(fresh.find((x) => x.id === user.id) ?? null);
       setMsg({ ok: true, text: done });
     } catch (e) {
@@ -137,7 +140,8 @@ function UserSheet({ user, onClose, onChanged }: { user: AdminUser; onClose: () 
   };
 
   return (
-    <Sheet visible title={user.name || (user.mobile ?? '')} onClose={onClose} footer={user.mobile ? `+91 ${user.mobile}${user.isSuperAdmin ? ` · ${t('web.rolePlatform')}` : ''}` : undefined}>
+    <Sheet visible title={user.name || user.email || (user.mobile ?? '')} onClose={onClose}
+      footer={[user.mobile ? `+91 ${user.mobile}` : null, user.email, user.isSuperAdmin ? t('web.rolePlatform') : null].filter(Boolean).join(' · ') || undefined}>
       <View style={s.sheet}>
         {blocked && user.blockedReason ? (
           <View style={s.blockedBox}><Icon name="ban" size={18} color={colors.danger} /><AppText variant="callout" color={colors.danger} style={s.flex}>{t('users.blockedBecause', { reason: user.blockedReason })}</AppText></View>
@@ -148,6 +152,12 @@ function UserSheet({ user, onClose, onChanged }: { user: AdminUser; onClose: () 
             onPress={() => void run(() => (blocked ? platformApi.unblock(user.id, reason.trim()) : platformApi.block(user.id, reason.trim())), blocked ? t('users.unblocked') : t('users.blockedDone'))} />
           <Button kind="tinted" compact style={s.flex} disabled={busy} label={t('users.signOut')} onPress={() => void run(() => platformApi.signOutUser(user.id), t('users.signedOut'))} />
         </View>
+        <View style={s.row}>
+          <View style={s.flex}><Field label={t('auth.mobileLabel')} prefix="+91" value={mobile} keyboardType="number-pad" onChangeText={(x) => setMobile(x.replace(/\D/g, '').slice(0, 10))} /></View>
+          <Button kind="tinted" compact style={s.saveBooths} disabled={!ok || busy || mobile === (user.mobile ?? '') || (mobile !== '' && mobile.length !== 10)} label={t('users.saveMobile')}
+            onPress={() => void run(() => platformApi.setUserMobile(user.id, mobile || null, reason.trim()), t('users.mobileSaved'))} />
+        </View>
+        <AdminAccessBox userId={user.id} onChanged={() => void run(async () => undefined, t('admin.saved'))} />
         {user.memberships.map((m) => (
           <View key={m.id} style={s.team}>
             <AppText variant="headline">{`${m.partyName} · ${m.stateCode} ${m.acNo} ${m.acName}`}</AppText>
@@ -175,7 +185,87 @@ function UserSheet({ user, onClose, onChanged }: { user: AdminUser; onClose: () 
   );
 }
 
+/** spec accounts-access AC8: whole-state scopes and assemblies this person administers; add or remove. */
+function AdminAccessBox({ userId, onChanged }: { userId: string; onChanged: () => void }) {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const acc = useQuery({ queryKey: ['adminAccess', userId], queryFn: () => platformApi.adminAccess(userId) });
+  const parties = useQuery({ queryKey: ['platform', 'parties'], queryFn: platformApi.parties });
+  const states = useQuery({ queryKey: ['catalog', 'states'], queryFn: authApi.states });
+  const [adding, setAdding] = useState(false);
+  const [partyId, setPartyId] = useState<string | null>(null);
+  const [state, setState] = useState<string | null>(null);
+  const [whole, setWhole] = useState(true);
+  const [acText, setAcText] = useState('');
+  const [missing, setMissing] = useState<number[] | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const acNos = acText.split(/[ ,]+/).filter(Boolean).map(Number).filter((n) => n > 0);
+  const done = () => { void qc.invalidateQueries({ queryKey: ['adminAccess', userId] }); onChanged(); };
+  const add = async (createMissing = false) => {
+    setBusy(true);
+    setErr(null);
+    try {
+      await platformApi.addAdminAccess(userId, { partyId: partyId!, stateCode: state!, wholeState: whole, acNos: whole ? undefined : acNos, createMissing });
+      setAdding(false);
+      setMissing(null);
+      setAcText('');
+      done();
+    } catch (e) {
+      if (e instanceof ApiError && e.code === 'no_customer') setMissing((e.details as { acNos: number[] }).acNos);
+      else setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const a = acc.data;
+  return (
+    <View style={s.team}>
+      <AppText variant="headline">{t('users.adminAccess')}</AppText>
+      {a?.states.map((x) => (
+        <View key={`${x.partyId}${x.stateCode}`} style={s.row}>
+          <AppText variant="callout" style={s.flex}>{t('users.wholeStateOf', { party: x.partyName, state: x.stateCode })}</AppText>
+          <Button kind="plain" compact label={t('users.remove')} disabled={busy}
+            onPress={() => void platformApi.removeStateAccess(userId, x.partyId, x.stateCode).then(done, (e: Error) => setErr(e.message))} />
+        </View>
+      ))}
+      {a?.assemblies.filter((x) => x.source === 'direct').map((x) => (
+        <AppText key={x.membershipId} variant="callout">{`${x.partyName} · ${x.stateCode} ${x.acNo} ${x.acName}`}</AppText>
+      ))}
+      {a && !a.states.length && !a.assemblies.length ? <AppText variant="footnote" color={colors.textSecondary}>{t('users.noAdminAccess')}</AppText> : null}
+      {!adding ? <Button kind="tinted" compact label={t('users.addAccess')} onPress={() => setAdding(true)} /> : (
+        <View style={s.addBox}>
+          <AppText variant="footnote" color={colors.textSecondary}>{t('requests.party').toLocaleUpperCase()}</AppText>
+          <View style={s.chips}>{(parties.data ?? []).map((p) => (
+            <Button key={p.id} compact kind={partyId === p.id ? 'filled' : 'tinted'} label={p.name} onPress={() => setPartyId(p.id)} />
+          ))}</View>
+          <AppText variant="footnote" color={colors.textSecondary}>{t('registerAdmin.state').toLocaleUpperCase()}</AppText>
+          <View style={s.chips}>{(states.data ?? []).map((x) => (
+            <Button key={x.code} compact kind={state === x.code ? 'filled' : 'tinted'} label={x.name} onPress={() => setState(x.code)} />
+          ))}</View>
+          <SegmentedControl label={t('requests.areaLabel')} value={whole ? 'state' : 'acs'} onChange={(v) => setWhole(v === 'state')}
+            options={[{ value: 'state', label: t('registerAdmin.wholeState') }, { value: 'acs', label: t('registerAdmin.someAcs') }]} />
+          {!whole ? <Field label={t('users.acNumbers')} value={acText} onChangeText={(x) => setAcText(x.replace(/[^\d, ]/g, ''))} hint={t('users.acNumbersHint')} /> : null}
+          {missing ? (
+            <View style={s.blockedBox}>
+              <AppText variant="callout" style={s.flex}>{t('requests.missing', { acs: missing.join(', ') })}</AppText>
+              <Button compact label={t('requests.createAndApprove')} disabled={busy} onPress={() => void add(true)} />
+            </View>
+          ) : null}
+          {err ? <AppText variant="footnote" color={colors.danger}>{err}</AppText> : null}
+          <View style={s.row}>
+            <Button compact style={s.flex} label={t('users.addAccess')} disabled={busy || !partyId || !state || (!whole && !acNos.length)} onPress={() => void add()} />
+            <Button compact kind="plain" label={t('users.cancel')} onPress={() => { setAdding(false); setMissing(null); }} />
+          </View>
+        </View>
+      )}
+    </View>
+  );
+}
+
 const s = StyleSheet.create({
+  addBox: { gap: spacing.sm },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   searchWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginHorizontal: spacing.lg, marginTop: spacing.lg, minHeight: 48, paddingLeft: spacing.md, paddingRight: 4, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.separator },
   search: { flex: 1, fontSize: 16, fontFamily: fonts.regular, color: colors.text, paddingVertical: spacing.sm },
   hint: { padding: spacing.xl },

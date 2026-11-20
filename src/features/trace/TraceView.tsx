@@ -4,6 +4,7 @@ import type { TFunction } from 'i18next';
 import type { Trace, TraceEvent } from '@/api/adminApi';
 import { AppText, Group, Icon } from '@/design/components';
 import { colors, group, radius, spacing } from '@/design/tokens';
+import { localeOf } from '@/i18n';
 
 type Line = { icon: string; color: string; text: string };
 
@@ -25,7 +26,7 @@ export function describe(raw: Record<string, unknown>, t: TFunction): Line[] {
 }
 
 const when = (iso: string, lang: string) =>
-  new Date(iso).toLocaleString(lang === 'pa' ? 'pa-IN' : 'en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+  new Date(iso).toLocaleString(localeOf(lang), { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 
 /** C9: a voter and the list of changes made to them, newest first. */
 export function TraceView({ data, showParty }: { data: Trace; showParty?: boolean }) {

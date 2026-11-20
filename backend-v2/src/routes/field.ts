@@ -7,6 +7,7 @@ import { applyChange, Patch } from '../lib/changes.js';
 import { ApiError, notFound } from '../lib/errors.js';
 import { Mobile, parse, PartNo, Uuid, VoterId } from '../lib/http.js';
 import { currentElectionId } from '../lib/stats.js';
+import { VISIBLE } from '../lib/imports.js';
 import { DRIVE_NAMES, toVoter, VOTER_SELECT, type VoterRow } from '../lib/voters.js';
 
 const Mid = z.object({ mid: Uuid });
@@ -18,12 +19,16 @@ export async function fieldRoutes(app: FastifyInstance) {
     const { mid } = parse(Mid, req.params);
     const m = await requireMembership(req.userId, mid);
     const pool = await statePool(m.stateCode);
-    const r = await pool.query<{ part_no: number; name: string; locality: string; lat: string | null; lng: string | null; voters_count: number }>(
-      `SELECT part_no, name, locality, lat, lng, voters_count FROM booths
+    const r = await pool.query<{ part_no: number; name: string; name_local: string | null; locality: string; locality_local: string | null; address: string | null; address_local: string | null; lat: string | null; lng: string | null; voters_count: number }>(
+      `SELECT part_no, name, name_local, locality, locality_local, address, address_local, lat, lng, voters_count FROM booths
         WHERE ac_no = $1 AND deleted_at IS NULL AND ($2::boolean OR part_no = ANY($3::smallint[])) ORDER BY part_no`,
       [m.acNo, m.role === 'admin', m.booths],
     );
-    return r.rows.map((b) => ({ no: b.part_no, name: b.name, village: b.locality, lat: b.lat ? Number(b.lat) : null, lng: b.lng ? Number(b.lng) : null, voters: b.voters_count }));
+    return r.rows.map((b) => ({
+      no: b.part_no, name: b.name, village: b.locality, lat: b.lat ? Number(b.lat) : null, lng: b.lng ? Number(b.lng) : null, voters: b.voters_count,
+      ...(b.name_local ? { nameLocal: b.name_local } : {}), ...(b.locality_local ? { villageLocal: b.locality_local } : {}),
+      ...(b.address ? { address: b.address } : {}), ...(b.address_local ? { addressLocal: b.address_local } : {}),
+    }));
   });
 
   /** Full list of a booth's voters, or only voters changed since `since` (phone cache sync). */
@@ -41,7 +46,7 @@ export async function fieldRoutes(app: FastifyInstance) {
         params.push(q.since);
         since = ` AND (c.updated_at > $5 OR pm.marked_at > $5 OR pm.undone_at > $5 OR v.updated_at > $5)`;
       }
-      const r = await c.query<VoterRow>(`${VOTER_SELECT} WHERE v.ac_no = $3 AND v.part_no = $4 AND v.status <> 'deleted'${since} ORDER BY v.sno`, params);
+      const r = await c.query<VoterRow>(`${VOTER_SELECT} WHERE v.ac_no = $3 AND v.part_no = $4 AND v.${VISIBLE}${since} ORDER BY v.sno`, params);
       return { serverTime: new Date().toISOString(), voters: r.rows.map(toVoter) };
     });
   });
@@ -58,9 +63,13 @@ export async function fieldRoutes(app: FastifyInstance) {
       let cond: string;
       if (/^\d{1,3}$/.test(q.q)) { params.push(Number(q.q)); params.push(q.q); cond = `(v.age = $6 OR v.house_no = $7)`; }
       else if (/^[A-Za-z]{2,4}\d{3,}/.test(q.q)) { params.push(q.q.toUpperCase() + '%'); cond = `v.epic LIKE $6`; }
-      else { params.push(`%${q.q.replace(/[%_\\]/g, '\\$&')}%`); cond = `v.name ILIKE $6`; }
+      else {
+        // L3: English or regional name, or relative's name
+        params.push(`%${q.q.replace(/[%_\\]/g, '\\$&')}%`);
+        cond = `(v.name ILIKE $6 OR v.name_local ILIKE $6 OR v.relative_name ILIKE $6 OR v.relative_name_local ILIKE $6)`;
+      }
       const r = await c.query<VoterRow>(
-        `${VOTER_SELECT} WHERE v.ac_no = $3 AND ($4::boolean OR v.part_no = ANY($5::smallint[])) AND v.status <> 'deleted' AND ${cond}
+        `${VOTER_SELECT} WHERE v.ac_no = $3 AND ($4::boolean OR v.part_no = ANY($5::smallint[])) AND v.${VISIBLE} AND ${cond}
          ORDER BY v.part_no, v.sno LIMIT 100`, params);
       return r.rows.map(toVoter);
     });

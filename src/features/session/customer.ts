@@ -1,6 +1,6 @@
 import { API_URL } from '@/api/http';
 import { useActiveMembership, type CustomerLook, type FeatureKey } from '@/stores/session';
-import type { Lang } from '@/i18n';
+import { isLang, type Lang } from '@/i18n';
 
 /** C3: is a feature on for the open customer? (Super-admin and mock mode: always on.) */
 export function useFeature(key: FeatureKey): boolean {
@@ -15,8 +15,8 @@ export function useLook(): CustomerLook | null {
 
 /** C4: languages this team may switch between (all when not set). */
 export function useAllowedLangs(): Lang[] {
-  const langs = (useLook()?.languages ?? ['pa', 'en']).filter((l): l is Lang => l === 'pa' || l === 'en');
-  return langs.length ? langs : ['pa', 'en'];
+  const langs = (useLook()?.languages ?? ['pa', 'hi', 'en']).filter(isLang);
+  return langs.length ? langs : ['pa', 'hi', 'en'];
 }
 
 /** Server file paths (/files/…) → full URL. */

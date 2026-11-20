@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { themed } from '@/design/theme';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '@/api/adminApi';
@@ -8,14 +8,20 @@ import { ApiError } from '@/api/http';
 import { AppText, Button, Field, Icon, LargeTitle } from '@/design/components';
 import { colors, radius, spacing } from '@/design/tokens';
 import { clearDeviceCache } from '@/features/data';
+import { authMessage, isCancelled } from '@/features/auth/errors';
+import { firebaseOn, freshToken, signInMethod, signOutFirebase } from '@/features/auth/firebaseAuth';
 import { ensureSynced, unsentCount } from '@/features/session/session';
 import { AuthScreen } from '@/features/shell/AuthScreen';
 import { useNotice } from '@/stores/notice';
 import { useSession } from '@/stores/session';
+import { localeOf } from '@/i18n';
 
 type Ac = { stateCode: string; acNo: number; acName: string; partyName: string };
 
-/** AD5: delete my account (volunteer and admin). Type DELETE + SMS code; erased after 7 days unless they sign in again. */
+/**
+ * AD5: delete my account (volunteer and admin). Type DELETE, then confirm it is you: sign in again with Google or the
+ * password (spec accounts-access AC13), or the server's test code locally. Erased after 7 days unless they sign in again.
+ */
 export default function DeleteAccount() {
   const { t, i18n } = useTranslation();
   const me = useSession((s) => s.me);
@@ -25,6 +31,10 @@ export default function DeleteAccount() {
   const [devCode, setDevCode] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fb = firebaseOn();
+  const [method, setMethod] = useState<'google' | 'password' | null>(null);
+  const [password, setPassword] = useState('');
+  useEffect(() => { if (fb) void signInMethod().then(setMethod); }, [fb]);
   if (!me) return <Redirect href="/" />;
   const mobile = me.user.mobile;
 
@@ -33,6 +43,8 @@ export default function DeleteAccount() {
       const acs = ((e.details as { acs?: Ac[] } | undefined)?.acs ?? []).map((a) => `AC ${a.acNo} ${a.acName} (${a.partyName})`).join(', ');
       setError(t('del.lastAdmin', { acs }));
     } else if (e instanceof ApiError && e.code === 'otp_invalid') setError(t('del.wrongCode'));
+    else if (e instanceof ApiError && (e.code === 'reauth_required' || e.code === 'reauth_mismatch')) setError(t('del.reauth'));
+    else if (!(e instanceof ApiError) && fb) { if (!isCancelled(e)) setError(authMessage(e, t)); }
     else if (e instanceof ApiError && e.code === 'network') setError(t('auth.network'));
     else setError((e as Error).message);
   };
@@ -57,8 +69,9 @@ export default function DeleteAccount() {
     // Sync-modes S7: send unsent changes first; never delete an account with work still on the phone.
     if (!(await ensureSynced())) { setBusy(false); return setError(t('sync.unsentBlock', { count: unsentCount() })); }
     try {
-      const r = await authApi.deleteAccount(code);
-      const date = new Date(r.dueAt).toLocaleDateString(i18n.language === 'pa' ? 'pa-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' });
+      const r = fb ? await authApi.deleteWithToken(await freshToken(method === 'password' ? password : undefined)) : await authApi.deleteAccount(code);
+      if (fb) await signOutFirebase();
+      const date = new Date(r.dueAt).toLocaleDateString(localeOf(i18n.language), { day: 'numeric', month: 'long', year: 'numeric' });
       // The server has already signed this account out everywhere; clear this device too.
       await clearDeviceCache();
       await useSession.getState().signOut();
@@ -86,7 +99,13 @@ export default function DeleteAccount() {
           ))}
         </View>
         <Field label={t('del.typeLabel')} value={word} onChangeText={setWord} autoCapitalize="characters" autoCorrect={false} maxLength={10} />
-        {!sent ? (
+        {fb ? (
+          method === 'password' ? (
+            <Field label={t('del.passwordLabel')} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" autoComplete="current-password" />
+          ) : (
+            <AppText variant="callout" color={colors.textSecondary}>{t('del.googleAgain')}</AppText>
+          )
+        ) : !sent ? (
           <Button block kind="tinted" label={t('del.sendCode', { mobile })} disabled={!wordOk || busy} onPress={() => void send()} />
         ) : (
           <>
@@ -103,7 +122,8 @@ export default function DeleteAccount() {
             <AppText variant="callout" color={colors.danger} style={s.flex}>{error}</AppText>
           </View>
         ) : null}
-        <Button block kind="danger" label={t('del.confirm')} disabled={!wordOk || !sent || code.length !== 6 || busy} onPress={() => void submit()} />
+        <Button block kind="danger" label={t('del.confirm')}
+          disabled={!wordOk || busy || (fb ? method === 'password' && !password : !sent || code.length !== 6)} onPress={() => void submit()} />
       </View>
     </AuthScreen>
   );

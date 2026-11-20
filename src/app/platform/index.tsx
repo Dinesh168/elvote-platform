@@ -52,6 +52,7 @@ export default function PlatformHome() {
           </Grid>
           {wide ? null : (<>
           <Group>
+            <Row title={t('requests.title')} leading={<IconSquare name="person-add" bg={colors.warning} />} chevron onPress={() => router.push('/platform/requests')} />
             <Row title={t('cms.customers')} leading={<IconSquare name="briefcase" bg={colors.accent} />} chevron onPress={() => router.push('/platform/customers')} />
             <Row title={t('platform.parties')} leading={<IconSquare name="flag" bg={colors.accent} />} chevron onPress={() => router.push('/platform/parties')} />
             <Row title={t('pd.elections')} leading={<IconSquare name="calendar" bg={colors.danger} />} chevron onPress={() => router.push('/platform/elections')} />

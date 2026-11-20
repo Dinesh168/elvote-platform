@@ -1,4 +1,5 @@
 import type { GroupCode, Voter } from '@/api/types';
+import { voterNames } from '@/features/session/localize';
 
 export type Chip = 'all' | 'todo' | GroupCode;
 export type View = 'house' | 'serial';
@@ -42,7 +43,7 @@ export function matchesQuery(v: Voter, q: string): boolean {
   const s = q.trim().toLowerCase();
   if (!s) return true;
   if (v.house.toLowerCase() === s) return true;
-  if (v.name.toLowerCase().includes(s)) return true;
+  if (voterNames(v).some((n) => n.includes(s))) return true; // English or regional script (bilingual-roll L3)
   if (s.length >= 3 && v.epic.toLowerCase().includes(s)) return true;
   if (/^\d+$/.test(s) && v.age === Number(s)) return true;
   return false;

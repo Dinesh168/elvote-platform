@@ -37,6 +37,8 @@ export interface MembershipInfo {
   /** Polling day for this team's assembly, if one is set (spec polling-day S1); remembered offline. */
   pollingDay?: { electionId: string; name: string; date: string; opensAt: string; closesAt: string; radiusM: number } | null;
   boothRadiusM?: number;
+  /** Regional language of this assembly's data (spec bilingual-roll L1). */
+  dataLang?: 'hi' | 'pa';
 }
 
 export type FeatureKey = 'map' | 'poll' | 'zones' | 'tasks' | 'slip' | 'surnames' | 'help' | 'boothGps';
@@ -46,10 +48,24 @@ export interface CustomerLook {
   message: string | null; slipShareText: string | null; defaultLang: string | null; languages: string[];
 }
 
+/** An admin request (spec accounts-access AC6). */
+export interface AccessRequestInfo {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn';
+  partyName: string;
+  stateCode: string;
+  wholeState: boolean;
+  acNos: number[];
+  designation: string;
+  reason: string | null;
+}
+
 export interface MeInfo {
-  user: { id: string; mobile: string; name: string; lang: string };
+  /** mobile is null until "Your details" (spec accounts-access AC4). */
+  user: { id: string; mobile: string | null; email?: string | null; name: string; lang: string; profileDone?: boolean };
   isSuperAdmin: boolean;
   memberships: MembershipInfo[];
+  accessRequest?: AccessRequestInfo | null;
 }
 
 const store = {

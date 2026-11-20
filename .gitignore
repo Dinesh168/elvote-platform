@@ -48,3 +48,8 @@ krishnakutumb-*.json
 .env.*
 !backend/example.env
 dist-v2/
+dist-demo/
+
+# Firebase app config for builds (public keys, kept out of git)
+google-services.json
+GoogleService-Info.plist

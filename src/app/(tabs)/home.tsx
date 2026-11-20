@@ -19,6 +19,7 @@ import { ALL_VOTERS } from '@/features/voters/nextVoter';
 import { longDate } from '@/lib/date';
 import { useWide } from '@/design/layout';
 import { usePrefs } from '@/stores/prefs';
+import { relText } from '@/features/voters/rel';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : '0%');
@@ -101,7 +102,7 @@ export default function HomeScreen() {
                       {next.voter.name}
                     </AppText>
                     <AppText variant="callout" color={colors.textSecondary}>
-                      {`${next.voter.relation} ${next.voter.relative} · ${next.voter.age} · H.No ${next.voter.house}`}
+                      {`${relText(t, next.voter.relation)} ${next.voter.relative} · ${next.voter.age} · ${t('voters.houseShort', { house: next.voter.house })}`}
                     </AppText>
                   </View>
                 </View>

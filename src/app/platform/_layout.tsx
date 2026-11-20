@@ -15,6 +15,7 @@ export default function PlatformLayout() {
   if (!wide) return stack;
   const nav: NavItem[] = [
     { path: '/platform', label: t('web.overview'), icon: ['grid', 'grid-outline'] },
+    { path: '/platform/requests', label: t('requests.title'), icon: ['person-add', 'person-add-outline'] },
     { path: '/platform/customers', label: t('cms.customers'), icon: ['briefcase', 'briefcase-outline'], also: ['/platform/customer', '/platform/party-ac'] },
     { path: '/platform/parties', label: t('platform.parties'), icon: ['flag', 'flag-outline'] },
     { path: '/platform/elections', label: t('pd.elections'), icon: ['calendar', 'calendar-outline'] },

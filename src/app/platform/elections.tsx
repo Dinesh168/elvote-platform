@@ -8,6 +8,7 @@ import { useWide } from '@/design/layout';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
+import { localeOf } from '@/i18n';
 
 const todayIst = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
 const KINDS: ElectionInput['kind'][] = ['assembly', 'parliament', 'bye', 'local'];
@@ -22,7 +23,7 @@ export default function Elections() {
   const [past, setPast] = useState(false);
   const today = todayIst();
   const list = (q.data ?? []).filter((e) => (past ? e.date < today || e.status === 'done' : e.date >= today && e.status !== 'done'));
-  const date = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(i18n.language === 'pa' ? 'pa-IN' : 'en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+  const date = (d: string) => new Date(`${d}T12:00:00Z`).toLocaleDateString(localeOf(i18n.language), { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
   const acs = (e: Election) => (e.acNos ? t('pd.acList', { list: e.acNos.join(', ') }) : t('pd.allAcs'));
   const statusText = (e: Election) => (e.status === 'cancelled' ? t('pd.el.cancelled') : e.inWindow ? t('pd.liveNow') : t(`pd.el.${e.status}`));
   const cols: Column<Election>[] = [

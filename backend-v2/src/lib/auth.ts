@@ -1,5 +1,5 @@
 /**
- * Auth: OTP (dev mode) or Firebase ID token → our own short-lived JWT access token + rotating refresh token.
+ * Auth: OTP (dev mode, local/tests only) or Firebase ID token (Google / email, spec accounts-access) → our own short-lived JWT access token + rotating refresh token.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { SignJWT, jwtVerify, createRemoteJWKSet } from 'jose';
@@ -90,6 +90,11 @@ async function signIn(mobile: string, device?: string, firebaseUid?: string) {
      RETURNING id, status`,
     [mobile, firebaseUid ?? null],
   );
+  return finishSignIn(u.rows[0].id, u.rows[0].status, device);
+}
+
+async function finishSignIn(userId: string, status: string, device?: string) {
+  const u = { rows: [{ id: userId, status }] };
   if (u.rows[0].status !== 'active') throw new ApiError(401, 'user_blocked', 'Your access is paused. Contact your provider.');
   // Account deletion undo (AD3): signing in within the 7 days cancels the request.
   const undo = await core.query(
@@ -105,22 +110,85 @@ async function signIn(mobile: string, device?: string, firebaseUid?: string) {
 
 const firebaseJwks = createRemoteJWKSet(new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'));
 
-/** Production sign-in: the app verifies the phone with Firebase and sends the ID token here. */
-export async function verifyFirebase(idToken: string, device?: string) {
-  const { phone, uid } = await firebasePhone(idToken);
-  return signIn(phone, device, uid);
+/** What we use from a verified Firebase ID token (spec accounts-access AC1–AC3). */
+export interface FirebaseClaims {
+  uid: string;
+  email?: string;
+  emailVerified: boolean;
+  provider: string; // google.com | password | phone | …
+  authTime: number; // seconds
+  name?: string;
+}
+type Verifier = (idToken: string) => Promise<FirebaseClaims>;
+
+const googleVerifier: Verifier = async (idToken) => {
+  const pid = env.FIREBASE_PROJECT_ID!;
+  const { payload } = await jwtVerify(idToken, firebaseJwks, { issuer: `https://securetoken.google.com/${pid}`, audience: pid });
+  const p = payload as { sub?: string; email?: string; email_verified?: boolean; name?: string; auth_time?: number; firebase?: { sign_in_provider?: string } };
+  if (!p.sub) throw new Error('no sub');
+  return { uid: p.sub, email: p.email, emailVerified: p.email_verified === true, provider: p.firebase?.sign_in_provider ?? '', authTime: Number(p.auth_time ?? 0), name: p.name };
+};
+
+let testVerifier: Verifier | null = null;
+/** Tests only: replace Google's token check (null = back to normal). */
+export function setFirebaseVerifier(v: Verifier | null) {
+  if (env.NODE_ENV === 'production') throw new Error('not allowed in production');
+  testVerifier = v;
 }
 
-/** Verifies a Firebase ID token and returns its 10-digit Indian mobile. */
-export async function firebasePhone(idToken: string): Promise<{ phone: string; uid: string }> {
-  if (env.AUTH_MODE !== 'firebase' || !env.FIREBASE_PROJECT_ID) throw invalid('firebase_off', 'Firebase sign-in is not enabled.');
-  const pid = env.FIREBASE_PROJECT_ID;
-  const { payload } = await jwtVerify(idToken, firebaseJwks, { issuer: `https://securetoken.google.com/${pid}`, audience: pid }).catch(() => {
-    throw unauthorized('firebase_invalid');
+const ALLOWED_PROVIDERS = new Set(['google.com', 'password']);
+
+/** Verifies a Firebase ID token on the server (Google keys, issuer/audience = our project). */
+export async function firebaseClaims(idToken: string): Promise<FirebaseClaims> {
+  let claims: FirebaseClaims;
+  if (testVerifier) {
+    claims = await testVerifier(idToken).catch(() => { throw unauthorized('firebase_invalid'); });
+  } else {
+    if (env.AUTH_MODE !== 'firebase' || !env.FIREBASE_PROJECT_ID) throw invalid('firebase_off', 'Firebase sign-in is not enabled.');
+    claims = await googleVerifier(idToken).catch(() => { throw unauthorized('firebase_invalid'); });
+  }
+  if (!ALLOWED_PROVIDERS.has(claims.provider)) throw new ApiError(403, 'provider_not_allowed', 'Sign in with Google or your email.');
+  if (!claims.email || !claims.emailVerified) throw new ApiError(403, 'email_unverified', 'Open the link we emailed you to verify your email, then sign in again.');
+  return claims;
+}
+
+/**
+ * Sign-in with Google or email (AC1–AC3). The account is found by Firebase id; on the first sign-in a verified
+ * email that matches an account without a Firebase id (e.g. a super-admin created by command) is linked.
+ */
+export async function verifyFirebase(idToken: string, device?: string) {
+  const c = await firebaseClaims(idToken);
+  const email = c.email!.trim().toLowerCase();
+  let u = await core.query<{ id: string; status: string }>('SELECT id, status FROM users WHERE firebase_uid = $1 AND deleted_at IS NULL', [c.uid]);
+  if (!u.rowCount) {
+    u = await core.query<{ id: string; status: string }>(
+      `UPDATE users SET firebase_uid = $1, updated_at = now()
+        WHERE lower(email) = $2 AND firebase_uid IS NULL AND deleted_at IS NULL RETURNING id, status`, [c.uid, email]);
+  }
+  if (!u.rowCount) {
+    u = await core.query<{ id: string; status: string }>(
+      `INSERT INTO users (firebase_uid, email, name) VALUES ($1, $2, $3)
+       ON CONFLICT (firebase_uid) DO UPDATE SET updated_at = now() RETURNING id, status`,
+      [c.uid, email, (c.name ?? '').trim().slice(0, 80)],
+    ).catch((e: { code?: string }) => {
+      if (e.code === '23505') throw new ApiError(409, 'email_taken', 'This email is already used by another account. Sign in the way you did before.');
+      throw e;
+    });
+  } else {
+    await core.query('UPDATE users SET email = $2, updated_at = now() WHERE id = $1 AND email IS DISTINCT FROM $2', [u.rows[0].id, email]).catch(() => undefined);
+  }
+  return finishSignIn(u.rows[0].id, u.rows[0].status, device);
+}
+
+/** AC13: a fresh sign-in (≤ 5 minutes) of the same account, for account deletion. */
+export async function checkFreshFirebase(userId: string, idToken: string) {
+  const c = await firebaseClaims(idToken).catch((e) => {
+    if (e instanceof ApiError) throw invalid('reauth_mismatch', 'Sign in with this account again.');
+    throw e;
   });
-  const phone = String((payload as { phone_number?: string }).phone_number ?? '').replace(/^\+91/, '');
-  if (!/^[6-9]\d{9}$/.test(phone)) throw unauthorized('firebase_no_phone');
-  return { phone, uid: String(payload.sub) };
+  const u = await core.query<{ firebase_uid: string | null }>('SELECT firebase_uid FROM users WHERE id = $1', [userId]);
+  if (u.rows[0]?.firebase_uid !== c.uid) throw invalid('reauth_mismatch', 'Sign in with this account again.');
+  if (Date.now() / 1000 - c.authTime > 300) throw invalid('reauth_required', 'Sign in again to confirm it is you.');
 }
 
 export async function refresh(token: string) {

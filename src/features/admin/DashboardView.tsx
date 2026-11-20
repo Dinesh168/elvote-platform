@@ -13,6 +13,7 @@ import { chart, colors, radius, spacing, web } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
 import { activate, rolesOf } from '@/features/session/session';
 import { useActiveMembership, useSession } from '@/stores/session';
+import { RollStrip } from './RollStrip';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
@@ -38,6 +39,7 @@ export function DashboardView({ booth }: { booth?: number }) {
         title={booth ? t('admin.boothDash', { no: booth }) : t('admin.tabs.dashboard')}
         subtitle={m ? (!booth && adminAcs.length > 1 ? m.partyName : `${m.partyName} · ${t('admin.acTitle', { no: m.acNo, name: m.acName })}`) : undefined}
       />
+      {!booth ? <RollStrip mid={mid} /> : null}
       {!booth && adminAcs.length > 1 && !wide ? (
         <Pressable accessibilityRole="button" onPress={() => setAcSheet(true)} style={s.acSwitch}>
           <AppText variant="callout" color={colors.accent}>{t('admin.acTitle', { no: m?.acNo, name: m?.acName })}</AppText>

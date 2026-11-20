@@ -1,7 +1,21 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { logout, refresh, requestOtp, verifyFirebase, verifyOtp } from '../lib/auth.js';
+import { ApiError } from '../lib/errors.js';
 import { Mobile, parse } from '../lib/http.js';
+
+/** accounts-access AC14: at most 20 sign-ins per minute per network address (per API process). */
+const hits = new Map<string, { n: number; at: number }>();
+function limitSignIn(ip: string) {
+  const now = Date.now();
+  const h = hits.get(ip);
+  if (!h || now - h.at > 60_000) {
+    hits.set(ip, { n: 1, at: now });
+    if (hits.size > 50_000) hits.clear();
+    return;
+  }
+  if (++h.n > 20) throw new ApiError(429, 'too_many', 'Too many sign-ins from this network. Try again in a minute.');
+}
 
 export async function authRoutes(app: FastifyInstance) {
   app.post('/v1/auth/otp/request', async (req) => {
@@ -15,6 +29,7 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post('/v1/auth/firebase', async (req) => {
+    limitSignIn(req.ip);
     const b = parse(z.object({ idToken: z.string().min(20).max(4096), device: z.string().max(120).optional() }), req.body);
     return verifyFirebase(b.idToken, b.device);
   });

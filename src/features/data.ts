@@ -4,13 +4,16 @@
  */
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
 import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '@/api/client';
 import { applyPatch } from '@/api/mock/mockApi';
-import type { Voter, VoterPatch } from '@/api/types';
+import type { Booth, Voter, VoterPatch } from '@/api/types';
 import { requestSync, setOnSynced, useSyncState } from '@/features/sync/engine';
 import { durable } from '@/lib/durable';
 import { useOutbox } from '@/stores/outbox';
-import { activeMembership } from '@/stores/session';
+import { localizeBooth, localizeVoter, showRegional } from '@/features/session/localize';
+import { activeMembership, useActiveMembership } from '@/stores/session';
 
 /** Data kept on the device for 30 days so the app works without internet after a restart (spec sync-modes S1). */
 export const CACHE_MAX_AGE = 30 * 24 * 60 * 60_000;
@@ -47,7 +50,17 @@ export const keys = {
 };
 
 export const useMe = () => useQuery({ queryKey: keys.me, queryFn: api.getMe });
-export const useBooths = () => useQuery({ queryKey: keys.booths, queryFn: api.getBooths });
+/** spec bilingual-roll L3: show regional names when the app language is this assembly's data language. */
+function useRegionalData() {
+  const { i18n } = useTranslation();
+  return showRegional(i18n.language, useActiveMembership()?.dataLang);
+}
+
+export const useBooths = () => {
+  const regional = useRegionalData();
+  const select = useCallback((list: Booth[]) => list.map((b) => localizeBooth(b, regional)), [regional]);
+  return useQuery({ queryKey: keys.booths, queryFn: api.getBooths, select });
+};
 export const useTasks = () => useQuery({ queryKey: keys.tasks, queryFn: api.getTasks });
 export const useBranding = () => useQuery({ queryKey: keys.branding, queryFn: api.getBranding, staleTime: 10 * 60_000 });
 /** Changes still waiting to be sent stay visible after a refresh from the server (spec sync-modes S2). */
@@ -62,7 +75,11 @@ function withPending(booth: number, list: Voter[]): Voter[] {
   return list;
 }
 
-export const useVoters = (booth: number) => useQuery({ queryKey: keys.voters(booth), queryFn: async () => withPending(booth, await api.getVoters(booth)) });
+export const useVoters = (booth: number) => {
+  const regional = useRegionalData();
+  const select = useCallback((list: Voter[]) => list.map((v) => localizeVoter(v, regional)), [regional]);
+  return useQuery({ queryKey: keys.voters(booth), queryFn: async () => withPending(booth, await api.getVoters(booth)), select });
+};
 
 function patchCache(booth: number, id: string, patch: VoterPatch) {
   queryClient.setQueryData<Voter[]>(keys.voters(booth), (old) =>

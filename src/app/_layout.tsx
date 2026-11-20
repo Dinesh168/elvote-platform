@@ -2,7 +2,7 @@ import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, us
 import { NotoSansGurmukhi_400Regular, NotoSansGurmukhi_600SemiBold, NotoSansGurmukhi_700Bold } from '@expo-google-fonts/noto-sans-gurmukhi';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClientRestore, persistQueryClientSubscribe } from '@tanstack/react-query-persist-client';
-import { Stack } from 'expo-router';
+import { router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
@@ -17,6 +17,9 @@ import { useNotice } from '@/stores/notice';
 import { usePrefs } from '@/stores/prefs';
 // Defines the polling-day background location task at start-up (the phone may wake the app just for it).
 import '@/features/pollingDay/tracker';
+import { listenPushTaps } from '@/features/pollingDay/push';
+import { goLanding } from '@/features/session/session';
+import { NotoSansDevanagari_400Regular, NotoSansDevanagari_600SemiBold, NotoSansDevanagari_700Bold } from '@expo-google-fonts/noto-sans-devanagari';
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -38,6 +41,7 @@ export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
     NotoSansGurmukhi_400Regular, NotoSansGurmukhi_600SemiBold, NotoSansGurmukhi_700Bold,
+    NotoSansDevanagari_400Regular, NotoSansDevanagari_600SemiBold, NotoSansDevanagari_700Bold,
   });
   const hydrated = usePrefs((s) => s.hydrated);
   const lang = usePrefs((s) => s.lang);
@@ -66,6 +70,9 @@ export default function RootLayout() {
       unsub?.();
     };
   }, []);
+
+  // spec accounts-access AC11: a tapped notification opens its page (approval → the app's start page).
+  useEffect(() => listenPushTaps((url) => (url === '/' || url === '/waiting' ? void goLanding().catch(() => undefined) : router.push(url as never))), []);
 
   const ready = fontsLoaded && i18nReady && restored;
   useEffect(() => {

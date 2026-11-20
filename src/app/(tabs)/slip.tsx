@@ -11,6 +11,7 @@ import { QueryState } from '@/features/common/QueryState';
 import { useBooths, useBranding, useVoters } from '@/features/data';
 import { fileUrl } from '@/features/session/customer';
 import { shareTextFrom, slipHtml, slipRows, type SlipLabels } from '@/features/slip/slip';
+import { localeOf } from '@/i18n';
 
 /** V-CARD-5 / D16: voter slip. Phones share a PDF through the share sheet (WhatsApp first); web prints. */
 export default function Slip() {
@@ -23,12 +24,14 @@ export default function Slip() {
   const v = votersQ.data?.find((x) => x.id === id);
   const b = branding.data;
 
-  const date = b?.pollDate ? new Date(`${b.pollDate}T12:00:00`).toLocaleDateString(i18n.language === 'pa' ? 'pa-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+  const date = b?.pollDate ? new Date(`${b.pollDate}T12:00:00`).toLocaleDateString(localeOf(i18n.language), { day: 'numeric', month: 'long', year: 'numeric' }) : null;
   const L: SlipLabels = {
     ballot: t('slip.ballot'), booth: t('slip.booth'), sno: t('slip.sno'), name: t('slip.name'), relative: t('slip.relative'), age: t('slip.age'),
     gender: t('slip.gender'), address: t('slip.address'), epic: t('slip.epic'),
     pollDay: date ? t('slip.pollDay', { date }) : t('slip.pollDayUnknown'),
     genders: { M: t('admin.male'), F: t('admin.female'), T: t('admin.third') },
+    rels: { 'S/o': t('rel.so'), 'W/o': t('rel.wo'), 'D/o': t('rel.do') },
+    addr: (x) => t('voters.addrLine', { house: x.house, ward: x.ward, village: x.village }),
   };
 
   const sharePdf = async () => {

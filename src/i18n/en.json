@@ -11,7 +11,7 @@
     "metOf": "{{met}} of {{total}} met",
     "loading": "Loading…",
     "loadError": "Could not load. Check the internet and try again.",
-    "switchLangA11y": "Language: English. Tap to switch to Punjabi"
+    "switchLangA11y": "Language — tap to change"
   },
   "tabs": {
     "home": "Home",
@@ -145,7 +145,10 @@
     "call": "Call",
     "saved": "Saved · {{name}} · {{group}}",
     "sameAddressSub": "Same address · {{count}} voters",
-    "rowA11y": "S.No {{sno}}, {{name}}, {{group}}"
+    "rowA11y": "S.No {{sno}}, {{name}}, {{group}}",
+    "newTag": "New in roll",
+    "addrLine": "H.No {{house}}, Ward {{ward}}, {{village}}",
+    "houseShort": "H.No {{house}}"
   },
   "poll": {
     "title": "Polling day",
@@ -231,7 +234,39 @@
     "asVolunteer": "Volunteer · AC {{ac}} · Booths {{booths}}",
     "asAdmin": "Admin · AC {{ac}} {{name}}",
     "asPlatform": "Super-admin · all states",
-    "blocked": "Your access is paused. Contact your provider."
+    "blocked": "Your access is paused. Contact your provider.",
+    "tooMany": "Too many tries. Please try again later.",
+    "noInternet": "No internet. Check your connection and try again.",
+    "signInFailed": "Could not sign in. Please try again.",
+    "subtitleGoogle": "Use your Google account or your email.",
+    "google": "Continue with Google",
+    "or": "or",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least {{n}} characters.",
+    "createAccount": "Create account",
+    "sendReset": "Send reset link",
+    "forgotLink": "Forgot password?",
+    "createLink": "Create an account",
+    "haveAccount": "I already have an account",
+    "createTitle": "Create your account",
+    "forgotTitle": "Reset password",
+    "forgotSubtitle": "We will email you a link to set a new password.",
+    "verifyTitle": "Check your email",
+    "verifyBody": "We sent a link to {{email}}. Open it to verify your email, then come back here.",
+    "verifiedContinue": "I've verified, continue",
+    "resendLink": "Send the link again",
+    "useOtherEmail": "Use another email",
+    "notVerified": "Not verified yet. Open the link in the email first.",
+    "resetSent": "Check your email for a link to set a new password.",
+    "linkSent": "Link sent. Check your email (and the spam folder).",
+    "wrongPassword": "Wrong email or password.",
+    "noAccount": "No account with this email. Create an account, or continue with Google.",
+    "emailInUse": "This email already has an account. Sign in, or continue with Google.",
+    "weakPassword": "Choose a stronger password (at least 8 characters).",
+    "badEmail": "Enter a valid email address.",
+    "otherMethod": "This email signs in another way. Try Continue with Google.",
+    "popupBlocked": "Your browser blocked the Google window. Allow pop-ups and try again."
   },
   "admin": {
     "tabs": {
@@ -393,7 +428,7 @@
     "addSuper": "Add super-admin",
     "remove": "Remove",
     "upload": "Upload voter roll",
-    "uploadHint": "CSV or XLSX with a header row. Needed: part_no, sno, epic, name, gender. Optional: booth_name, locality, relation, relative_name, age, house_no, section_no, section, mobile, lat, lng.",
+    "uploadHint": "CSV or XLSX with a header row. Needed: part_no, sno, epic, name, gender. Optional: booth_name, locality, relation, relative_name, age, house_no, section_no, section, mobile, lat, lng. Regional language (optional): name_local, relative_name_local, section_local, booth_name_local, booth_address, booth_address_local, locality_local.",
     "chooseFile": "Choose file",
     "acNo": "AC number",
     "acName": "AC name (for a new AC)",
@@ -415,7 +450,8 @@
     "typeAc": "Type the AC number ({{ac}}) to confirm",
     "cleared": "Deleted {{n}} contacts.",
     "stateRow_one": "{{acs}} AC · {{booths}} booths · {{voters}} voters",
-    "stateRow_other": "{{acs}} ACs · {{booths}} booths · {{voters}} voters"
+    "stateRow_other": "{{acs}} ACs · {{booths}} booths · {{voters}} voters",
+    "emailHint": "The Google or sign-in email they will use."
   },
   "me2": {
     "switchRole": "Switch role",
@@ -517,7 +553,10 @@
     "lastAdmin": "You are the only admin of {{acs}}. Make another team member admin first, or ask the super-admin.",
     "done": "Your account will be deleted on {{date}}. Sign in before then to cancel.",
     "cancelled": "Your account deletion was cancelled. Welcome back.",
-    "deletedUser": "Deleted user"
+    "deletedUser": "Deleted user",
+    "reauth": "Please sign in again to confirm it is you.",
+    "passwordLabel": "Your password",
+    "googleAgain": "To confirm, you will sign in with Google once more."
   },
   "cms": {
     "customers": "Customers",
@@ -666,7 +705,16 @@
     "allCustomers": "All customers",
     "showing": "Showing {{n}} of {{total}}",
     "loadMore": "Load more",
-    "noTeam": "No team yet"
+    "noTeam": "No team yet",
+    "saveMobile": "Save mobile",
+    "mobileSaved": "Mobile saved.",
+    "adminAccess": "Admin access",
+    "wholeStateOf": "{{party}} · {{state}} (whole state)",
+    "noAdminAccess": "Not an admin anywhere.",
+    "addAccess": "Add access",
+    "acNumbers": "Assembly numbers",
+    "acNumbersHint": "For example: 66, 50",
+    "cancel": "Cancel"
   },
   "trace": {
     "title": "Vote trace",
@@ -874,5 +922,141 @@
       "denied": "Location not allowed",
       "off": "Location switched off"
     }
+  },
+  "roll": {
+    "title": "Voter roll",
+    "kind": {
+      "draft": "Draft",
+      "final": "Final",
+      "supplement": "Supplement"
+    },
+    "line": "Roll: {{kind}} · {{date}}",
+    "lineNoDate": "Roll: {{kind}}",
+    "notInRoll": "Not in the latest roll ({{n}})",
+    "notInRollHint": "These voters are not in the latest roll. They are hidden from volunteers and left out of counts; their history is kept.",
+    "newCount": "{{n}} new voters in this roll",
+    "none": "Nobody.",
+    "kindLabel": "Roll type",
+    "publishedOn": "Publication date (optional, YYYY-MM-DD)",
+    "acNameLocal": "AC name in the regional language (optional)",
+    "dataLang": "Data language of this assembly",
+    "dataLangHint": "Names in the regional columns are in this language. People who use the app in this language see them.",
+    "langSaved": "Data language saved.",
+    "preview": "What will change",
+    "unchanged": "Unchanged",
+    "changed": "Details changed",
+    "moved": "Moved to another booth",
+    "new": "New voters",
+    "back": "Back in the roll",
+    "notIn": "Not in this roll (will be hidden)",
+    "held": "In another assembly",
+    "heldHint": "These EPIC numbers belong to a voter in another assembly. Move brings the voter here (hidden there, history kept). Reject skips the row.",
+    "move": "Move",
+    "reject": "Reject",
+    "moveAll": "Move all",
+    "rejectAll": "Reject all",
+    "decided": {
+      "move": "Will move",
+      "reject": "Will skip"
+    },
+    "fromTo": "Booth {{from}} → {{to}}",
+    "otherAc": "Now in AC {{ac}}",
+    "apply": "Apply",
+    "cancel": "Cancel upload",
+    "cancelled": "Upload cancelled. Nothing changed.",
+    "applied": "Roll applied.",
+    "decideFirst": "Choose Move or Reject for each voter in another assembly first.",
+    "showMore": "and {{n}} more",
+    "langName": {
+      "hi": "Hindi",
+      "pa": "Punjabi"
+    }
+  },
+  "rel": {
+    "so": "S/o",
+    "wo": "W/o",
+    "do": "D/o"
+  },
+  "profile": {
+    "title": "Your details",
+    "subtitle": "Your team uses these to reach you.",
+    "signedInAs": "Signed in as {{email}}",
+    "name": "Full name",
+    "mobileHint": "Your admin sees this number and can call you.",
+    "language": "App language",
+    "mobileTaken": "This mobile number is already used by another account. Sign in with that account, or ask your admin."
+  },
+  "register": {
+    "title": "How will you use ElVote?",
+    "subtitle": "Choose one. You can join more teams later.",
+    "volunteer": "Volunteer",
+    "volunteerBody": "I have a team code from my admin.",
+    "admin": "Admin",
+    "adminBody": "I run a campaign for a party. The ElVote team approves it."
+  },
+  "registerAdmin": {
+    "title": "Ask for admin access",
+    "subtitle": "The ElVote team checks your request and gives you access.",
+    "party": "Party name",
+    "state": "State",
+    "area": "Area you manage",
+    "wholeState": "Whole state",
+    "someAcs": "Some assemblies",
+    "designation": "Your position in the party",
+    "designationHint": "For example: District president, Halqa incharge",
+    "note": "Note for the ElVote team (optional)",
+    "back": "Back"
+  },
+  "waiting": {
+    "notApproved": "Not approved",
+    "adminTitle": "Admin request sent",
+    "adminBody": "The ElVote team will check your request. We will tell you as soon as it is approved.",
+    "reason": "Reason: {{reason}}",
+    "withdraw": "Withdraw request",
+    "tryAgain": "Send a new request",
+    "wholeState": "{{state}} (whole state)",
+    "acs": "{{state}} · assemblies {{acs}}"
+  },
+  "push": {
+    "title": "Turn on notifications",
+    "blocked": "Notifications are blocked for ElVote. Allow them in your browser or phone settings.",
+    "whyApproval": "So we can tell you the moment you are approved.",
+    "whyRequests": "So you hear about new requests right away.",
+    "allow": "Allow notifications"
+  },
+  "requests": {
+    "title": "Requests",
+    "subtitle": "People asking to become admins",
+    "show": "Show",
+    "pending": "Waiting",
+    "all": "All",
+    "none": "No requests waiting.",
+    "wholeState": "{{state}} (whole state)",
+    "acs": "{{state}} · {{acs}}",
+    "status_approved": "Approved",
+    "status_rejected": "Not approved",
+    "status_withdrawn": "Withdrawn",
+    "status_pending": "Waiting",
+    "decision": "Decision",
+    "approve": "Approve",
+    "reject": "Reject",
+    "party": "Party",
+    "newParty": "New party: {{name}}",
+    "area": "Area in {{state}}",
+    "areaLabel": "Area",
+    "wholeStateNote": "Includes assemblies this party adds later in this state.",
+    "missing": "These assemblies have no customer settings for this party yet: {{acs}}. Create them with default settings?",
+    "createAndApprove": "Create and approve",
+    "reason": "Reason (shown to the person)",
+    "volunteers_one": "Volunteer request ({{count}})",
+    "volunteers_other": "Volunteer requests ({{count}})"
+  },
+  "overview": {
+    "title": "All my assemblies",
+    "count_one": "{{count}} assembly",
+    "count_other": "{{count}} assemblies",
+    "row": "{{v}} volunteers · {{p}} waiting",
+    "met": "{{pct}}% voters met",
+    "none": "No assemblies yet."
   }
 }

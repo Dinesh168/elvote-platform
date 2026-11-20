@@ -55,7 +55,7 @@ export const group: Record<GroupCode, GroupTone> & { none: GroupTone } = {
   our: { strong: '#1B7F3B', tint: '#F0FAF2' },
   target: { strong: '#B45309', tint: '#FFF8EB' },
   opp: { strong: '#D70015', tint: '#FFF0F1' },
-  none: { strong: '#8E8E93', tint: '#FFFFFF' },
+  none: { strong: '#6C6C70', tint: '#FFFFFF' }, // "Not met" text: 5.1:1 on white (was 3.3:1)
 };
 
 /**
@@ -91,6 +91,9 @@ export const fonts = {
   paRegular: 'NotoSansGurmukhi_400Regular',
   paSemibold: 'NotoSansGurmukhi_600SemiBold',
   paBold: 'NotoSansGurmukhi_700Bold',
+  hiRegular: 'NotoSansDevanagari_400Regular',
+  hiSemibold: 'NotoSansDevanagari_600SemiBold',
+  hiBold: 'NotoSansDevanagari_700Bold',
 } as const;
 
 export const type = {

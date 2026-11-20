@@ -123,3 +123,38 @@ API: `/v1/admin/elections`, `/v1/admin/booths`, `/v1/admin/booths/locations`, `/
 DB: core `005_polling_day.sql` (`booth_radius_m`, `field_presence`, `presence_events`, `presence_seen`, `push_tokens`), state `003_polling_day.sql` (`elections.ac_nos/opens_at/closes_at`, status `cancelled`, booth location source `edited`).
 Needs a phone build to verify background location and push (Google Play background-location declaration before release).
 
+## Bilingual voter data, Hindi screens, draft → final roll updates (2026-11-20)
+
+Spec `docs/specs/bilingual-roll.md`, tests `docs/test-cases/bilingual-roll.md`.
+
+| Who | Where | What |
+|---|---|---|
+| Super-admin | Upload voter roll | Regional columns (`name_local`, `relative_name_local`, `section_local`, `booth_name_local`, `booth_address(_local)`, `locality_local`); roll type Draft / Final / Supplement and date; data language per assembly (Punjabi / Hindi); **preview** (unchanged, changed, moved booth, new, back, not in roll, held) → Apply or Cancel; held EPICs from another assembly → Move / Reject |
+| Everyone | App language | English, हिन्दी, ਪੰਜਾਬੀ (customer chooses which); voter and booth names follow the app language when it is the assembly's data language, otherwise English; search finds either script |
+| Volunteer | Voters | "New in roll" tag; moved voters appear in their new booth; voters not in the roll are hidden; offline changes saved before an update are kept |
+| Admin | Dashboard | "Roll: Final · date · N new" and "Not in the latest roll (N)" list (`/admin/roll`); trace shows the booth of each change |
+
+API: upload fields `rollKind`, `publishedOn`, `acNameLocal`; job `summary` + `lists`; `POST /v1/admin/imports/:id/held`, `/cancel`; `PATCH /v1/admin/acs/:state/:ac` (`regionalLang`, `nameLocal`); `GET /v1/m/:mid/roll`; voters gain `nameLocal`, `relativeLocal`, `villageLocal`, `isNew`; booths `nameLocal`, `address`, `addressLocal`, `villageLocal`; `/v1/me` memberships `dataLang`.
+DB: state `004_bilingual_roll.sql` (regional columns, voter status `not_in_roll` / `moved_out`, `is_new`, `prev_part_no`, `moved_at`, `hidden_at`, `import_held`, roll kind/date, `voters (epic)` index).
+
+
+## Accounts, registration and access (2026-11-20, in progress)
+
+Spec `docs/specs/accounts-access.md`, tests `docs/test-cases/accounts-access.md`. Replaces SMS sign-in on servers (no SMS for now).
+
+| Who | Where | What |
+|---|---|---|
+| Everyone | Sign in (`/login`) | **Continue with Google** or **email + password** (create account with email verification, forgot password by email), via Firebase project `elvote-max`. Local development keeps the test code 123456 (refused in production) |
+| Everyone | Your details (`/profile`) | Name, **mobile (required, not verified)**, app language — once, after the first sign-in |
+| New person | Choose role (`/register`) | Volunteer (team code → booths → waiting) or Admin (request: party, state, whole state or assemblies, position → waiting) |
+| Waiting | `/waiting` | Checks every 30 s and opens the app once approved; withdraw an admin request; reason shown when not approved; "Allow notifications" |
+| Super-admin | Requests (`/platform/requests`) | Approve (party; whole state or assemblies; create missing customer settings) or reject with a reason |
+| Super-admin | Customer page | Volunteer requests of that customer: approve with the requested booths, or reject |
+| Super-admin | Users | Email shown and searchable; fix a mobile; **Admin access**: add whole state / assemblies, remove a whole-state scope |
+| Super-admin | Super-admins, customer → admins | Add people **by email** (Google-verified) on servers |
+| Admin with ≥ 2 assemblies | All my assemblies (`/admin/overview`) | Per assembly: volunteers, waiting requests, % voters met; tap to open |
+| Everyone | Notifications | New volunteer request → that assembly's admins; new admin request → super-admins; approved / not approved / access removed → the person. Phone push (Expo) and **browser push** (Web Push, `public/sw.js`); tapping opens the right page |
+| Everyone | Delete account | Confirm by signing in again (Google or password) instead of an SMS code |
+
+API: `POST /v1/auth/firebase` (Google / verified email only), `PATCH /v1/me/profile`, `/v1/me` adds `user.email`, `user.profileDone`, `accessRequest`; `POST/DELETE /v1/access-requests`; `/v1/catalog/states|acs|parties`; `GET /v1/me/overview`; `GET /v1/push/vapid-key`; super-admin `/v1/admin/access-requests(/:id/approve|reject)`, `/v1/admin/users/:id/admin-access(/state/:partyId/:state)`, `/v1/admin/customers/:id/requests(/:mid/approve|reject)`, `PATCH /v1/admin/users/:id/mobile`; `/v1/admin/super-admins` and `/v1/admin/admins` take `email`.
+DB: core `006_accounts_access.sql` (`users.email`, nullable `users.mobile`, `access_requests`, `admin_scopes`, `memberships.source`). Operator: `npm run admin:super -- --email …`.

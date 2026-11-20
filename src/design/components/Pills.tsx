@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import type { GroupCode } from '@/api/types';
 import { syncNow } from '@/features/data';
 import { useSyncStatus } from '@/features/sync/SyncStatus';
-import { initI18n } from '@/i18n';
+import { initI18n, isLang, LANG_LABEL, LANG_MARK, LANGS } from '@/i18n';
 import { usePrefs } from '@/stores/prefs';
 import { useShell } from '../shellContext';
 import { colors, group, radius, spacing } from '../tokens';
@@ -36,31 +36,29 @@ export function SyncPill() {
   );
 }
 
-/** ਪੰ / A language switch; the active script is dark, the other grey. */
+/** ਪੰ / हि / A language switch: each tap moves to the next language; the active script is dark (spec bilingual-roll L4). */
 export function LangPill() {
   const { t, i18n } = useTranslation();
   const setLang = usePrefs((s) => s.setLang);
   const inShell = !!useShell();
-  const pa = i18n.language === 'pa';
+  const allowed = useActiveMembership()?.look?.languages;
+  const langs = LANGS.filter((l) => !allowed || allowed.includes(l));
+  const cur = isLang(i18n.language) ? i18n.language : 'en';
   const toggle = () => {
-    const next = pa ? 'en' : 'pa';
+    const next = langs[(langs.indexOf(cur) + 1) % langs.length];
     setLang(next);
     void initI18n(next);
   };
-  const allowed = useActiveMembership()?.look?.languages;
   if (inShell) return null; // the web sidebar has its own language switch
-  if (allowed && allowed.filter((l) => l === 'pa' || l === 'en').length < 2) return null; // C4: one language for this team
+  if (langs.length < 2) return null; // C4: one language for this team
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={t('common.switchLangA11y')} onPress={toggle} style={[s.pill, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.separator, minWidth: 60, justifyContent: 'center' }]}>
-      <AppText variant="callout" weight="bold" color={pa ? colors.text : colors.textSecondary}>
-        ਪੰ
-      </AppText>
-      <AppText variant="callout" color={colors.textSecondary}>
-        /
-      </AppText>
-      <AppText variant="callout" weight="bold" color={pa ? colors.textSecondary : colors.text}>
-        A
-      </AppText>
+    <Pressable accessibilityRole="button" accessibilityLabel={`${t('common.switchLangA11y')}: ${LANG_LABEL[cur]}`} onPress={toggle}
+      style={[s.pill, { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.separator, minWidth: 60, justifyContent: 'center' }]}>
+      {langs.map((l, i) => (
+        <AppText key={l} variant="callout" weight={l === cur ? 'bold' : 'regular'} color={l === cur ? colors.text : colors.textSecondary}>
+          {`${i ? '/ ' : ''}${LANG_MARK[l]}`}
+        </AppText>
+      ))}
     </Pressable>
   );
 }

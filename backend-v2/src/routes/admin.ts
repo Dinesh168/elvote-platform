@@ -3,6 +3,7 @@ import { randomBytes } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import type pg from 'pg';
 import { z } from 'zod';
+import { approveVolunteer, rejectVolunteer } from '../lib/members.js';
 import { core, inParty, statePool } from '../db/pools.js';
 import { traceVoter } from '../lib/trace.js';
 import { audit, checkLimit, requireFeature, requireMembership, type FeatureKey, type Membership } from '../lib/access.js';
@@ -221,19 +222,10 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   app.post('/v1/m/:mid/team/:membershipId/approve', async (req) => {
-    const { m, pool } = await admin(req);
+    const { m } = await admin(req);
     const { membershipId } = parse(z.object({ mid: Uuid, membershipId: Uuid }), req.params);
     const b = parse(z.object({ booths: z.array(PartNo).min(1).max(20) }), req.body);
-    const valid = await pool.query('SELECT part_no FROM booths WHERE ac_no = $1 AND part_no = ANY($2::smallint[])', [m.acNo, b.booths]);
-    if (valid.rowCount !== new Set(b.booths).size) throw invalid('booth_invalid', 'Pick booths from the list.');
-    await checkLimit(m.partyAcId, 'volunteer', membershipId);
-    const r = await core.query(
-      `UPDATE memberships SET status = 'approved', decided_by = $3, decided_at = now(), reject_reason = NULL, updated_at = now()
-        WHERE id = $1 AND party_constituency_id = $2 AND role = 'volunteer' RETURNING id`, [membershipId, m.partyAcId, m.userId]);
-    if (!r.rowCount) throw notFound();
-    await core.query('DELETE FROM membership_booths WHERE membership_id = $1', [membershipId]);
-    for (const no of new Set(b.booths)) await core.query('INSERT INTO membership_booths (membership_id, part_no, approved_by) VALUES ($1,$2,$3)', [membershipId, no, m.userId]);
-    await audit({ actor: m.userId, role: 'admin', action: 'member.approve', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'membership', entityId: membershipId, details: { booths: [...new Set(b.booths)] } });
+    await approveVolunteer(m, membershipId, b.booths, { userId: m.userId, role: 'admin' });
     return { ok: true };
   });
 
@@ -241,11 +233,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { m } = await admin(req);
     const { membershipId } = parse(z.object({ mid: Uuid, membershipId: Uuid }), req.params);
     const b = parse(z.object({ reason: z.string().trim().min(2).max(200) }), req.body);
-    const r = await core.query(
-      `UPDATE memberships SET status = 'rejected', reject_reason = $3, decided_by = $4, decided_at = now(), updated_at = now()
-        WHERE id = $1 AND party_constituency_id = $2 AND role = 'volunteer' RETURNING id`, [membershipId, m.partyAcId, b.reason, m.userId]);
-    if (!r.rowCount) throw notFound();
-    await audit({ actor: m.userId, role: 'admin', action: 'member.reject', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'membership', entityId: membershipId });
+    await rejectVolunteer(m, membershipId, b.reason, { userId: m.userId, role: 'admin' });
     return { ok: true };
   });
 
@@ -360,6 +348,24 @@ export async function adminRoutes(app: FastifyInstance) {
     if (q.booth && q.sno) return traceVoter(m.stateCode, m.acNo, { booth: q.booth, sno: q.sno }, m.partyId);
     throw invalid('trace_query', 'Enter the EPIC number, or booth and serial number.');
   });
+
+  /** spec bilingual-roll U6/U9: the roll in use, new voters, and voters not in the latest roll. */
+  app.get('/v1/m/:mid/roll', async (req) => {
+    const { m, pool } = await admin(req);
+    const rv = await pool.query<{ kind: string; published_on: string | null; created_at: Date }>(
+      `SELECT kind, to_char(published_on, 'YYYY-MM-DD') AS published_on, created_at FROM roll_versions WHERE ac_no = $1 AND is_current ORDER BY created_at DESC LIMIT 1`, [m.acNo]);
+    const counts = await pool.query<{ not_in_roll: number; new_count: number }>(
+      `SELECT count(*) FILTER (WHERE status = 'not_in_roll')::int AS not_in_roll, count(*) FILTER (WHERE is_new AND status IN ('active','added'))::int AS new_count
+         FROM voters WHERE ac_no = $1`, [m.acNo]);
+    const list = await pool.query<{ epic: string; name: string; name_local: string | null; part_no: number; sno: number }>(
+      `SELECT epic, name, name_local, part_no, sno FROM voters WHERE ac_no = $1 AND status = 'not_in_roll' ORDER BY part_no, sno LIMIT 500`, [m.acNo]);
+    const r = rv.rows[0];
+    return {
+      kind: r?.kind ?? null, publishedOn: r?.published_on ?? null, appliedAt: r?.created_at.toISOString() ?? null,
+      notInRoll: counts.rows[0].not_in_roll, newCount: counts.rows[0].new_count,
+      notInRollList: list.rows.map((x) => ({ epic: x.epic, name: x.name, nameLocal: x.name_local, booth: x.part_no, sno: x.sno })),
+    };
+  });
 }
 
 /** Drive progress: targeted = segment voters in scope; completed = of those, contacted within the drive dates. */
@@ -377,7 +383,7 @@ async function driveProgress(c: pg.PoolClient, m: Membership, d: { id: string; k
        FROM voters v
        LEFT JOIN voter_contacts c ON c.party_id = $1 AND c.ac_no = v.ac_no AND c.voter_id = v.id
        LEFT JOIN zone_booths zb ON zb.party_id = $1 AND zb.booth_id = v.booth_id LEFT JOIN zones z ON z.id = zb.zone_id
-      WHERE v.ac_no = $2 AND v.status <> 'deleted' AND v.booth_id IN (SELECT id FROM scope)${seg}
+      WHERE v.ac_no = $2 AND v.status IN ('active','added') AND v.booth_id IN (SELECT id FROM scope)${seg}
       GROUP BY z.name, z.number ORDER BY z.number NULLS LAST`, params);
   const targeted = r.rows.reduce((a, x) => a + x.targeted, 0);
   const completed = r.rows.reduce((a, x) => a + x.completed, 0);

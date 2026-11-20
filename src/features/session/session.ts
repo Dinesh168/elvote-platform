@@ -4,17 +4,19 @@
  */
 import { router } from 'expo-router';
 import { authApi } from '@/api/adminApi';
+import { signOutFirebase } from '@/features/auth/firebaseAuth';
 import { ApiError } from '@/api/http';
 import { clearDeviceCache, queryClient } from '@/features/data';
 import { unregisterPush } from '@/features/pollingDay/push';
 import { stopTracking, usePresence } from '@/features/pollingDay/tracker';
 import { requestSync } from '@/features/sync/engine';
-import { i18n, initI18n } from '@/i18n';
+import { i18n, initI18n , isLang } from '@/i18n';
 import { useNotice } from '@/stores/notice';
 import { useOutbox } from '@/stores/outbox';
 import { usePrefs } from '@/stores/prefs';
 import { applyBrand } from '@/design/theme';
 import { useSession, type MeInfo, type Mode } from '@/stores/session';
+
 
 export type Target = { mode: Mode; membershipId: string | null; path: string };
 
@@ -33,15 +35,24 @@ export function rolesOf(me: MeInfo): Target[] {
   return out;
 }
 
-/** Where to go after sign-in: last used role if still valid, else the best role, else join/waiting. */
+/**
+ * Where to go after sign-in (spec accounts-access): Your details first; then the last used role if still valid,
+ * else the best role; else waiting (volunteer or admin request); else choose Admin / Volunteer.
+ */
 export function landing(me: MeInfo): string | Target {
+  const profileDone = me.user.profileDone ?? (!!me.user.mobile && !!me.user.name?.trim());
+  if (!profileDone) return '/profile';
   const { mode, membershipId } = useSession.getState();
   const roles = rolesOf(me);
   const keep = roles.find((r) => r.mode === mode && r.membershipId === membershipId);
   if (keep) return keep;
+  // Prefer a team whose subscription is active (a whole-state admin may also cover a paused assembly).
+  const active = roles.find((r) => r.mode === 'platform' || me.memberships.find((m) => m.id === r.membershipId)?.active !== false);
+  if (active) return active;
   if (roles.length) return roles[0];
   if (me.memberships.some((m) => m.status === 'pending' || m.status === 'rejected')) return '/waiting';
-  return '/join';
+  if (me.accessRequest && (me.accessRequest.status === 'pending' || me.accessRequest.status === 'rejected')) return '/waiting';
+  return '/register';
 }
 
 export async function loadMe(): Promise<MeInfo> {
@@ -78,7 +89,7 @@ export async function activate(t: Target) {
   applyBrand(t.mode === 'platform' ? null : mem?.look?.colour ?? null);
   const def = mem?.look?.defaultLang;
   const prefs0 = usePrefs.getState();
-  if (t.mode !== 'platform' && (def === 'en' || def === 'pa') && !prefs0.langChosen && prefs0.lang !== def) {
+  if (t.mode !== 'platform' && isLang(def) && !prefs0.langChosen && prefs0.lang !== def) {
     prefs0.applyDefaultLang(def);
     await initI18n(def);
   }
@@ -117,6 +128,7 @@ export async function logout() {
   await unregisterPush();
   const rt = useSession.getState().refreshToken;
   if (rt) await authApi.logout(rt).catch(() => undefined);
+  await signOutFirebase().catch(() => undefined); // the next person on this device signs in with their own account
   queryClient.clear();
   await clearDeviceCache();
   await useSession.getState().signOut();

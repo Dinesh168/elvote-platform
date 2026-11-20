@@ -140,6 +140,7 @@ export async function checkLimit(partyAcId: string, role: 'volunteer' | 'admin',
   const r = await core.query<{ lim: number | null; n: number }>(
     `SELECT CASE WHEN $2 = 'admin' THEN pc.max_admins ELSE pc.max_volunteers END AS lim,
             (SELECT count(*)::int FROM memberships m WHERE m.party_constituency_id = pc.id AND m.role = $2 AND m.status = 'approved'
+               AND m.source = 'direct' -- whole-state admins are party-level and not counted (accounts-access AC8)
                AND ($3::uuid IS NULL OR m.id <> $3::uuid)) AS n
        FROM party_constituencies pc WHERE pc.id = $1`,
     [partyAcId, role, except ?? null],

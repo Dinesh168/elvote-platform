@@ -15,18 +15,20 @@ export interface AppTextProps extends TextProps {
 }
 
 const PA: Record<Weight, string> = { regular: fonts.paRegular, medium: fonts.paRegular, semibold: fonts.paSemibold, bold: fonts.paBold };
+const HI: Record<Weight, string> = { regular: fonts.hiRegular, medium: fonts.hiRegular, semibold: fonts.hiSemibold, bold: fonts.hiBold };
 const EN: Record<Weight, string> = { regular: fonts.regular, medium: fonts.medium, semibold: fonts.semibold, bold: fonts.bold };
 
 const weightOf = (family: string): Weight =>
   family === fonts.bold ? 'bold' : family === fonts.semibold ? 'semibold' : family === fonts.medium ? 'medium' : 'regular';
 
-/** Text with design-token typography; switches to Noto Sans Gurmukhi (and taller lines) for Punjabi. */
+/** Text with design-token typography; switches to Noto Sans Gurmukhi / Devanagari (and taller lines) for Punjabi / Hindi. */
 export function AppText({ variant = 'body', weight, color = colors.text, tabular, align, style, ...rest }: AppTextProps) {
   const { i18n } = useTranslation();
   const wide = useWide();
   const base = (wide ? typeWeb : T)[variant];
   const w = weight ?? weightOf(base.fontFamily);
   const pa = i18n.language === 'pa';
+  const hi = i18n.language === 'hi';
   return (
     <Text
       maxFontSizeMultiplier={1.6}
@@ -34,9 +36,9 @@ export function AppText({ variant = 'body', weight, color = colors.text, tabular
       style={[
         base,
         {
-          fontFamily: pa ? PA[w] : EN[w],
+          fontFamily: pa ? PA[w] : hi ? HI[w] : EN[w],
           color,
-          lineHeight: pa ? Math.round(base.lineHeight * 1.18) : base.lineHeight,
+          lineHeight: pa || hi ? Math.round(base.lineHeight * 1.18) : base.lineHeight,
           textAlign: align,
           fontVariant: tabular ? ['tabular-nums'] : undefined,
         },

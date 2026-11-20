@@ -1,8 +1,10 @@
 /**
- * Phone push notifications through Expo's push service (spec polling-day A1).
- * Only short alert text goes out (name, booth number, distance); never voter data.
- * Failures are logged and dropped: an alert is also in the admin's in-app list.
+ * Push notifications: phones through Expo's push service (spec polling-day A1), browsers through standard
+ * Web Push with VAPID keys (spec accounts-access AC11). Only short text goes out (names, booth numbers); never
+ * voter data. Failures are logged and dropped: the same state is always visible in the app.
  */
+import webpush from 'web-push';
+import { env } from '../config.js';
 import { core } from '../db/pools.js';
 
 export interface PushMessage {
@@ -27,8 +29,36 @@ const expoSender: Sender = async (msgs) => {
   }
 };
 
-// Tests and local runs never call the outside service.
-let sender: Sender | null = process.env.NODE_ENV === 'production' || process.env.PUSH_ENABLED === '1' ? expoSender : null;
+/** Web Push: the token is the browser's subscription JSON. Expired subscriptions (404/410) are deleted. */
+const webSender: Sender = async (msgs) => {
+  if (!env.VAPID_PUBLIC_KEY || !env.VAPID_PRIVATE_KEY) return;
+  webpush.setVapidDetails(env.VAPID_SUBJECT, env.VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY);
+  const dead: string[] = [];
+  await Promise.all(msgs.map(async (m) => {
+    try {
+      await webpush.sendNotification(JSON.parse(m.to), JSON.stringify({ title: m.title, body: m.body, data: m.data }), { TTL: 86_400 });
+    } catch (e) {
+      const code = (e as { statusCode?: number }).statusCode;
+      if (code === 404 || code === 410) dead.push(m.to);
+      else throw e;
+    }
+  }));
+  if (dead.length) await core.query('DELETE FROM push_tokens WHERE token = ANY($1)', [dead]);
+};
+
+/** Web subscriptions are JSON; phone tokens are ExponentPushToken[…]. */
+const isWeb = (m: PushMessage) => m.data.platform === 'web' || m.to.startsWith('{');
+const realSender: Sender = async (msgs) => {
+  const web = msgs.filter(isWeb);
+  const phone = msgs.filter((m) => !isWeb(m));
+  const errs: Error[] = [];
+  if (phone.length) await expoSender(phone).catch((e: Error) => errs.push(e));
+  if (web.length) await webSender(web).catch((e: Error) => errs.push(e));
+  if (errs.length) throw errs[0];
+};
+
+// Tests and local runs never call the outside services.
+let sender: Sender | null = process.env.NODE_ENV === 'production' || process.env.PUSH_ENABLED === '1' ? realSender : null;
 
 /** Tests: replace the sender (null = off). */
 export function setPushSender(s: Sender | null) {

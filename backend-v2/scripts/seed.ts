@@ -10,6 +10,7 @@ import pg from 'pg';
 import { createHash } from 'node:crypto';
 import { superUrl } from '../src/config.js';
 import { dbNames } from './migrate.js';
+import { revokeSampleSuperAdmin, seedAllowed } from './seed-guard.js';
 
 pg.types.setTypeParser(20, (v) => v);
 
@@ -64,6 +65,8 @@ async function insertMany(c: pg.Client, table: string, cols: string[], rows: unk
 
 export async function seed() {
   const names = dbNames();
+  const allowed = seedAllowed({ nodeEnv: process.env.NODE_ENV, argv: process.argv, coreDb: names.core });
+  if (!allowed.ok) throw new Error(allowed.reason);
   const coreC = await connect(names.core);
   const stateC = new Map<string, pg.Client>();
   for (const s of names.states as unknown as St[]) stateC.set(s.code, await connect(s.db));
@@ -289,6 +292,7 @@ export async function seed() {
   }
 
   for (const c of stateC.values()) await c.query('ANALYZE');
+  if (process.argv.includes('--demo')) await revokeSampleSuperAdmin(coreC); // AC12: no sample logins on a server
   await coreC.end();
   for (const c of stateC.values()) await c.end();
   return counts;

@@ -21,7 +21,7 @@ WITH v AS (
     FROM voters v
     LEFT JOIN voter_contacts c ON c.party_id = $1::uuid AND c.ac_no = v.ac_no AND c.voter_id = v.id
     LEFT JOIN poll_marks pm ON pm.election_id = $3::uuid AND pm.party_id = $1::uuid AND pm.ac_no = v.ac_no AND pm.voter_id = v.id
-   WHERE v.booth_id = $2::uuid AND v.status <> 'deleted' AND v.ac_no = (SELECT ac_no FROM booths WHERE id = $2)
+   WHERE v.booth_id = $2::uuid AND v.status IN ('active','added') AND v.ac_no = (SELECT ac_no FROM booths WHERE id = $2)
 ), h AS (
   SELECT house_no,
          count(*) FILTER (WHERE first_contacted_at IS NOT NULL) AS visited,

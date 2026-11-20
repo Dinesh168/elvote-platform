@@ -8,6 +8,7 @@ import { platformApi } from '@/api/adminApi';
 import { AppText, Button, Field, Group, Icon, LargeTitle, Row, Screen, SegmentedControl } from '@/design/components';
 import { colors, spacing } from "@/design/tokens";
 import { QueryState } from '@/features/common/QueryState';
+import { firebaseOn } from '@/features/auth/firebaseAuth';
 
 /** One party in one AC: max zones, status, admins, and the guarded "clear data" action. */
 export default function PartyAc() {
@@ -19,6 +20,9 @@ export default function PartyAc() {
   const pa = o.data?.partyAcs.find((p) => p.id === id);
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
+  const [email, setEmail] = useState('');
+  const byEmail = firebaseOn(); // spec accounts-access AC12
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const [passKey, setPassKey] = useState('');
   const [typed, setTyped] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -50,13 +54,17 @@ export default function PartyAc() {
 
       <Group header={t('platform.admins')}>
         {(admins.data ?? []).filter((a) => a.partyAcId === pa.id).map((a) => (
-          <Row key={a.userId} title={a.name} subtitle={`+91 ${a.mobile}`} />
+          <Row key={a.userId} title={a.name} subtitle={a.mobile ? `+91 ${a.mobile}` : undefined} />
         ))}
         <View style={s.form}>
           <Field label={t('platform.name')} value={name} onChangeText={setName} />
-          <Field label={t('platform.mobile')} prefix="+91" value={mobile} keyboardType="number-pad" onChangeText={(x) => setMobile(x.replace(/\D/g, '').slice(0, 10))} />
-          <Button kind="tinted" label={t('platform.addAdmin')} disabled={name.trim().length < 2 || mobile.length !== 10}
-            onPress={() => void platformApi.addAdmin(mobile, name.trim(), pa.id).then(() => { setName(''); setMobile(''); setMsg({ ok: true, text: t('admin.saved') }); refresh(); }, fail)} />
+          {byEmail ? (
+            <Field label={t('auth.email')} value={email} onChangeText={(x) => setEmail(x.trim())} keyboardType="email-address" autoCapitalize="none" hint={t('platform.emailHint')} />
+          ) : (
+            <Field label={t('platform.mobile')} prefix="+91" value={mobile} keyboardType="number-pad" onChangeText={(x) => setMobile(x.replace(/\D/g, '').slice(0, 10))} />
+          )}
+          <Button kind="tinted" label={t('platform.addAdmin')} disabled={name.trim().length < 2 || (byEmail ? !emailOk : mobile.length !== 10)}
+            onPress={() => void platformApi.addAdmin(byEmail ? { email: email.trim() } : { mobile }, name.trim(), pa.id).then(() => { setName(''); setMobile(''); setEmail(''); setMsg({ ok: true, text: t('admin.saved') }); refresh(); }, fail)} />
         </View>
       </Group>
 

@@ -6,18 +6,44 @@ import { env } from '../config.js';
 import { allStateCodes, core, inParty, statePool } from '../db/pools.js';
 import { audit, checkLimit, requireSuperAdmin } from '../lib/access.js';
 import { invalid, notFound } from '../lib/errors.js';
-import { Mobile, parse, Uuid } from '../lib/http.js';
-import { mergeImport, stageImport } from '../lib/imports.js';
+import { DateStr, Mobile, parse, Uuid } from '../lib/http.js';
+import { heldRows, mergeImport, stageImport } from '../lib/imports.js';
+import { stateLang } from '../lib/lang.js';
+import { createCustomer } from '../lib/scopes.js';
+import { accessAdminRoutes } from './access.js';
 import { customerRoutes } from './customers.js';
 import { pollingAdminRoutes } from './polling.js';
 
 const State = z.string().regex(/^[A-Z]{2}$/);
+const Email = z.string().trim().toLowerCase().email('Enter a valid email address').max(200);
+
+/**
+ * Finds or creates the person a super-admin adds (admin or super-admin). With Google/email sign-in the email is the
+ * key, because Google verified it; a mobile is not verified, so it is accepted only in local/test sign-in mode
+ * (spec accounts-access AC12).
+ */
+async function personFor(b: { email?: string; mobile?: string; name: string }): Promise<string> {
+  if (b.email) {
+    const found = await core.query<{ id: string }>('SELECT id FROM users WHERE lower(email) = $1 AND deleted_at IS NULL', [b.email]);
+    if (found.rowCount) {
+      await core.query(`UPDATE users SET name = CASE WHEN name = '' THEN $2 ELSE name END, updated_at = now() WHERE id = $1`, [found.rows[0].id, b.name]);
+      return found.rows[0].id;
+    }
+    return (await core.query<{ id: string }>('INSERT INTO users (email, name) VALUES ($1,$2) RETURNING id', [b.email, b.name])).rows[0].id;
+  }
+  if (!b.mobile) throw invalid('email_required', 'Enter the person’s Google or sign-in email.');
+  if (env.AUTH_MODE === 'firebase') throw invalid('email_required', 'Add people by their Google or sign-in email.');
+  return (await core.query<{ id: string }>(
+    `INSERT INTO users (mobile, name) VALUES ($1,$2) ON CONFLICT (mobile) DO UPDATE SET name = CASE WHEN users.name = '' THEN EXCLUDED.name ELSE users.name END RETURNING id`,
+    [b.mobile, b.name])).rows[0].id;
+}
 
 export async function platformRoutes(app: FastifyInstance) {
   app.addHook('preHandler', async (req) => {
     if (req.url.startsWith('/v1/admin/')) await requireSuperAdmin(req.userId);
   });
   await customerRoutes(app);
+  await accessAdminRoutes(app);
   await pollingAdminRoutes(app);
 
   app.get('/v1/admin/overview', async () => {
@@ -56,10 +82,23 @@ export async function platformRoutes(app: FastifyInstance) {
   app.get('/v1/admin/acs', async (req) => {
     const q = parse(z.object({ state: State }), req.query);
     const pool = await statePool(q.state);
-    const r = await pool.query<{ ac_no: number; name: string; booths: number; voters: number }>(
-      `SELECT a.ac_no, a.name, count(b.id)::int AS booths, COALESCE(sum(b.voters_count), 0)::int AS voters
+    const def = await stateLang(q.state);
+    const r = await pool.query<{ ac_no: number; name: string; name_local: string | null; regional_lang: string | null; booths: number; voters: number }>(
+      `SELECT a.ac_no, a.name, a.name_local, a.regional_lang, count(b.id)::int AS booths, COALESCE(sum(b.voters_count), 0)::int AS voters
          FROM assembly_constituencies a LEFT JOIN booths b ON b.ac_no = a.ac_no AND b.deleted_at IS NULL GROUP BY a.ac_no ORDER BY a.ac_no`);
-    return r.rows.map((x) => ({ acNo: x.ac_no, name: x.name, booths: x.booths, voters: x.voters }));
+    return r.rows.map((x) => ({ acNo: x.ac_no, name: x.name, nameLocal: x.name_local, regionalLang: x.regional_lang ?? def, booths: x.booths, voters: x.voters }));
+  });
+
+  /** L1: data language of one assembly (Hindi or Punjabi). */
+  app.patch('/v1/admin/acs/:state/:ac', async (req) => {
+    const p = parse(z.object({ state: State, ac: z.coerce.number().int().min(1).max(999) }), req.params);
+    const b = parse(z.object({ regionalLang: z.enum(['hi', 'pa']).optional(), nameLocal: z.string().trim().max(80).optional() }).strict(), req.body);
+    const pool = await statePool(p.state);
+    const r = await pool.query(`UPDATE assembly_constituencies SET regional_lang = COALESCE($2, regional_lang), name_local = COALESCE($3, name_local) WHERE ac_no = $1`,
+      [p.ac, b.regionalLang ?? null, b.nameLocal ?? null]);
+    if (!r.rowCount) throw notFound();
+    await audit({ actor: req.userId, role: 'super_admin', action: 'ac.update', stateCode: p.state, acNo: p.ac, details: { fields: Object.keys(b) } });
+    return { ok: true };
   });
 
   // ---------- Parties ----------
@@ -81,22 +120,7 @@ export async function platformRoutes(app: FastifyInstance) {
   // ---------- Party × AC ----------
   app.post('/v1/admin/party-acs', async (req) => {
     const b = parse(z.object({ partyId: Uuid, stateCode: State, acNo: z.number().int().min(1).max(999), maxZones: z.number().int().min(1).max(50).default(10) }), req.body);
-    const pool = await statePool(b.stateCode);
-    const ac = await pool.query<{ name: string }>('SELECT name FROM assembly_constituencies WHERE ac_no = $1', [b.acNo]);
-    if (!ac.rowCount) throw invalid('ac_unknown', 'Upload this AC’s voter roll first.');
-    const zoneCount = Math.min(10, b.maxZones);
-    const r = await core.query<{ id: string }>(
-      `INSERT INTO party_constituencies (party_id, state_code, ac_no, ac_name, max_zones, zone_count) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-      [b.partyId, b.stateCode, b.acNo, ac.rows[0].name, b.maxZones, zoneCount]).catch((e: { code?: string }) => {
-      if (e.code === '23505') throw invalid('exists', 'This party already works in this AC.');
-      throw e;
-    });
-    await inParty(pool, b.partyId, async (c) => {
-      for (let n = 1; n <= zoneCount; n++) await c.query('INSERT INTO zones (party_id, ac_no, number, name) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING', [b.partyId, b.acNo, n, `Z${n}`]);
-      await c.query('INSERT INTO stats_dirty (party_id, booth_id) SELECT $1, id FROM booths WHERE ac_no = $2 ON CONFLICT DO NOTHING', [b.partyId, b.acNo]);
-    });
-    await audit({ actor: req.userId, role: 'super_admin', action: 'partyac.create', partyId: b.partyId, stateCode: b.stateCode, acNo: b.acNo, entity: 'party_ac', entityId: r.rows[0].id });
-    return { id: r.rows[0].id };
+    return { id: await createCustomer(req.userId, b.partyId, b.stateCode, b.acNo, b.maxZones) };
   });
 
   app.patch('/v1/admin/party-acs/:id', async (req) => {
@@ -139,9 +163,8 @@ export async function platformRoutes(app: FastifyInstance) {
 
   // ---------- Admin users ----------
   app.post('/v1/admin/admins', async (req) => {
-    const b = parse(z.object({ mobile: Mobile, name: z.string().trim().min(2).max(80), partyAcId: Uuid }), req.body);
-    const u = await core.query<{ id: string }>(
-      `INSERT INTO users (mobile, name) VALUES ($1,$2) ON CONFLICT (mobile) DO UPDATE SET name = CASE WHEN users.name = '' THEN EXCLUDED.name ELSE users.name END RETURNING id`, [b.mobile, b.name]);
+    const b = parse(z.object({ mobile: Mobile.optional(), email: Email.optional(), name: z.string().trim().min(2).max(80), partyAcId: Uuid }), req.body);
+    const u = { rows: [{ id: await personFor(b) }] };
     const pc = await core.query<{ party_id: string; state_code: string; ac_no: number }>('SELECT party_id, trim(state_code) AS state_code, ac_no FROM party_constituencies WHERE id = $1', [b.partyAcId]);
     if (!pc.rowCount) throw notFound();
     const existing = await core.query<{ id: string }>(`SELECT id FROM memberships WHERE user_id = $1 AND party_constituency_id = $2 AND role = 'admin' AND status = 'approved'`, [u.rows[0].id, b.partyAcId]);
@@ -165,15 +188,14 @@ export async function platformRoutes(app: FastifyInstance) {
 
   // ---------- Super-admins ----------
   app.get('/v1/admin/super-admins', async () => {
-    const r = await core.query<{ user_id: string; name: string; mobile: string; created_at: Date }>(
-      `SELECT u.id AS user_id, u.name, u.mobile, pa.created_at FROM platform_admins pa JOIN users u ON u.id = pa.user_id WHERE pa.revoked_at IS NULL ORDER BY pa.created_at`);
-    return r.rows.map((x) => ({ userId: x.user_id, name: x.name, mobile: x.mobile, since: x.created_at }));
+    const r = await core.query<{ user_id: string; name: string; mobile: string | null; email: string | null; created_at: Date }>(
+      `SELECT u.id AS user_id, u.name, u.mobile, u.email, pa.created_at FROM platform_admins pa JOIN users u ON u.id = pa.user_id WHERE pa.revoked_at IS NULL ORDER BY pa.created_at`);
+    return r.rows.map((x) => ({ userId: x.user_id, name: x.name, mobile: x.mobile, email: x.email, since: x.created_at }));
   });
 
   app.post('/v1/admin/super-admins', async (req) => {
-    const b = parse(z.object({ mobile: Mobile, name: z.string().trim().min(2).max(80) }), req.body);
-    const u = await core.query<{ id: string }>(
-      `INSERT INTO users (mobile, name) VALUES ($1,$2) ON CONFLICT (mobile) DO UPDATE SET name = CASE WHEN users.name = '' THEN EXCLUDED.name ELSE users.name END RETURNING id`, [b.mobile, b.name]);
+    const b = parse(z.object({ mobile: Mobile.optional(), email: Email.optional(), name: z.string().trim().min(2).max(80) }), req.body);
+    const u = { rows: [{ id: await personFor(b) }] };
     await core.query(`INSERT INTO platform_admins (user_id, created_by) VALUES ($1,$2) ON CONFLICT (user_id) DO UPDATE SET revoked_at = NULL, created_by = $2`, [u.rows[0].id, req.userId]);
     await audit({ actor: req.userId, role: 'super_admin', action: 'superadmin.add', entity: 'user', entityId: u.rows[0].id });
     return { userId: u.rows[0].id };
@@ -196,8 +218,11 @@ export async function platformRoutes(app: FastifyInstance) {
     if (!/\.(csv|xlsx)$/i.test(file.filename)) throw invalid('file_type', 'Only .csv or .xlsx files.');
     const buf = await file.toBuffer();
     const fields = Object.fromEntries(Object.entries(file.fields).map(([k, v]) => [k, (v as { value?: string }).value]));
-    const b = parse(z.object({ stateCode: State, acNo: z.coerce.number().int().min(1).max(999), acName: z.string().trim().max(80).optional() }), fields);
-    const jobId = await stageImport({ stateCode: b.stateCode, acNo: b.acNo, acName: b.acName, fileName: file.filename, buf, userId: req.userId });
+    const b = parse(z.object({
+      stateCode: State, acNo: z.coerce.number().int().min(1).max(999), acName: z.string().trim().max(80).optional(), acNameLocal: z.string().trim().max(80).optional(),
+      rollKind: z.enum(['draft', 'final', 'supplement']).optional(), publishedOn: DateStr.optional(),
+    }), fields);
+    const jobId = await stageImport({ ...b, fileName: file.filename, buf, userId: req.userId });
     await audit({ actor: req.userId, role: 'super_admin', action: 'import.upload', stateCode: b.stateCode, acNo: b.acNo, entity: 'import', entityId: jobId, details: { bytes: buf.length } });
     return { jobId, stateCode: b.stateCode };
   });
@@ -213,10 +238,18 @@ export async function platformRoutes(app: FastifyInstance) {
     const { id } = parse(z.object({ id: Uuid }), req.params);
     const q = parse(z.object({ state: State }), req.query);
     const pool = await statePool(q.state);
-    const job = await pool.query('SELECT id, ac_no, ac_name, file_name, status, rows_total, rows_ok, rows_failed, message, created_at, finished_at FROM import_jobs WHERE id = $1', [id]);
+    const job = await pool.query<Record<string, unknown> & { summary: ({ lists?: Record<string, unknown> } & Record<string, unknown>) | null }>(
+      `SELECT id, ac_no, ac_name, file_name, status, rows_total, rows_ok, rows_failed, message, created_at, finished_at, roll_kind,
+              to_char(published_on, 'YYYY-MM-DD') AS published_on, summary FROM import_jobs WHERE id = $1`, [id]);
     if (!job.rowCount) throw notFound();
     const errors = await pool.query<{ row_no: number; error: string }>('SELECT row_no, error FROM import_staging WHERE job_id = $1 AND error IS NOT NULL ORDER BY row_no LIMIT 100', [id]);
-    return { ...job.rows[0], errors: errors.rows.map((e) => ({ row: e.row_no, error: e.error })) };
+    const { summary, ...rest } = job.rows[0];
+    const { lists, ...counts } = summary ?? {};
+    // U3/U7: counts, lists, and the held rows with the decisions taken so far.
+    return {
+      ...rest, summary: summary ? counts : null, lists: summary ? { ...lists, held: await heldRows(pool, id) } : null,
+      errors: errors.rows.map((e) => ({ row: e.row_no, error: e.error })),
+    };
   });
 
   app.post('/v1/admin/imports/:id/confirm', async (req) => {
@@ -226,9 +259,42 @@ export async function platformRoutes(app: FastifyInstance) {
     const job = await pool.query<{ status: string; ac_no: number }>('SELECT status, ac_no FROM import_jobs WHERE id = $1', [id]);
     if (!job.rowCount) throw notFound();
     if (job.rows[0].status !== 'ready') throw invalid('not_ready', 'This upload is not ready to merge.');
+    const open = await pool.query('SELECT 1 FROM import_held WHERE job_id = $1 AND decision IS NULL LIMIT 1', [id]);
+    if (open.rowCount) throw invalid('held_undecided', 'Choose Move or Reject for every voter that belongs to another assembly.');
     await audit({ actor: req.userId, role: 'super_admin', action: 'import.confirm', stateCode: q.state, acNo: job.rows[0].ac_no, entity: 'import', entityId: id });
     const work = mergeImport(q.state, id);
     if (env.NODE_ENV === 'test') await work; // background in dev/prod; awaited in tests
     return { ok: true, status: 'merging' };
+  });
+
+  /** U3: cancel a checked upload; nothing changes. */
+  app.post('/v1/admin/imports/:id/cancel', async (req) => {
+    const { id } = parse(z.object({ id: Uuid }), req.params);
+    const q = parse(z.object({ state: State }), req.query);
+    const pool = await statePool(q.state);
+    const r = await pool.query<{ ac_no: number }>(`UPDATE import_jobs SET status = 'cancelled', finished_at = now() WHERE id = $1 AND status IN ('ready','failed') RETURNING ac_no`, [id]);
+    if (!r.rowCount) throw invalid('not_cancellable', 'This upload can no longer be cancelled.');
+    await pool.query('DELETE FROM import_staging WHERE job_id = $1', [id]);
+    await audit({ actor: req.userId, role: 'super_admin', action: 'import.cancel', stateCode: q.state, acNo: r.rows[0].ac_no, entity: 'import', entityId: id });
+    return { ok: true };
+  });
+
+  /** U7: Move or Reject for rows whose EPIC belongs to another assembly. */
+  app.post('/v1/admin/imports/:id/held', async (req) => {
+    const { id } = parse(z.object({ id: Uuid }), req.params);
+    const q = parse(z.object({ state: State }), req.query);
+    const b = parse(z.union([
+      z.object({ all: z.enum(['move', 'reject']) }),
+      z.object({ decisions: z.array(z.object({ rowNo: z.number().int().min(1), decision: z.enum(['move', 'reject']) })).min(1).max(5000) }),
+    ]), req.body);
+    const pool = await statePool(q.state);
+    const job = await pool.query<{ status: string }>('SELECT status FROM import_jobs WHERE id = $1', [id]);
+    if (!job.rowCount) throw notFound();
+    if (job.rows[0].status !== 'ready') throw invalid('not_ready', 'This upload is not waiting for a decision.');
+    if ('all' in b) await pool.query('UPDATE import_held SET decision = $2 WHERE job_id = $1', [id, b.all]);
+    else await pool.query(
+      `UPDATE import_held h SET decision = x.decision FROM jsonb_to_recordset($2::jsonb) AS x(row_no int, decision text) WHERE h.job_id = $1 AND h.row_no = x.row_no`,
+      [id, JSON.stringify(b.decisions.map((d) => ({ row_no: d.rowNo, decision: d.decision })))]);
+    return { held: await heldRows(pool, id) };
   });
 }

@@ -1,9 +1,11 @@
 import 'dotenv/config';
 import { z } from 'zod';
 
-const Env = z.object({
+export const Env = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(4000),
+  /** 127.0.0.1 behind nginx on a server (spec live-demo D6), so the API port is not reachable from outside. */
+  HOST: z.string().default('0.0.0.0'),
   CORS_ORIGINS: z.string().default('http://localhost:8081'),
   PG_HOST: z.string().default('127.0.0.1'),
   PG_PORT: z.coerce.number().default(5544),
@@ -15,6 +17,10 @@ const Env = z.object({
   AUTH_MODE: z.enum(['dev', 'firebase']).default('dev'),
   JWT_SECRET: z.string().min(32),
   FIREBASE_PROJECT_ID: z.string().optional(),
+  /** Web Push (spec accounts-access AC11). Generate once: npx web-push generate-vapid-keys. */
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().default('mailto:support@champn.in'),
 });
 
 export const env = Env.parse(process.env);

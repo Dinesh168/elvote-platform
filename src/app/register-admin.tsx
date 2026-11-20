@@ -1,0 +1,113 @@
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { useState } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { authApi } from '@/api/adminApi';
+import { ApiError } from '@/api/http';
+import { AppText, Button, Field, LargeTitle } from '@/design/components';
+import { themed } from '@/design/theme';
+import { colors, radius, spacing } from '@/design/tokens';
+import { goLanding } from '@/features/session/session';
+import { AuthScreen } from '@/features/shell/AuthScreen';
+
+/** Admin request (spec accounts-access AC6): party, state, whole state or assemblies, position. The super-admin decides. */
+export default function RegisterAdmin() {
+  const { t } = useTranslation();
+  const [partyName, setPartyName] = useState('');
+  const [partyId, setPartyId] = useState<string | undefined>();
+  const [state, setState] = useState<string | null>(null);
+  const [whole, setWhole] = useState<boolean | null>(null);
+  const [acs, setAcs] = useState<number[]>([]);
+  const [designation, setDesignation] = useState('');
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const states = useQuery({ queryKey: ['catalog', 'states'], queryFn: authApi.states });
+  const parties = useQuery({ queryKey: ['catalog', 'parties'], queryFn: authApi.parties });
+  const acList = useQuery({ queryKey: ['catalog', 'acs', state], queryFn: () => authApi.acs(state!), enabled: !!state && whole === false });
+
+  const suggestions = partyName.trim().length >= 2 && !partyId
+    ? (parties.data ?? []).filter((p) => p.name.toLowerCase().includes(partyName.trim().toLowerCase())).slice(0, 5)
+    : [];
+  const ok = partyName.trim().length >= 2 && !!state && (whole === true || (whole === false && acs.length > 0)) && designation.trim().length >= 2;
+
+  const send = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await authApi.accessRequest({
+        partyId, partyName: partyName.trim(), stateCode: state!, wholeState: whole === true,
+        acNos: whole ? undefined : acs, designation: designation.trim(), note: note.trim() || undefined,
+      });
+      await goLanding();
+    } catch (e) {
+      setError(e instanceof ApiError && e.code === 'network' ? t('auth.network') : (e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const Radio = ({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) => (
+    <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: on }} aria-checked={on} onPress={onPress} style={[s.chip, on && s.chipOn]}>
+      <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${label}`}</AppText>
+    </Pressable>
+  );
+
+  return (
+    <AuthScreen>
+      <LargeTitle title={t('registerAdmin.title')} subtitle={t('registerAdmin.subtitle')} />
+      <View style={s.body}>
+        <Field label={t('registerAdmin.party')} value={partyName} onChangeText={(x) => { setPartyName(x); setPartyId(undefined); }} maxLength={100} />
+        {suggestions.length ? (
+          <View style={s.chips}>
+            {suggestions.map((p) => <Radio key={p.id} label={p.name} on={false} onPress={() => { setPartyName(p.name); setPartyId(p.id); }} />)}
+          </View>
+        ) : null}
+
+        <AppText variant="footnote" color={colors.textSecondary}>{t('registerAdmin.state').toLocaleUpperCase()}</AppText>
+        <View style={s.chips}>
+          {(states.data ?? []).map((st) => <Radio key={st.code} label={st.name} on={state === st.code} onPress={() => { setState(st.code); setAcs([]); }} />)}
+        </View>
+
+        {state ? (
+          <>
+            <AppText variant="footnote" color={colors.textSecondary}>{t('registerAdmin.area').toLocaleUpperCase()}</AppText>
+            <View style={s.chips}>
+              <Radio label={t('registerAdmin.wholeState')} on={whole === true} onPress={() => setWhole(true)} />
+              <Radio label={t('registerAdmin.someAcs')} on={whole === false} onPress={() => setWhole(false)} />
+            </View>
+            {whole === false ? (
+              <View style={s.chips}>
+                {(acList.data ?? []).map((a) => {
+                  const on = acs.includes(a.acNo);
+                  const label = `${a.acNo} · ${a.name}`;
+                  return (
+                    <Pressable key={a.acNo} accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{ checked: on }} aria-checked={on}
+                      onPress={() => setAcs((x) => (on ? x.filter((n) => n !== a.acNo) : [...x, a.acNo]))} style={[s.chip, on && s.chipOn]}>
+                      <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${label}`}</AppText>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+          </>
+        ) : null}
+
+        <Field label={t('registerAdmin.designation')} value={designation} onChangeText={setDesignation} maxLength={80} hint={t('registerAdmin.designationHint')} />
+        <Field label={t('registerAdmin.note')} value={note} onChangeText={setNote} maxLength={300} multiline />
+        {error ? <AppText variant="footnote" color={colors.danger}>{error}</AppText> : null}
+        <Button block label={t('auth.sendRequest')} disabled={!ok || busy} onPress={() => void send()} />
+        <Button kind="plain" label={t('registerAdmin.back')} onPress={() => router.replace('/register')} />
+      </View>
+    </AuthScreen>
+  );
+}
+
+const s = themed(() => StyleSheet.create({
+  body: { padding: spacing.lg, gap: spacing.lg, marginTop: spacing.md },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: { minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.separator },
+  chipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
+}));

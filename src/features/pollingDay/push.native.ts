@@ -1,6 +1,6 @@
 /**
- * Admin phone push notifications for polling-day alerts (spec polling-day A1, PD6).
- * Needs a phone build with an EAS project id; anywhere else this quietly does nothing (alerts are still in the app).
+ * Phone push notifications: polling-day alerts (spec polling-day A1) and requests / approvals (spec accounts-access
+ * AC11). Needs a phone build with an EAS project id; anywhere else this quietly does nothing (the app shows the same).
  */
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
@@ -11,22 +11,30 @@ import { durable } from '@/lib/durable';
 
 const KEY = 'elvote.pushToken.v1';
 
-export async function registerPush() {
-  if (Platform.OS === 'web' || API_MODE !== 'http') return;
+export type PushState = 'granted' | 'denied' | 'ask' | 'unsupported';
+
+export function pushState(): PushState {
+  return 'ask';
+}
+
+/** Phones may ask without a tap; `ask` is accepted for the same call shape as the website. */
+export async function registerPush(_ask = true): Promise<PushState> {
+  if (Platform.OS === 'web' || API_MODE !== 'http') return 'unsupported';
   try {
     const projectId = (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId ?? Constants.easConfig?.projectId;
-    if (!projectId) return;
+    if (!projectId) return 'unsupported';
     let perm = await Notifications.getPermissionsAsync();
     if (perm.status !== 'granted' && perm.canAskAgain) perm = await Notifications.requestPermissionsAsync();
-    if (perm.status !== 'granted') return;
+    if (perm.status !== 'granted') return 'denied';
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('alerts', { name: 'Polling day alerts', importance: Notifications.AndroidImportance.HIGH });
+      await Notifications.setNotificationChannelAsync('alerts', { name: 'Alerts', importance: Notifications.AndroidImportance.HIGH });
     }
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
     await http.put('/v1/me/push-token', { token, platform: Platform.OS === 'ios' ? 'ios' : 'android' });
     await durable.setItem(KEY, token);
+    return 'granted';
   } catch {
-    // no push on this device; the in-app alert list still works
+    return 'unsupported'; // no push on this device; the app still shows everything
   }
 }
 
@@ -40,4 +48,14 @@ export async function unregisterPush() {
   } catch {
     // ignore
   }
+}
+
+/** Tapping a notification opens its page (data.url), e.g. Team for a new volunteer request. */
+export function listenPushTaps(open: (url: string) => void): () => void {
+  if (Platform.OS === 'web') return () => undefined;
+  const sub = Notifications.addNotificationResponseReceivedListener((r) => {
+    const url = (r.notification.request.content.data as { url?: unknown } | undefined)?.url;
+    if (typeof url === 'string' && url.startsWith('/')) open(url);
+  });
+  return () => sub.remove();
 }

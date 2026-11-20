@@ -5,7 +5,7 @@
  */
 import { allStateCodes, core, inParty, statePool } from '../db/pools.js';
 import { audit } from './access.js';
-import { checkOtpCode, firebasePhone, requestOtp } from './auth.js';
+import { checkFreshFirebase, checkOtpCode, requestOtp } from './auth.js';
 import { ApiError, badRequest, conflict, invalid, notFound } from './errors.js';
 
 export const DELETION_DAYS = 7;
@@ -43,14 +43,13 @@ export async function soleAdminAcs(userId: string) {
 /** AD2: confirm word + fresh code (or Firebase token) + not the last admin → locked now, erased in 7 days. */
 export async function requestDeletion(userId: string, b: { confirm: string; code?: string; idToken?: string }) {
   if (b.confirm !== 'DELETE') throw badRequest('confirm_required', 'Type DELETE to confirm.');
-  const mobile = await mobileOf(userId);
   // A wrong code is a 422 here, not 401: the user is signed in, and 401 would make the app sign them out.
   try {
     if (b.idToken) {
-      const { phone } = await firebasePhone(b.idToken);
-      if (phone !== mobile) throw invalid('reauth_mismatch', 'Use the mobile number of this account.');
+      // AC13: a fresh Google / email sign-in of this same account.
+      await checkFreshFirebase(userId, b.idToken);
     } else if (b.code) {
-      await checkOtpCode(mobile, b.code);
+      await checkOtpCode(await mobileOf(userId), b.code);
     } else {
       throw invalid('otp_invalid', 'Wrong code. Try again.');
     }
@@ -96,7 +95,7 @@ export async function eraseDueAccounts(limit = 50): Promise<number> {
       await c.query('DELETE FROM sessions WHERE user_id = $1', [id]);
       if (mob.rows[0]?.mobile) await c.query('DELETE FROM otp_attempts WHERE mobile = $1', [mob.rows[0].mobile]);
       await c.query(
-        `UPDATE users SET mobile = NULL, firebase_uid = NULL, epic = NULL, name = '', status = 'deleted',
+        `UPDATE users SET mobile = NULL, email = NULL, firebase_uid = NULL, epic = NULL, name = '', status = 'deleted',
                 deleted_at = now(), deletion_due_at = NULL, updated_at = now() WHERE id = $1`,
         [id],
       );

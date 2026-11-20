@@ -9,7 +9,7 @@ import { ShellContext } from '@/design/shellContext';
 import { colors, radius, spacing, web } from '@/design/tokens';
 import { fileUrl, useAllowedLangs } from '@/features/session/customer';
 import { activate, logout, rolesOf } from '@/features/session/session';
-import { initI18n, type Lang } from '@/i18n';
+import { initI18n, LANG_LABEL, LANG_MARK, LANGS, type Lang } from '@/i18n';
 import { usePrefs } from '@/stores/prefs';
 import { useActiveMembership, useSession, type Mode } from '@/stores/session';
 
@@ -39,11 +39,12 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
   const shell = useMemo(() => ({ topPaths: items.map((i) => i.path) }), [items]);
   const adminRoles = me ? rolesOf(me).filter((r) => r.mode === mode && r.mode !== 'platform') : [];
   const otherRoles = me ? rolesOf(me).filter((r) => r.mode !== mode) : [];
-  const pa = i18n.language === 'pa';
   const look = mode === 'platform' ? null : m?.look;
   const brandName = look?.appName || 'ElVote';
   const logo = fileUrl(look?.logoUrl);
   const langs = useAllowedLangs();
+  // Super-admin: every language; teams: the languages their customer allows (C4, bilingual-roll L4).
+  const shellLangs: Lang[] = mode === 'platform' ? LANGS : LANGS.filter((l) => langs.includes(l));
   const roleLabel = mode === 'platform' ? t('web.rolePlatform') : mode === 'admin' ? t('web.roleAdmin') : t('web.roleVolunteer');
   // The current item is the one with the longest matching path prefix (so /platform/parties ≠ /platform).
   const score = (it: NavItem) =>
@@ -113,13 +114,13 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
 
           <View style={s.foot}>
             {langs.length < 2 && mode !== 'platform' ? null : rail ? (
-              <Pressable accessibilityRole="button" accessibilityLabel={t('common.switchLangA11y')} onPress={() => switchLang(pa ? 'en' : 'pa')}
+              <Pressable accessibilityRole="button" accessibilityLabel={t('common.switchLangA11y')} onPress={() => switchLang(shellLangs[(shellLangs.indexOf(i18n.language as Lang) + 1) % shellLangs.length])}
                 style={(st) => [s.item, s.itemRail, (st as Hoverable).hovered && { backgroundColor: web.hover }]}>
-                <AppText variant="callout" weight="bold">{pa ? 'A' : 'ਪੰ'}</AppText>
+                <AppText variant="callout" weight="bold">{LANG_MARK[(i18n.language as Lang)] ?? 'A'}</AppText>
               </Pressable>
             ) : (
               <View style={s.langRow} role="radiogroup" aria-label={t('web.language')}>
-                {([['pa', 'ਪੰਜਾਬੀ'], ['en', 'English']] as [Lang, string][]).map(([l, label]) => {
+                {shellLangs.map((l) => [l, LANG_LABEL[l]] as [Lang, string]).map(([l, label]) => {
                   const on = i18n.language === l;
                   return (
                     <Pressable key={l} role="radio" aria-checked={on} onPress={() => switchLang(l)} style={[s.lang, on && s.langOn]}>

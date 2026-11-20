@@ -27,6 +27,16 @@ export interface Voter {
   needsHelp: boolean;
   votedAt?: string; // ISO time, polling day
   updatedAt?: string;
+  /** Regional script (spec bilingual-roll L2); absent when the roll has none. */
+  nameLocal?: string;
+  relativeLocal?: string;
+  villageLocal?: string;
+  /** Added by the latest roll (U5). */
+  isNew?: boolean;
+  /** English values kept when the regional ones are shown (search both scripts). */
+  nameEn?: string;
+  relativeEn?: string;
+  villageEn?: string;
 }
 
 /** Fields a volunteer can change. */
@@ -42,6 +52,13 @@ export interface Booth {
   lat?: number | null;
   lng?: number | null;
   voters?: number;
+  nameLocal?: string;
+  villageLocal?: string;
+  address?: string;
+  addressLocal?: string;
+  nameEn?: string;
+  villageEn?: string;
+  addressEn?: string;
 }
 
 export interface TaskCriteria {

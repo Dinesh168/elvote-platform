@@ -6,7 +6,7 @@ import { colors, fonts, hairline } from '@/design/tokens';
 import { useWide } from '@/design/layout';
 import { useGuard } from '@/features/session/Guard';
 import { useSyncEngine } from '@/features/sync/engine';
-import { useActiveMembership } from '@/stores/session';
+import { useActiveMembership, useSession } from '@/stores/session';
 import { AppShell, type NavItem } from '@/features/shell/AppShell';
 import { useEffect } from 'react';
 import { useAdminPolling } from '@/features/pollingDay/adminHooks';
@@ -25,6 +25,7 @@ const ICONS: Record<string, [string, string]> = {
 export default function AdminLayout() {
   const { t, i18n } = useTranslation();
   const pa = i18n.language === 'pa';
+  const hi = i18n.language === 'hi';
   const guard = useGuard('admin');
   const wide = useWide();
   const m = useActiveMembership();
@@ -32,9 +33,12 @@ export default function AdminLayout() {
   const pd = useAdminPolling(); // polling day: alerts badge (spec polling-day A1)
   useEffect(() => { if (m?.role === 'admin') void registerPush(); }, [m?.id, m?.role]);
   const f = { map: m?.features?.map !== false, tasks: m?.features?.tasks !== false, poll: m?.features?.poll !== false, zones: m?.features?.zones !== false };
+  const me = useSession((s) => s.me);
+  const adminAcs = (me?.memberships ?? []).filter((x) => x.role === 'admin' && x.status === 'approved').length;
   if (guard) return guard;
   const nav: NavItem[] = [
-    { path: '/admin/dashboard', label: t('admin.tabs.dashboard'), icon: ICONS.dashboard, also: ['/admin/booth'] },
+    ...(adminAcs > 1 ? [{ path: '/admin/overview', label: t('overview.title'), icon: ['albums', 'albums-outline'] as [string, string] }] : []),
+    { path: '/admin/dashboard', label: t('admin.tabs.dashboard'), icon: ICONS.dashboard, also: ['/admin/booth', '/admin/roll'] },
     ...(pd.day ? [{ path: '/admin/polling', label: t('pd.title'), icon: ['location', 'location-outline'] as [string, string], badge: pd.unseen }] : []),
     { path: '/admin/map', label: t('admin.tabs.map'), icon: ICONS.map },
     { path: '/admin/team', label: t('admin.tabs.team'), icon: ICONS.team },
@@ -55,7 +59,7 @@ export default function AdminLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: { fontFamily: pa ? fonts.paSemibold : fonts.medium, fontSize: 12 },
+        tabBarLabelStyle: { fontFamily: pa ? fonts.paSemibold : hi ? fonts.hiSemibold : fonts.medium, fontSize: 12 },
         tabBarStyle: {
           backgroundColor: Platform.OS === 'web' ? colors.tabBar : colors.surface,
           borderTopWidth: hairline,
@@ -78,6 +82,8 @@ export default function AdminLayout() {
       <Tabs.Screen name="zones" options={{ href: null }} />
       <Tabs.Screen name="trace" options={{ href: null }} />
       <Tabs.Screen name="polling" options={{ href: null }} />
+      <Tabs.Screen name="roll" options={{ href: null }} />
+      <Tabs.Screen name="overview" options={{ href: null }} />
     </Tabs>
   );
   // Phones: a "polling day is live" strip above every admin screen (opens the polling-day page).

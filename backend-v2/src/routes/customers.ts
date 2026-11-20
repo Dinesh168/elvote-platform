@@ -9,14 +9,15 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { core, statePool } from '../db/pools.js';
 import { audit, checkLimit, FEATURE_KEYS, featuresOf, forgetUserStatus } from '../lib/access.js';
-import { invalid, notFound } from '../lib/errors.js';
-import { parse, PartNo, Uuid } from '../lib/http.js';
+import { ApiError, invalid, notFound } from '../lib/errors.js';
+import { Mobile, parse, PartNo, Uuid } from '../lib/http.js';
+import { areaOf, notify } from '../lib/notify.js';
 import { traceVoter } from '../lib/trace.js';
 
 export const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
 
 const Colour = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a colour like #1B5E20');
-const Lang = z.enum(['en', 'pa']); // languages the app ships today (add 'hi' with its translation file)
+const Lang = z.enum(['en', 'hi', 'pa']); // languages the app ships (spec bilingual-roll L4)
 const text = (max: number) => z.string().trim().max(max);
 const Features = z.object(Object.fromEntries(FEATURE_KEYS.map((k) => [k, z.boolean()])) as Record<(typeof FEATURE_KEYS)[number], z.ZodBoolean>).partial().strict();
 
@@ -161,8 +162,9 @@ export async function customerRoutes(app: FastifyInstance) {
     }), req.query);
     if (f.q && f.q.length < 3) throw invalid('q_short', 'Type at least 3 letters or digits.');
     const params: unknown[] = [];
-    const where = ['u.deleted_at IS NULL', "u.mobile IS NOT NULL"];
-    if (f.q) { params.push(`%${f.q.replace(/[%_\\]/g, '\\$&')}%`); where.push(`(u.mobile LIKE $${params.length} OR u.name ILIKE $${params.length})`); }
+    // Accounts without a mobile yet (new Google sign-ups) are listed too (accounts-access AC4).
+    const where = ['u.deleted_at IS NULL'];
+    if (f.q) { params.push(`%${f.q.replace(/[%_\\]/g, '\\$&')}%`); where.push(`(u.mobile LIKE $${params.length} OR u.name ILIKE $${params.length} OR u.email ILIKE $${params.length})`); }
     if (f.status !== 'all') { params.push(f.status); where.push(`u.status = $${params.length}`); }
     if (f.role === 'super') where.push('EXISTS (SELECT 1 FROM platform_admins pa WHERE pa.user_id = u.id AND pa.revoked_at IS NULL)');
     if (f.role === 'admin' || f.role === 'volunteer' || f.customer) {
@@ -173,8 +175,8 @@ export async function customerRoutes(app: FastifyInstance) {
     }
     const total = (await core.query<{ n: number }>(`SELECT count(*)::int AS n FROM users u WHERE ${where.join(' AND ')}`, params)).rows[0].n;
     params.push(f.limit, f.offset);
-    const u = await core.query<{ id: string; name: string; mobile: string | null; status: string; blocked_reason: string | null; sup: boolean }>(
-      `SELECT u.id, u.name, u.mobile, u.status, u.blocked_reason,
+    const u = await core.query<{ id: string; name: string; mobile: string | null; email: string | null; status: string; blocked_reason: string | null; sup: boolean }>(
+      `SELECT u.id, u.name, u.mobile, u.email, u.status, u.blocked_reason,
               EXISTS (SELECT 1 FROM platform_admins pa WHERE pa.user_id = u.id AND pa.revoked_at IS NULL) AS sup
          FROM users u WHERE ${where.join(' AND ')}
         ORDER BY ${f.q ? 'u.name' : 'u.created_at DESC'}, u.id LIMIT $${params.length - 1} OFFSET $${params.length}`, params);
@@ -186,10 +188,22 @@ export async function customerRoutes(app: FastifyInstance) {
          LEFT JOIN membership_booths mb ON mb.membership_id = m.id
         WHERE m.user_id = ANY($1::uuid[]) AND m.status <> 'removed' GROUP BY m.id, p.name, pc.id ORDER BY p.name, pc.ac_no`, [ids]) : { rows: [] };
     const items = u.rows.map((x) => ({
-      id: x.id, name: x.name, mobile: x.mobile, status: x.status, blockedReason: x.blocked_reason, isSuperAdmin: x.sup,
+      id: x.id, name: x.name, mobile: x.mobile, email: x.email, status: x.status, blockedReason: x.blocked_reason, isSuperAdmin: x.sup,
       memberships: ms.rows.filter((m) => m.user_id === x.id).map((m) => ({ id: m.id, role: m.role, status: m.status, partyName: m.party_name, stateCode: m.state_code, acNo: m.ac_no, acName: m.ac_name, partyAcId: m.party_ac_id, booths: m.booths })),
     }));
     return { items, total, offset: f.offset, limit: f.limit };
+  });
+
+  /** accounts-access AC4: fix a wrong or borrowed mobile number (it is not verified by SMS). */
+  app.patch('/v1/admin/users/:id/mobile', async (req) => {
+    const { id } = parse(z.object({ id: Uuid }), req.params);
+    const b = parse(z.object({ mobile: Mobile.nullable(), reason: Reason }), req.body);
+    await core.query('UPDATE users SET mobile = $2, updated_at = now() WHERE id = $1 AND deleted_at IS NULL', [id, b.mobile]).catch((e: { code?: string }) => {
+      if (e.code === '23505') throw new ApiError(409, 'mobile_taken', 'This mobile number is already used by another account.');
+      throw e;
+    });
+    await audit({ actor: req.userId, role: 'super_admin', action: 'user.mobile', entity: 'user', entityId: id, details: { reason: b.reason } });
+    return { ok: true };
   });
 
   app.post('/v1/admin/users/:id/block', async (req) => {
@@ -235,6 +249,7 @@ export async function customerRoutes(app: FastifyInstance) {
     if (b.remove) {
       await core.query(`UPDATE memberships SET status = 'removed', updated_at = now() WHERE id = $1`, [id]);
       await core.query('DELETE FROM membership_booths WHERE membership_id = $1', [id]);
+      await notify([cur.user_id], 'removed', await areaOf(cur.party_constituency_id)); // accounts-access AC11
     } else {
       if (b.role && b.role !== cur.role) {
         if (b.role === 'admin') await checkLimit(cur.party_constituency_id, 'admin', id);

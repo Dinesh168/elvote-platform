@@ -2,7 +2,7 @@ import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { themed } from '@/design/theme';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { GroupCode, Task, Voter } from '@/api/types';
 import { AppText, Icon, LargeTitle, Screen, SegmentedControl, Toast } from '@/design/components';
@@ -74,6 +74,8 @@ export default function VotersScreen() {
     return out;
   }, [ordered, view, house, t]);
 
+  const itemCount = useRef(0);
+  itemCount.current = items.length;
   const scrollTo = useCallback(
     (id: string | null) => {
       if (!id) return;
@@ -82,7 +84,15 @@ export default function VotersScreen() {
       // Show the house header above the voter for context.
       if (index > 0 && items[index - 1].kind === 'head') index -= 1;
       // FlashList measures rows lazily: scroll, then correct once the nearby rows have real sizes.
-      const go = (animated: boolean) => listRef.current?.scrollToIndex({ index, animated, viewPosition: 0 });
+      // The list can shrink before the delayed scroll runs (search typed): skip a row that is no longer there.
+      const go = (animated: boolean) => {
+        if (index >= itemCount.current) return;
+        try {
+          listRef.current?.scrollToIndex({ index, animated, viewPosition: 0 });
+        } catch {
+          // not laid out yet; the list stays where it is
+        }
+      };
       setTimeout(() => go(false), 100);
       setTimeout(() => go(true), 450);
     },
@@ -214,6 +224,9 @@ export default function VotersScreen() {
         </View>
       ) : (
         <FlashList
+          // A new list for each search text: on the web, rows of the longer list can report their size after it shrank
+          // ("index out of bounds" inside FlashList). Lists are short (one booth), so rebuilding is cheap.
+          key={Platform.OS === 'web' ? `q:${q.trim()}` : 'list'}
           ref={listRef}
           data={items}
           extraData={openId}

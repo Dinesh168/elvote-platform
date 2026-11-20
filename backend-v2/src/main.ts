@@ -2,11 +2,13 @@ import { buildApp } from './app.js';
 import { env } from './config.js';
 import { closeAll } from './db/pools.js';
 import { eraseDueAccounts } from './lib/account.js';
+import { setNotifyLog } from './lib/notify.js';
 import { runPresenceJobs } from './lib/presence.js';
 import { processDirty } from './lib/stats.js';
 
 const app = await buildApp();
-await app.listen({ port: env.PORT, host: '0.0.0.0' });
+setNotifyLog((e) => app.log.warn({ err: e.message }, 'notification failed'));
+await app.listen({ port: env.PORT, host: env.HOST });
 
 // Counter worker: recompute booths changed in the last few seconds.
 let busy = false;

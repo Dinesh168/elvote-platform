@@ -3,25 +3,32 @@ import { z } from 'zod';
 import { core, statePool } from '../db/pools.js';
 import { isSuperAdmin, membershipsOf } from '../lib/access.js';
 import { requestDeletion, sendDeletionCode } from '../lib/account.js';
+import { acLangs } from '../lib/lang.js';
 import { pollingDayOf } from '../lib/presence.js';
 import { sha256 } from '../lib/auth.js';
 import { invalid } from '../lib/errors.js';
 import { parse, PartNo } from '../lib/http.js';
+import { adminsOf, notify } from '../lib/notify.js';
+import { latestRequestOf, requireProfile } from './access.js';
 
 export async function meRoutes(app: FastifyInstance) {
   app.get('/v1/me', async (req) => {
-    const u = await core.query<{ id: string; mobile: string; name: string; lang: string }>('SELECT id, mobile, name, lang FROM users WHERE id = $1', [req.userId]);
+    const u = await core.query<{ id: string; mobile: string | null; email: string | null; name: string; lang: string }>('SELECT id, mobile, email, name, lang FROM users WHERE id = $1', [req.userId]);
     const user = u.rows[0];
-    const [sup, ms] = await Promise.all([isSuperAdmin(req.userId), membershipsOf(req.userId)]);
+    const [sup, ms, accessRequest] = await Promise.all([isSuperAdmin(req.userId), membershipsOf(req.userId), latestRequestOf(req.userId)]);
     const days = await pollingDayOf(ms);
+    // spec bilingual-roll L1: the regional language of each membership's assembly
+    const langs = new Map<string, Map<number, string>>();
+    for (const st of [...new Set(ms.map((m) => m.stateCode))]) langs.set(st, await acLangs(st, ms.filter((m) => m.stateCode === st).map((m) => m.acNo)));
     return {
-      user: { id: user.id, mobile: user.mobile, name: user.name, lang: user.lang },
+      user: { id: user.id, mobile: user.mobile, email: user.email, name: user.name, lang: user.lang, profileDone: !!user.mobile && !!user.name.trim() },
       isSuperAdmin: sup,
+      accessRequest,
       memberships: ms.map((m, i) => ({
         id: m.id, role: m.role, status: m.status, partyId: m.partyId, partyName: m.partyName, partyAcId: m.partyAcId,
         stateCode: m.stateCode, acNo: m.acNo, acName: m.acName, booths: m.booths, maxZones: m.maxZones, zoneCount: m.zoneCount,
         active: m.active, features: m.features, look: m.look, sync: m.sync,
-        boothRadiusM: m.boothRadiusM, pollingDay: days[i],
+        boothRadiusM: m.boothRadiusM, pollingDay: days[i], dataLang: langs.get(m.stateCode)?.get(m.acNo) ?? 'hi',
       })),
     };
   });
@@ -35,14 +42,15 @@ export async function meRoutes(app: FastifyInstance) {
   /** Account deletion (spec account-deletion AD1/AD2). */
   /** Phone push token (spec polling-day A1). A token moves to whoever signs in on that phone. */
   app.put('/v1/me/push-token', async (req) => {
-    const b = parse(z.object({ token: z.string().trim().min(10).max(200), platform: z.enum(['android', 'ios', 'web']) }), req.body);
+    // Web Push subscriptions are JSON (~400–800 chars); phone tokens are short.
+    const b = parse(z.object({ token: z.string().trim().min(10).max(2000), platform: z.enum(['android', 'ios', 'web']) }), req.body);
     await core.query(
       `INSERT INTO push_tokens (token, user_id, platform) VALUES ($1,$2,$3)
        ON CONFLICT (token) DO UPDATE SET user_id = $2, platform = $3, updated_at = now()`, [b.token, req.userId, b.platform]);
     return { ok: true };
   });
   app.delete('/v1/me/push-token', async (req) => {
-    const q = parse(z.object({ token: z.string().max(200) }), req.query);
+    const q = parse(z.object({ token: z.string().max(2000) }), req.query);
     await core.query('DELETE FROM push_tokens WHERE token = $1 AND user_id = $2', [q.token, req.userId]);
     return { ok: true };
   });
@@ -60,6 +68,7 @@ export async function meRoutes(app: FastifyInstance) {
 
   /** Checks a join code and returns the AC and its booths, so the volunteer can pick booths. */
   app.post('/v1/join/check', async (req) => {
+    await requireProfile(req.userId, { nameLater: true }); // the join form may still ask for the name
     const { code } = parse(z.object({ code: z.string().trim().min(4).max(20) }), req.body);
     const pc = await findCode(code);
     const pool = await statePool(pc.state_code);
@@ -72,15 +81,17 @@ export async function meRoutes(app: FastifyInstance) {
   app.post('/v1/join', async (req) => {
     const b = parse(z.object({
       code: z.string().trim().min(4).max(20),
-      name: z.string().trim().min(2).max(80),
+      name: z.string().trim().min(2).max(80).optional(), // AC4: normally already set in Your details
       epic: z.string().trim().max(20).optional(),
       booths: z.array(PartNo).min(1).max(10),
     }), req.body);
+    await requireProfile(req.userId, { nameLater: true });
     const pc = await findCode(b.code);
     const pool = await statePool(pc.state_code);
     const valid = await pool.query<{ part_no: number }>('SELECT part_no FROM booths WHERE ac_no = $1 AND part_no = ANY($2::smallint[])', [pc.ac_no, b.booths]);
     if (valid.rowCount !== new Set(b.booths).size) throw invalid('booth_invalid', 'Pick booths from the list.');
-    await core.query('UPDATE users SET name = $2, epic = COALESCE($3, epic), updated_at = now() WHERE id = $1', [req.userId, b.name, b.epic ?? null]);
+    await core.query('UPDATE users SET name = COALESCE($2, name), epic = COALESCE($3, epic), updated_at = now() WHERE id = $1', [req.userId, b.name ?? null, b.epic ?? null]);
+    await requireProfile(req.userId);
     const m = await core.query<{ id: string; status: string }>(
       `INSERT INTO memberships (user_id, party_constituency_id, role, status) VALUES ($1, $2, 'volunteer', 'pending')
        ON CONFLICT (user_id, party_constituency_id) DO UPDATE
@@ -94,6 +105,11 @@ export async function meRoutes(app: FastifyInstance) {
       for (const no of new Set(b.booths)) await core.query('INSERT INTO membership_booths (membership_id, part_no, requested) VALUES ($1,$2,true)', [m.rows[0].id, no]);
     }
     await core.query('UPDATE join_codes SET used_count = used_count + 1 WHERE code_hash = $1', [sha256(b.code.toUpperCase())]);
+    if (m.rows[0].status === 'pending') {
+      // AC11: tell the assembly's admins.
+      const who = await core.query<{ name: string }>('SELECT name FROM users WHERE id = $1', [req.userId]);
+      await notify(await adminsOf(pc.id), 'volunteer_request', { name: who.rows[0].name, booths: [...new Set(b.booths)].sort((x, y) => x - y).join(', ') });
+    }
     return { membershipId: m.rows[0].id, status: m.rows[0].status };
   });
 }

@@ -8,6 +8,7 @@ import type { GroupCode, Voter } from '@/api/types';
 import { AppText, Button, GroupPicker, GroupTag, SegmentedControl, SnoBadge } from '@/design/components';
 import { colors, fonts, hairline, radius, spacing } from '@/design/tokens';
 import { isValidMobile } from '@/lib/phone';
+import { relText } from './rel';
 
 export interface VoterRowProps {
   voter: Voter;
@@ -44,8 +45,11 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, on
         <SnoBadge sno={v.sno} />
         <View style={s.texts}>
           <AppText variant="headline">{v.name}</AppText>
-          <AppText variant="callout" color={colors.textSecondary}>{`${v.relation} ${v.relative} · ${v.age}`}</AppText>
-          <AppText variant="callout" color={colors.textSecondary}>{`H.No ${v.house}, Ward ${v.ward}, ${v.village}`}</AppText>
+          <AppText variant="callout" color={colors.textSecondary}>{`${relText(t, v.relation)} ${v.relative} · ${v.age}`}</AppText>
+          <AppText variant="callout" color={colors.textSecondary}>{t('voters.addrLine', { house: v.house, ward: v.ward, village: v.village })}</AppText>
+          {v.isNew ? (
+            <View style={s.newTag}><AppText variant="caption" weight="semibold" color={colors.accent}>{t('voters.newTag')}</AppText></View>
+          ) : null}
         </View>
         <GroupTag code={v.group} label={groupLabel} />
       </Pressable>
@@ -138,4 +142,5 @@ const s = themed(() => StyleSheet.create({
   field: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, height: 44, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.fill },
   input: { flex: 1, fontSize: 17, fontFamily: fonts.regular, color: colors.text },
   actions: { flexDirection: 'row', gap: spacing.sm },
+  newTag: { alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.full, backgroundColor: colors.accentTint },
 }));

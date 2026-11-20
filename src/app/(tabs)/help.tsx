@@ -7,6 +7,7 @@ import { QueryState } from '@/features/common/QueryState';
 import { saveVoter, useVoters, type SaveHandle } from '@/features/data';
 import { helpList } from '@/features/poll/help';
 import { usePrefs } from '@/stores/prefs';
+import { relText } from '@/features/voters/rel';
 
 /** V-POLL-6: voters who need help to vote and have not voted, by house; Voted marks them with Undo. */
 export default function Help() {
@@ -36,7 +37,7 @@ export default function Help() {
                 <SnoBadge sno={v.sno} size={40} />
                 <View style={s.flex}>
                   <AppText variant="headline">{v.name}</AppText>
-                  <AppText variant="callout" color={colors.textSecondary}>{`${v.relation} ${v.relative} · ${v.age}${v.mobile ? ` · ${v.mobile}` : ''}`}</AppText>
+                  <AppText variant="callout" color={colors.textSecondary}>{`${relText(t, v.relation)} ${v.relative} · ${v.age}${v.mobile ? ` · ${v.mobile}` : ''}`}</AppText>
                 </View>
                 <Button kind="success" compact label={`✓ ${t('help.voted')}`} a11yLabel={t('help.votedA11y', { name: v.name })}
                   onPress={() => { handle.current = saveVoter(v, { votedAt: new Date().toISOString() }); setToast(t('help.marked', { name: v.name })); }} />

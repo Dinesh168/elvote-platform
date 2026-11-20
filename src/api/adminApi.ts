@@ -64,7 +64,15 @@ export const adminApi = {
   pollingAlerts: (mid: string) => http.get<{ items: PdAlert[]; unseen: number }>(`${m(mid)}/polling/alerts`),
   pollingSeen: (mid: string) => http.post(`${m(mid)}/polling/alerts/seen`),
   setBoothLocation: (mid: string, no: number, lat: number, lng: number) => http.put(`${m(mid)}/booths/${no}/location`, { lat, lng }),
+  /** spec bilingual-roll U6/U9 */
+  roll: (mid: string) => http.get<RollInfo>(`${m(mid)}/roll`),
 };
+
+export type RollKind = 'draft' | 'final' | 'supplement';
+export interface RollInfo {
+  kind: RollKind | null; publishedOn: string | null; appliedAt: string | null; notInRoll: number; newCount: number;
+  notInRollList: { epic: string; name: string; nameLocal: string | null; booth: number; sno: number }[];
+}
 
 export type PdStatus = 'checking' | 'at_booth' | 'away' | 'location_off' | 'no_booth_location' | 'not_reporting' | 'not_shared';
 export interface PdElection { id: string; name: string; kind: string; date: string; opensAt: string; closesAt: string }
@@ -91,7 +99,7 @@ export interface Customer {
   id: string; partyName: string; stateCode: string; acNo: number; acName: string;
   appName: string | null; logoUrl: string | null; colour: string | null; candidateName: string | null; candidatePhotoUrl: string | null;
   ballotNo: number | null; slogan: string | null; message: string | null; slipShareText: string | null;
-  features: Record<FeatureKey, boolean>; defaultLang: 'en' | 'pa' | null; languages: ('en' | 'pa')[];
+  features: Record<FeatureKey, boolean>; defaultLang: 'en' | 'hi' | 'pa' | null; languages: ('en' | 'hi' | 'pa')[];
   maxZones: number; zoneCount: number; maxVolunteers: number | null; maxAdmins: number | null;
   status: 'active' | 'paused' | 'closed'; validUntil: string | null; volunteers: number; admins: number; active: boolean;
   syncMode: 'live' | 'offline' | 'scheduled'; syncMinutes: number;
@@ -100,7 +108,7 @@ export interface Customer {
 export type CustomerPatch = Partial<Omit<Customer, 'id' | 'partyName' | 'stateCode' | 'acNo' | 'acName' | 'logoUrl' | 'candidatePhotoUrl' | 'zoneCount' | 'volunteers' | 'admins' | 'active' | 'features'>> & { features?: Partial<Record<FeatureKey, boolean>> };
 export type UserFilter = { q?: string; role?: 'all' | 'admin' | 'volunteer' | 'super'; status?: 'all' | 'active' | 'blocked'; customer?: string; offset?: number; limit?: number };
 export interface AdminUser {
-  id: string; name: string; mobile: string | null; status: 'active' | 'blocked'; blockedReason: string | null; isSuperAdmin: boolean;
+  id: string; name: string; mobile: string | null; email?: string | null; status: 'active' | 'blocked'; blockedReason: string | null; isSuperAdmin: boolean;
   memberships: { id: string; role: 'admin' | 'volunteer'; status: string; partyName: string; stateCode: string; acNo: number; acName: string; partyAcId: string; booths: number[] }[];
 }
 
@@ -108,25 +116,39 @@ export interface Overview {
   states: { code: string; name: string; nameLocal?: string; acs: number; booths: number; voters: number }[];
   partyAcs: { id: string; partyId: string; partyName: string; stateCode: string; acNo: number; acName: string; maxZones: number; zoneCount: number; status: string; admins: number; volunteers: number; pending: number; voters: number; met: number; voted: number }[];
 }
-export interface ImportJob { id: string; ac_no: number; ac_name?: string; file_name: string; status: string; rows_total: number; rows_ok: number; rows_failed: number; message: string | null; created_at: string; errors?: { row: number; error: string }[] }
+export interface RollSummary { unchanged: number; changed: number; moved: number; new: number; back: number; held: number; notInRoll: number }
+export interface HeldRow { rowNo: number; epic: string; name: string; otherAc: number; decision: 'move' | 'reject' | null }
+export interface ImportJob {
+  id: string; ac_no: number; ac_name?: string; file_name: string; status: string; rows_total: number; rows_ok: number; rows_failed: number; message: string | null;
+  created_at: string; errors?: { row: number; error: string }[]; roll_kind?: RollKind; published_on?: string | null;
+  /** spec bilingual-roll U3: what applying would change */
+  summary?: RollSummary | null;
+  lists?: { moved: { epic: string; name: string; from: number; to: number }[]; new: { epic: string; name: string; part: number }[]; notInRoll: { epic: string; name: string; part: number }[]; held: HeldRow[] } | null;
+}
 
 export const platformApi = {
   overview: () => http.get<Overview>('/v1/admin/overview'),
-  acs: (state: string) => http.get<{ acNo: number; name: string; booths: number; voters: number }[]>(`/v1/admin/acs?state=${state}`),
+  acs: (state: string) => http.get<{ acNo: number; name: string; nameLocal: string | null; regionalLang: 'hi' | 'pa'; booths: number; voters: number }[]>(`/v1/admin/acs?state=${state}`),
+  setAc: (state: string, ac: number, p: { regionalLang?: 'hi' | 'pa'; nameLocal?: string }) => http.patch(`/v1/admin/acs/${state}/${ac}`, p),
   parties: () => http.get<{ id: string; name: string; shortName: string | null; acs: number }[]>('/v1/admin/parties'),
   addParty: (name: string, shortName?: string) => http.post<{ id: string }>('/v1/admin/parties', { name, shortName: shortName || undefined }),
   addPartyAc: (partyId: string, stateCode: string, acNo: number, maxZones: number) => http.post<{ id: string }>('/v1/admin/party-acs', { partyId, stateCode, acNo, maxZones }),
   updatePartyAc: (id: string, p: { maxZones?: number; status?: string }) => http.patch(`/v1/admin/party-acs/${id}`, p),
   clearPartyAc: (id: string, passKey: string, confirmAcNo: number) => http.post<{ contacts: number; events: number; pollMarks: number }>(`/v1/admin/party-acs/${id}/clear`, { passKey, confirmAcNo }),
   admins: () => http.get<{ userId: string; name: string; mobile: string; partyName: string; stateCode: string; acNo: number; acName: string; partyAcId: string }[]>('/v1/admin/admins'),
-  addAdmin: (mobile: string, name: string, partyAcId: string) => http.post('/v1/admin/admins', { mobile, name, partyAcId }),
-  superAdmins: () => http.get<{ userId: string; name: string; mobile: string; since: string }[]>('/v1/admin/super-admins'),
-  addSuperAdmin: (mobile: string, name: string) => http.post('/v1/admin/super-admins', { mobile, name }),
+  /** spec accounts-access AC12: by Google / sign-in email (a mobile only in local test mode). */
+  addAdmin: (who: { email?: string; mobile?: string }, name: string, partyAcId: string) => http.post('/v1/admin/admins', { ...who, name, partyAcId }),
+  superAdmins: () => http.get<{ userId: string; name: string; mobile: string | null; email?: string | null; since: string }[]>('/v1/admin/super-admins'),
+  /** spec accounts-access AC12: by Google / sign-in email (a mobile only in local test mode). */
+  addSuperAdmin: (who: { email?: string; mobile?: string }, name: string) => http.post('/v1/admin/super-admins', { ...who, name }),
   removeSuperAdmin: (userId: string) => http.del(`/v1/admin/super-admins/${userId}`),
   imports: (state: string) => http.get<ImportJob[]>(`/v1/admin/imports?state=${state}`),
   importJob: (state: string, id: string) => http.get<ImportJob>(`/v1/admin/imports/${id}?state=${state}`),
   upload: (form: FormData) => http.form<{ jobId: string; stateCode: string }>('/v1/admin/imports', form),
   confirmImport: (state: string, id: string) => http.post(`/v1/admin/imports/${id}/confirm?state=${state}`),
+  cancelImport: (state: string, id: string) => http.post(`/v1/admin/imports/${id}/cancel?state=${state}`),
+  decideHeld: (state: string, id: string, body: { all: 'move' | 'reject' } | { decisions: { rowNo: number; decision: 'move' | 'reject' }[] }) =>
+    http.post<{ held: HeldRow[] }>(`/v1/admin/imports/${id}/held?state=${state}`, body),
   // Customer CMS, users, vote trace (spec customer-cms)
   customers: () => http.get<Customer[]>('/v1/admin/customers'),
   customer: (id: string) => http.get<Customer>(`/v1/admin/customers/${id}`),
@@ -148,6 +170,19 @@ export const platformApi = {
   boothLocations: (stateCode: string, acNo: number, rows: { no: number; lat: number; lng: number }[], dryRun: boolean) =>
     http.post<{ ok: number; saved: number; errors: { line: number; no: number; error: 'booth_unknown' | 'out_of_range' }[] }>('/v1/admin/booths/locations', { stateCode, acNo, rows, dryRun }),
   customerPolling: (id: string) => http.get<PollingPage>(`/v1/admin/customers/${id}/polling`),
+  // spec accounts-access AC7, AC8, AC10, AC4
+  accessRequests: (status: 'pending' | 'all' = 'pending') => http.get<AccessRequestRow[]>(`/v1/admin/access-requests${qs({ status })}`),
+  approveAccess: (id: string, p: { partyId?: string; newPartyName?: string; stateCode: string; wholeState?: boolean; acNos?: number[]; createMissing?: boolean }) =>
+    http.post<{ ok: boolean; partyId: string }>(`/v1/admin/access-requests/${id}/approve`, p),
+  rejectAccess: (id: string, reason: string) => http.post(`/v1/admin/access-requests/${id}/reject`, { reason }),
+  adminAccess: (userId: string) => http.get<AdminAccess>(`/v1/admin/users/${userId}/admin-access`),
+  addAdminAccess: (userId: string, p: { partyId: string; stateCode: string; wholeState?: boolean; acNos?: number[]; createMissing?: boolean }) =>
+    http.post<AdminAccess>(`/v1/admin/users/${userId}/admin-access`, p),
+  removeStateAccess: (userId: string, partyId: string, state: string) => http.del<AdminAccess>(`/v1/admin/users/${userId}/admin-access/state/${partyId}/${state}`),
+  volunteerRequests: (customerId: string) => http.get<VolunteerRequest[]>(`/v1/admin/customers/${customerId}/requests`),
+  approveVolunteer: (customerId: string, membershipId: string, booths: number[]) => http.post(`/v1/admin/customers/${customerId}/requests/${membershipId}/approve`, { booths }),
+  rejectVolunteer: (customerId: string, membershipId: string, reason: string) => http.post(`/v1/admin/customers/${customerId}/requests/${membershipId}/reject`, { reason }),
+  setUserMobile: (userId: string, mobile: string | null, reason: string) => http.patch(`/v1/admin/users/${userId}/mobile`, { mobile, reason }),
 };
 
 export const authApi = {
@@ -157,7 +192,34 @@ export const authApi = {
   deleteCode: () => http.post<{ sent: boolean; devCode?: string }>('/v1/me/delete/code'),
   deleteAccount: (code: string) => http.post<{ ok: boolean; dueAt: string }>('/v1/me/delete', { confirm: 'DELETE', code }),
   me: () => http.get<MeInfo>('/v1/me'),
+  firebase: (idToken: string) => http.open<{ accessToken: string; refreshToken: string; deletionCancelled?: boolean }>('/v1/auth/firebase', { idToken }),
   logout: (refreshToken: string) => http.open('/v1/auth/logout', { refreshToken }),
   checkCode: (code: string) => http.post<{ partyName: string; acNo: number; acName: string; booths: { no: number; name: string; village: string }[] }>('/v1/join/check', { code }),
   join: (code: string, name: string, booths: number[]) => http.post<{ status: string }>('/v1/join', { code, name, booths }),
+  /** spec accounts-access */
+  profile: (p: { name: string; mobile: string; lang?: string }) => http.patch<{ ok: boolean }>('/v1/me/profile', p),
+  accessRequest: (p: AccessRequestInput) => http.post<{ id: string }>('/v1/access-requests', p),
+  withdrawRequest: (id: string) => http.del(`/v1/access-requests/${id}`),
+  states: () => http.get<{ code: string; name: string; nameLocal?: string | null }[]>('/v1/catalog/states'),
+  acs: (state: string) => http.get<{ acNo: number; name: string; nameLocal?: string | null }[]>(`/v1/catalog/acs${qs({ state })}`),
+  parties: () => http.get<{ id: string; name: string }[]>('/v1/catalog/parties'),
+  overview: () => http.get<{ rows: OverviewRow[] }>('/v1/me/overview'),
+  deleteWithToken: (idToken: string) => http.post<{ ok: boolean; dueAt: string }>('/v1/me/delete', { confirm: 'DELETE', idToken }),
 };
+
+export interface AccessRequestInput {
+  partyId?: string; partyName: string; stateCode: string; wholeState?: boolean; acNos?: number[]; designation: string; note?: string;
+}
+export interface AccessRequestRow {
+  id: string; userId: string; name: string; mobile: string | null; email: string | null; partyId: string | null; partyName: string;
+  stateCode: string; wholeState: boolean; acNos: number[]; designation: string; note: string | null;
+  status: 'pending' | 'approved' | 'rejected' | 'withdrawn'; reason: string | null; createdAt: string; decidedAt: string | null;
+}
+export interface OverviewRow {
+  membershipId: string; partyName: string; stateCode: string; acNo: number; acName: string; volunteers: number; pending: number; contactedPct: number; active?: boolean;
+}
+export interface AdminAccess {
+  states: { partyId: string; partyName: string; stateCode: string; since: string }[];
+  assemblies: { membershipId: string; partyId: string; partyName: string; stateCode: string; acNo: number; acName: string; source: 'direct' | 'state' }[];
+}
+export interface VolunteerRequest { membershipId: string; userId: string; name: string; mobile: string | null; email: string | null; requestedAt: string; booths: number[] }

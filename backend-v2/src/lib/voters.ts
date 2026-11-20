@@ -4,10 +4,12 @@ export interface VoterRow {
   gender: string; house_no: string | null; section_no: number | null; section: string | null; epic: string; mobile: string | null;
   c_mobile: string | null; group_code: string | null; residence: string | null; needs_help: boolean | null;
   marked_at: Date | null; undone_at: Date | null; updated_at: Date | null;
+  name_local: string | null; relative_name_local: string | null; section_local: string | null; is_new: boolean;
 }
 
 export const VOTER_SELECT = `
   SELECT v.id, v.part_no, v.sno, v.name, v.relation, v.relative_name, v.age, v.gender, v.house_no, v.section_no, v.section,
+         v.name_local, v.relative_name_local, v.section_local, v.is_new,
          v.epic, v.mobile, c.mobile AS c_mobile, c.group_code, c.residence, c.needs_help,
          pm.marked_at, pm.undone_at, GREATEST(c.updated_at, pm.marked_at, pm.undone_at) AS updated_at
     FROM voters v
@@ -23,6 +25,11 @@ export function toVoter(r: VoterRow) {
     booth: r.part_no,
     sno: r.sno,
     name: r.name,
+    // spec bilingual-roll L3: the app picks the language; English is always present
+    ...(r.name_local ? { nameLocal: r.name_local } : {}),
+    ...(r.relative_name_local ? { relativeLocal: r.relative_name_local } : {}),
+    ...(r.section_local ? { villageLocal: r.section_local } : {}),
+    isNew: r.is_new,
     relation: rel(r.relation, r.gender),
     relative: r.relative_name ?? '',
     age: r.age ?? 0,

@@ -20,6 +20,7 @@ const ICONS: Record<string, [string, string]> = {
 export default function TabsLayout() {
   const { t, i18n } = useTranslation();
   const pa = i18n.language === 'pa';
+  const hi = i18n.language === 'hi';
   const guard = useGuard('volunteer');
   const wide = useWide();
   const m = useActiveMembership();
@@ -43,7 +44,7 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: { fontFamily: pa ? fonts.paSemibold : fonts.medium, fontSize: 12 },
+        tabBarLabelStyle: { fontFamily: pa ? fonts.paSemibold : hi ? fonts.hiSemibold : fonts.medium, fontSize: 12 },
         tabBarStyle: {
           backgroundColor: Platform.OS === 'web' ? colors.tabBar : colors.surface,
           borderTopWidth: hairline,
