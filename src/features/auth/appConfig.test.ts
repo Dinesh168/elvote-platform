@@ -33,5 +33,6 @@ describe('app.config', () => {
     const names = (c.plugins ?? []).map((p) => (Array.isArray(p) ? p[0] : p));
     expect(names).toEqual(expect.arrayContaining(['@react-native-firebase/app', '@react-native-firebase/auth', '@react-native-google-signin/google-signin']));
     expect((c.extra as { eas: { projectId: string } }).eas.projectId).toBe('demo-project-id');
+    expect(c.updates?.url).toBe('https://u.expo.dev/demo-project-id');
   });
 });

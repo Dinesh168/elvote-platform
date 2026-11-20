@@ -7,6 +7,9 @@ import type { Auth, User } from 'firebase/auth';
 
 export const firebaseOn = () => process.env.EXPO_PUBLIC_AUTH_MODE === 'firebase';
 
+/** The website always offers Google (the phone version hides it in Expo Go). */
+export const googleAvailable = () => true;
+
 const cfg = () => ({
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,

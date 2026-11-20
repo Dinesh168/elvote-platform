@@ -35,6 +35,16 @@ if (Platform.OS === 'web' && typeof document !== 'undefined' && !document.getEle
     `body { -webkit-tap-highlight-color: transparent; }`,
   ].join('\n');
   document.head.appendChild(el);
+  // Brand icons + web app manifest (logo kit): installable website, home-screen icon, browser theme colour.
+  const head = (tag: string, attrs: Record<string, string>) => {
+    const n = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v);
+    document.head.appendChild(n);
+  };
+  head('link', { rel: 'manifest', href: '/site.webmanifest' });
+  head('link', { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' });
+  head('link', { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' });
+  head('meta', { name: 'theme-color', content: colors.accent });
 }
 
 export default function RootLayout() {

@@ -19,9 +19,9 @@ describe('customer theme', () => {
     expect(g).toBeGreaterThan(b);
   });
 
-  it('falls back to the ElVote indigo for empty or bad input', () => {
-    expect(accentFrom(null)).toBe('#4F46E5');
-    expect(accentFrom('green')).toBe('#4F46E5');
+  it('falls back to the ElVote brand blue for empty or bad input', () => {
+    expect(accentFrom(null)).toBe('#184BA1');
+    expect(accentFrom('green')).toBe('#184BA1');
   });
 
   it('applyBrand updates tokens and rebuilds themed style sheets', () => {
@@ -33,7 +33,7 @@ describe('customer theme', () => {
     applyBrand('#0e7490'); // same colour → no change
     expect(useThemeVersion.getState().v).toBe(v);
     applyBrand(null);
-    expect(colors.accent).toBe('#4F46E5');
-    expect(s.chip.backgroundColor).toBe('#4F46E5');
+    expect(colors.accent).toBe('#184BA1');
+    expect(s.chip.backgroundColor).toBe('#184BA1');
   });
 });

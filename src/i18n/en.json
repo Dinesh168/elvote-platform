@@ -266,7 +266,8 @@
     "weakPassword": "Choose a stronger password (at least 8 characters).",
     "badEmail": "Enter a valid email address.",
     "otherMethod": "This email signs in another way. Try Continue with Google.",
-    "popupBlocked": "Your browser blocked the Google window. Allow pop-ups and try again."
+    "popupBlocked": "Your browser blocked the Google window. Allow pop-ups and try again.",
+    "subtitleEmail": "Sign in with your email and password."
   },
   "admin": {
     "tabs": {

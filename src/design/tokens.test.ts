@@ -11,7 +11,7 @@ describe('tokens (TC-O5-2)', () => {
 
   it('has the iOS-style base colours', () => {
     expect(colors.bg).toBe('#F2F2F7');
-    expect(colors.accent).toBe('#4F46E5');
+    expect(colors.accent).toBe('#184BA1');
     expect(colors.textSecondary).toBe('#6C6C70');
   });
 });

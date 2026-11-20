@@ -9,7 +9,7 @@ import { AuthScreen } from '@/features/shell/AuthScreen';
 import { colors, radius, spacing } from '@/design/tokens';
 import { authMessage, isCancelled } from '@/features/auth/errors';
 import {
-  emailCreate, emailSignIn, firebaseOn, googleSignIn, redirectToken, resendVerification, resetPassword, verifiedToken,
+  emailCreate, emailSignIn, firebaseOn, googleAvailable, googleSignIn, redirectToken, resendVerification, resetPassword, verifiedToken,
 } from '@/features/auth/firebaseAuth';
 import { goLanding } from '@/features/session/session';
 import { isValidMobile } from '@/lib/phone';
@@ -111,9 +111,9 @@ function FirebaseLogin() {
   const isForgot = mode === 'forgot';
   return (
     <AuthScreen>
-      <LargeTitle title={isCreate ? t('auth.createTitle') : isForgot ? t('auth.forgotTitle') : t('auth.title')} subtitle={isForgot ? t('auth.forgotSubtitle') : t('auth.subtitleGoogle')} />
+      <LargeTitle title={isCreate ? t('auth.createTitle') : isForgot ? t('auth.forgotTitle') : t('auth.title')} subtitle={isForgot ? t('auth.forgotSubtitle') : googleAvailable() ? t('auth.subtitleGoogle') : t('auth.subtitleEmail')} />
       <View style={s.body}>
-        {!isForgot ? (
+        {!isForgot && googleAvailable() ? (
           <>
             <Button block kind="tinted" label={t('auth.google')} icon={<Icon name="logo-google" size={20} color={colors.accent} />} disabled={busy} onPress={() => void google()} />
             <View style={s.orRow}>

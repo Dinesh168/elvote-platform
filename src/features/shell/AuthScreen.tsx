@@ -1,10 +1,13 @@
 import type { ReactNode } from 'react';
 import { themed } from '@/design/theme';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { AppText, BackLink, Icon, LangPill, Screen } from '@/design/components';
 import { useLayout } from '@/design/layout';
 import { colors, radius, spacing, web } from '@/design/tokens';
+
+const MARK = require('../../../assets/brand/mark.png');
+
 
 /** W5: sign-in frame. Phone: the normal screen. Web desktop: brand panel + centred form card. */
 export function AuthScreen({ children, back }: { children: ReactNode; back?: string }) {
@@ -16,7 +19,7 @@ export function AuthScreen({ children, back }: { children: ReactNode; back?: str
       {layout === 'desktop' ? (
         <View style={s.brand}>
           <View style={s.logoRow}>
-            <View style={s.logo}><AppText variant="title2" color={colors.accent}>E</AppText></View>
+            <View style={s.logo}><Image source={MARK} style={s.mark} accessibilityLabel="ElVote" /></View>
             <AppText variant="title2" color={colors.textOnAccent}>ElVote</AppText>
           </View>
           <View style={s.pitch}>
@@ -46,7 +49,8 @@ const s = themed(() => StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: colors.bg },
   brand: { width: '42%', maxWidth: 560, backgroundColor: colors.accent, padding: 48, justifyContent: 'space-between' },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  logo: { width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  mark: { width: 36, height: 36 },
   pitch: { gap: spacing.lg, maxWidth: 420 },
   title: { fontSize: 36, lineHeight: 44, marginBottom: spacing.sm },
   point: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },

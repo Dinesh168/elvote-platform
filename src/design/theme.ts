@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { chart, colors, web } from './tokens';
 
-const DEFAULT = { accent: '#4F46E5' } as const;
+const DEFAULT = { accent: '#184BA1' } as const; // ElVote brand blue
 
 type RGB = [number, number, number];
 const hex = (h: string): RGB => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)) as RGB;

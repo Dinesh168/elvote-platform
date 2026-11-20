@@ -15,10 +15,10 @@ export const colors = {
   fill: 'rgba(118,118,128,0.12)',
   pressed: '#E5E5EA',
   chevron: '#C4C4C7',
-  accent: '#4F46E5',
-  accentTint: 'rgba(79,70,229,0.10)',
-  accentSoft: '#EEF0FF',
-  accentStrong: '#3730A3',
+  accent: '#184BA1', // ElVote brand blue (logo kit)
+  accentTint: 'rgba(24,75,161,0.10)',
+  accentSoft: '#E8EDF6',
+  accentStrong: '#113571',
   success: '#1B7F3B',
   /** Green text on successTint (chips): 5.7:1 on the tint over the page background. */
   successText: '#14662F',
@@ -68,10 +68,10 @@ export const chart = {
   target: '#CA8A04',
   opp: '#D70015',
   none: '#D1D1D6',
-  series: '#4F46E5',
+  series: '#184BA1',
   track: '#EEEEF3',
   /** Sequential steps (one hue, light → dark) for magnitude, e.g. % contacted on the map. */
-  seq: ['#C7C4F7', '#8C85EE', '#4F46E5'],
+  seq: ['#BAC9E3', '#7493C7', '#184BA1'],
 } as const;
 
 /** Quick party-colour choices for the super-admin (any #RRGGBB can also be typed). */
@@ -127,8 +127,8 @@ export const web = {
   border: '#E3E3E8',
   hover: '#F5F5F9',
   sidebarBg: '#FBFBFD',
-  navActive: 'rgba(79,70,229,0.10)',
-  focus: '#4F46E5',
+  navActive: 'rgba(24,75,161,0.10)',
+  focus: '#184BA1',
   buttonHover: '#4338CA',
 } as const;
 

@@ -111,3 +111,21 @@ npx expo export --platform web
 | EAS project id | `app.json` | No |
 | DB credentials, JWT secret | server `backend/.env` (template: `backend/example.env`) | **Yes.** Server only |
 | Firebase Admin key | server `backend/serviceAccountKey.json` | **Yes.** Server only |
+
+## ElVote v2 demo — demo.champn.in (deployed 2026-11-20)
+
+Separate from the live app on the same droplet (spec `docs/specs/live-demo.md` D8). Nothing of the live app (`elvote` DB, pm2 `elvote` / `elvote-max`, their nginx sites) was changed. A dump of `elvote` taken before the set-up is in `/root/backups/` (mode 600).
+
+| Part | Where |
+|---|---|
+| Website (static) | `/var/www/elvote-v2-demo` ← `scripts/build-demo-web.sh` (uses local `.env.demo`, not in git) |
+| API | `/opt/elvote-v2-demo/api` (backend-v2 without tests), pm2 **`elvote-v2-demo`**, `127.0.0.1:4100`, `max_memory_restart 300M` |
+| Settings / secrets | `/opt/elvote-v2-demo/api/.env` (mode 600, generated on the server: DB passwords, JWT, clear key, VAPID keys). `NODE_ENV=production`, `AUTH_MODE=firebase`, `FIREBASE_PROJECT_ID=elvote-max`, `DB_PREFIX=demo_` |
+| Databases | `demo_elvote_core`, `demo_elvote_pb`, `demo_elvote_hr` on the existing PostgreSQL 16; roles `elvote_v2_owner` (CREATEDB, CREATEROLE, not superuser; migrations/seed) and `elvote_v2_api` (app) |
+| nginx | `/etc/nginx/sites-available/demo.champn.in` (`/` → website, `/api/` → `127.0.0.1:4100/`), Let's Encrypt via certbot |
+| Data | made-up sample data (`npx tsx scripts/seed.ts --demo`, no logins); super-admin: `npm run admin:super -- --email <owner email>` |
+| Phone apps | Expo project `@dinesh1255/elvote-max` (`cf30fc3e-caf9-4362-9cf6-9ff710cb5afb`): Android APK = `eas build -p android --profile demo`; iPhone in Expo Go = `eas update --channel demo --environment preview` (runtime `exposdk:54.0.0`). Public Firebase values and `google-services.json` are EAS environment variables (`preview`) |
+
+Update the API: upload `backend-v2` (no `node_modules`, `test`, `.env`) to `/opt/elvote-v2-demo/api`, `npm ci`, `npm run db:migrate`, `pm2 restart elvote-v2-demo`.
+Update the website: `bash scripts/build-demo-web.sh`, copy `dist-demo/` to `/var/www/elvote-v2-demo` (no nginx reload needed).
+Remove the demo: `pm2 delete elvote-v2-demo && pm2 save`; remove the nginx site link + `systemctl reload nginx`; `certbot delete --cert-name demo.champn.in`; drop the `demo_elvote_*` databases and the `elvote_v2_*` roles; delete `/opt/elvote-v2-demo` and `/var/www/elvote-v2-demo`.

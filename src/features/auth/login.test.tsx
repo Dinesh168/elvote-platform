@@ -10,6 +10,7 @@ const mockReset = jest.fn(async () => undefined);
 let mockOn = true;
 jest.mock('./firebaseAuth', () => ({
   firebaseOn: () => mockOn,
+  googleAvailable: () => true,
   googleSignIn: () => mockGoogle(),
   redirectToken: async () => null,
   emailSignIn: (e: string, p: string) => mockEmailSignIn(e, p),

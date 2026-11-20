@@ -16,8 +16,8 @@ Status: ⬜ not run · ✅ pass · ❌ fail. api = vitest; unit = Jest; ui = pup
 | TC-LD-SEC-1 | security | api | `/v1/auth/firebase` with a token for another project / forged | 401 `firebase_invalid` (existing test kept green) | ⬜ |
 | TC-LD-D5-1 | D5 | unit | `app.config.ts` with and without `APP_VARIANT=demo` | demo: package `in.champn.elvote.demo`, googleServicesFile, plugins; default: unchanged from app.json | ✅ |
 | TC-LD-UI-1 | D1 | ui | Local web build in firebase mode on localhost with a Firebase **test number** | code sent (no real SMS), verify signs in, lands on the right home; axe clean | ⬜ |
-| TC-LD-SRV-1 | D8 | manual | After deploy: `pm2 ls`, `curl` live app health, `curl https://demo.champn.in/api/health` | live app processes unchanged (same pids/uptime), demo healthy | ⬜ |
-| TC-LD-SRV-2 | D8/D6 | manual | From outside: port 4100 | not reachable | ⬜ |
+| TC-LD-SRV-1 | D8 | manual | After deploy: `pm2 ls`, `curl` live app health, `curl https://demo.champn.in/api/health` | live app processes unchanged (same pids/uptime), demo healthy | ✅ |
+| TC-LD-SRV-2 | D8/D6 | manual | From outside: port 4100 | not reachable | ✅ |
 | TC-LD-E2E-1 | D1 | manual | Owner signs in on demo.champn.in with a real SMS (super-admin) | platform screens; sample customers visible | ⬜ |
 | TC-LD-E2E-2 | D2/D9 | manual | Install APK; sign in with real SMS | signed in; volunteer/admin flows work | ⬜ |
 | TC-LD-E2E-3 | D10 | manual | iPhone Safari on demo.champn.in | sign-in works; screens usable | ⬜ |

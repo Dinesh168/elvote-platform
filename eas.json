@@ -23,8 +23,10 @@
       "env": {
         "APP_VARIANT": "demo",
         "EXPO_PUBLIC_API_URL": "https://demo.champn.in/api",
-        "EXPO_PUBLIC_AUTH_MODE": "firebase"
-      }
+        "EXPO_PUBLIC_AUTH_MODE": "firebase",
+        "EAS_PROJECT_ID": "cf30fc3e-caf9-4362-9cf6-9ff710cb5afb"
+      },
+      "channel": "demo"
     }
   },
   "submit": {

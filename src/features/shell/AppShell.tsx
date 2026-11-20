@@ -13,6 +13,8 @@ import { initI18n, LANG_LABEL, LANG_MARK, LANGS, type Lang } from '@/i18n';
 import { usePrefs } from '@/stores/prefs';
 import { useActiveMembership, useSession, type Mode } from '@/stores/session';
 
+const MARK = require('../../../assets/brand/mark.png'); // ElVote mark when the customer has no logo
+
 export interface NavItem {
   path: string;
   label: string;
@@ -62,7 +64,7 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
             {logo ? (
               <Image source={{ uri: logo }} style={s.logoImg} accessibilityLabel={brandName} />
             ) : (
-              <View style={[s.logo, { backgroundColor: colors.accent }]}><AppText variant="headline" weight="bold" color={colors.textOnAccent}>{brandName.slice(0, 1)}</AppText></View>
+              <Image source={MARK} style={s.logoImg} accessibilityLabel={brandName} />
             )}
             {!rail ? <AppText variant="title2" numberOfLines={1} style={s.flex}>{brandName}</AppText> : null}
           </View>
