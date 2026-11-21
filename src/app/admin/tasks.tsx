@@ -67,8 +67,8 @@ function NewDrive({ mid, onDone }: { mid: string; onDone: () => void }) {
   const zonesQ = useQuery({ queryKey: ['zones', mid], queryFn: () => adminApi.zones(mid) });
   const [kind, setKind] = useState<(typeof KINDS)[number]>('women');
   const [custom, setCustom] = useState('');
-  const [start, setStart] = useState(iso(new Date()));
-  const [end, setEnd] = useState(iso(new Date(Date.now() + 14 * 86_400_000)));
+  const [start, setStart] = useState(() => iso(new Date()));
+  const [end, setEnd] = useState(() => iso(new Date(Date.now() + 14 * 86_400_000)));
   const [scope, setScope] = useState<'all' | 'zones'>('all');
   const [zones, setZones] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);

@@ -43,12 +43,6 @@ function FirebaseLogin() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Back from Google after a redirect sign-in (pop-ups blocked).
-  useEffect(() => {
-    void redirectToken().then((tok) => { if (tok) void run(() => finish(tok, t)); });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const run = async (fn: () => Promise<void>) => {
     setBusy(true);
     setError(null);
@@ -63,6 +57,12 @@ function FirebaseLogin() {
       setBusy(false);
     }
   };
+
+  // Back from Google after a redirect sign-in (pop-ups blocked).
+  useEffect(() => {
+    void redirectToken().then((tok) => { if (tok) void run(() => finish(tok, t)); });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const go = (m: typeof mode) => { setMode(m); setError(null); setInfo(null); setPassword(''); };
 

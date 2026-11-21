@@ -37,6 +37,7 @@ export default function CustomerPage() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- the edit form starts from the loaded customer (and reloads after a save)
   useEffect(() => { if (q.data) setD(q.data); }, [q.data]);
 
   const patch = useMemo<CustomerPatch>(() => {

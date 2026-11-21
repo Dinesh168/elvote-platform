@@ -97,12 +97,6 @@ function Decide({ req, onClose, onDone }: { req: AccessRequestRow; onClose: () =
     }
   };
 
-  const Chip = ({ label, on, onPress, role = 'radio' }: { label: string; on: boolean; onPress: () => void; role?: 'radio' | 'checkbox' }) => (
-    <Pressable accessibilityRole={role} accessibilityLabel={label} accessibilityState={{ checked: on }} aria-checked={on} onPress={onPress} style={[s.chip, on && s.chipOn]}>
-      <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${label}`}</AppText>
-    </Pressable>
-  );
-
   return (
     <Sheet visible title={req.name} onClose={onClose}>
       <View style={s.sheet}>
@@ -150,6 +144,14 @@ function Decide({ req, onClose, onDone }: { req: AccessRequestRow; onClose: () =
         )}
       </View>
     </Sheet>
+  );
+}
+
+function Chip({ label, on, onPress, role = 'radio' }: { label: string; on: boolean; onPress: () => void; role?: 'radio' | 'checkbox' }) {
+  return (
+    <Pressable accessibilityRole={role} accessibilityLabel={label} accessibilityState={{ checked: on }} aria-checked={on} onPress={onPress} style={[s.chip, on && s.chipOn]}>
+      <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${label}`}</AppText>
+    </Pressable>
   );
 }
 

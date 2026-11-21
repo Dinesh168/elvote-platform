@@ -23,7 +23,9 @@ export function useSyncStatus(): { label: string; tone: Tone; pending: number; p
   if (cfg.mode === 'offline') return { label: pending ? t('sync.offlineMode', { count: pending }) : t('sync.offlineModeEmpty'), tone: pending ? 'wait' : 'ok', pending, problems, cfg };
   if (pending && !online) return { label: t('sync.offline', { count: pending }), tone: 'wait', pending, problems, cfg };
   if (pending && cfg.mode === 'scheduled') {
+    // eslint-disable-next-line react-hooks/purity -- countdown: re-rendered every sync tick, reads the clock on purpose
     const at = nextSyncAt(cfg, lastTryAt ?? lastSyncedAt) ?? Date.now();
+    // eslint-disable-next-line react-hooks/purity -- countdown: re-rendered every sync tick, reads the clock on purpose
     const min = Math.max(0, Math.ceil((at - Date.now()) / 60_000));
     return { label: min > 0 ? t('sync.nextIn', { count: min, n: pending }) : t('sync.saving'), tone: 'wait', pending, problems, cfg };
   }

@@ -5,6 +5,7 @@ import { Icon } from '@/design/components';
 import { colors, fonts, hairline } from '@/design/tokens';
 import { useWide } from '@/design/layout';
 import { useGuard } from '@/features/session/Guard';
+import { NO_TAB_BUTTON } from '@/features/shell/tabs';
 import { useSyncEngine } from '@/features/sync/engine';
 import { useActiveMembership, useSession } from '@/stores/session';
 import { AppShell, type NavItem } from '@/features/shell/AppShell';
@@ -77,13 +78,13 @@ export default function AdminLayout() {
       <Tabs.Screen name="team" options={{ title: t('admin.tabs.team') }} />
       <Tabs.Screen name="tasks" options={{ title: t('admin.tabs.tasks'), href: f.tasks ? undefined : null }} />
       <Tabs.Screen name="more" options={{ title: t('admin.tabs.more') }} />
-      <Tabs.Screen name="booth" options={{ href: null }} />
-      <Tabs.Screen name="poll" options={{ href: null }} />
-      <Tabs.Screen name="zones" options={{ href: null }} />
-      <Tabs.Screen name="trace" options={{ href: null }} />
-      <Tabs.Screen name="polling" options={{ href: null }} />
-      <Tabs.Screen name="roll" options={{ href: null }} />
-      <Tabs.Screen name="overview" options={{ href: null }} />
+      <Tabs.Screen name="booth" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="poll" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="zones" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="trace" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="polling" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="roll" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="overview" options={NO_TAB_BUTTON} />
     </Tabs>
   );
   // Phones: a "polling day is live" strip above every admin screen (opens the polling-day page).

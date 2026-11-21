@@ -10,16 +10,6 @@ import { AuthScreen } from '@/features/shell/AuthScreen';
 /** Choose role (spec accounts-access AC5): Volunteer (team code) or Admin (request to the super-admin). */
 export default function Register() {
   const { t } = useTranslation();
-  const Choice = ({ icon, title, body, to }: { icon: 'people' | 'briefcase'; title: string; body: string; to: string }) => (
-    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${body}`} onPress={() => router.replace(to as never)} style={({ pressed }) => [s.card, pressed && s.pressed]}>
-      <View style={s.iconBox}><Icon name={icon} size={28} color={colors.accent} /></View>
-      <View style={s.text}>
-        <AppText variant="headline">{title}</AppText>
-        <AppText variant="callout" color={colors.textSecondary}>{body}</AppText>
-      </View>
-      <Icon name="chevron-forward" size={20} color={colors.textTertiary} />
-    </Pressable>
-  );
   return (
     <AuthScreen>
       <LargeTitle title={t('register.title')} subtitle={t('register.subtitle')} />
@@ -29,6 +19,19 @@ export default function Register() {
         <Button kind="plain" label={t('auth.logout')} onPress={() => void logout()} />
       </View>
     </AuthScreen>
+  );
+}
+
+function Choice({ icon, title, body, to }: { icon: 'people' | 'briefcase'; title: string; body: string; to: string }) {
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${body}`} onPress={() => router.replace(to as never)} style={({ pressed }) => [s.card, pressed && s.pressed]}>
+      <View style={s.iconBox}><Icon name={icon} size={28} color={colors.accent} /></View>
+      <View style={s.text}>
+        <AppText variant="headline">{title}</AppText>
+        <AppText variant="callout" color={colors.textSecondary}>{body}</AppText>
+      </View>
+      <Icon name="chevron-forward" size={20} color={colors.textTertiary} />
+    </Pressable>
   );
 }
 

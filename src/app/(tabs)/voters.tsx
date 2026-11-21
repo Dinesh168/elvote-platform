@@ -43,6 +43,7 @@ export default function VotersScreen() {
 
   // Apply navigation params from Home / stats (each navigation sets a fresh filter).
   const paramKey = JSON.stringify(params);
+  /* eslint-disable react-hooks/set-state-in-effect -- a navigation (new params) resets the filters on purpose */
   useEffect(() => {
     setChip(CHIPS.includes(params.chip as Chip) ? (params.chip as Chip) : 'all');
     setPreset(isPreset(params.preset) ? params.preset : null);
@@ -52,6 +53,7 @@ export default function VotersScreen() {
     if (params.open) setOpenId(params.open);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paramKey]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const task: Task | null = useMemo(() => tasks?.find((x) => x.id === taskId) ?? null, [tasks, taskId]);
 
@@ -75,7 +77,7 @@ export default function VotersScreen() {
   }, [ordered, view, house, t]);
 
   const itemCount = useRef(0);
-  itemCount.current = items.length;
+  useEffect(() => { itemCount.current = items.length; }, [items.length]);
   const scrollTo = useCallback(
     (id: string | null) => {
       if (!id) return;
@@ -154,6 +156,7 @@ export default function VotersScreen() {
     // Booth changed: reset and open the first voter to meet.
     if (!votersQ.data) return;
     if (params.open && votersQ.data.some((v) => v.id === params.open)) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- booth changed: reset the list and open the next voter
     setHouse(null);
     setOpenId(nextVoter(votersQ.data, booth, task)?.id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps

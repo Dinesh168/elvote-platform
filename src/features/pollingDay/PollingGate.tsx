@@ -42,6 +42,7 @@ export function PollingGate({ children }: { children: ReactNode }) {
 
   // Permission: on start, whenever the app comes back to the front, and every 30 s (it can be switched off any time).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- polling day ended: clear the permission state and stop tracking
     if (!active) { setPerm(null); void stopTracking(); return; }
     let live = true;
     const check = () => void checkPermission().then((p) => live && setPerm(p));

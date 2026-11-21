@@ -5,6 +5,7 @@ import { Icon } from '@/design/components';
 import { colors, fonts, hairline } from '@/design/tokens';
 import { useWide } from '@/design/layout';
 import { useGuard } from '@/features/session/Guard';
+import { NO_TAB_BUTTON } from '@/features/shell/tabs';
 import { useSyncEngine } from '@/features/sync/engine';
 import { useActiveMembership } from '@/stores/session';
 import { AppShell, type NavItem } from '@/features/shell/AppShell';
@@ -61,11 +62,11 @@ export default function TabsLayout() {
       <Tabs.Screen name="voters" options={{ title: t('tabs.voters') }} />
       <Tabs.Screen name="poll" options={{ title: t('tabs.poll'), href: on('poll') ? undefined : null }} />
       <Tabs.Screen name="me" options={{ title: t('tabs.me') }} />
-      <Tabs.Screen name="stats/[kind]" options={{ href: null }} />
-      <Tabs.Screen name="tasks" options={{ href: null }} />
-      <Tabs.Screen name="surnames" options={{ href: null }} />
-      <Tabs.Screen name="slip" options={{ href: null }} />
-      <Tabs.Screen name="help" options={{ href: null }} />
+      <Tabs.Screen name="stats/[kind]" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="tasks" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="surnames" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="slip" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="help" options={NO_TAB_BUTTON} />
     </Tabs>
   );
   // Polling day (spec polling-day V1/V3): location required inside the window; away banner on every screen.

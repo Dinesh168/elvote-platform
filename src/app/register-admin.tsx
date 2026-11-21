@@ -49,12 +49,6 @@ export default function RegisterAdmin() {
     }
   };
 
-  const Radio = ({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) => (
-    <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: on }} aria-checked={on} onPress={onPress} style={[s.chip, on && s.chipOn]}>
-      <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${label}`}</AppText>
-    </Pressable>
-  );
-
   return (
     <AuthScreen>
       <LargeTitle title={t('registerAdmin.title')} subtitle={t('registerAdmin.subtitle')} />
@@ -102,6 +96,14 @@ export default function RegisterAdmin() {
         <Button kind="plain" label={t('registerAdmin.back')} onPress={() => router.replace('/register')} />
       </View>
     </AuthScreen>
+  );
+}
+
+function Radio({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
+  return (
+    <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: on }} aria-checked={on} onPress={onPress} style={[s.chip, on && s.chipOn]}>
+      <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${label}`}</AppText>
+    </Pressable>
   );
 }
 

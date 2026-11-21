@@ -25,6 +25,7 @@ export default function Index() {
 
   useEffect(() => {
     if (API_MODE === 'mock' || !loaded || !refresh) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear the previous error before a new sign-in attempt
     setError(null);
     goLanding(typeof next === 'string' ? next : undefined).catch((e: unknown) => setError(e instanceof ApiError && e.code === 'network' ? t('auth.network') : (e as Error).message));
   }, [loaded, refresh, attempt, t, next]);

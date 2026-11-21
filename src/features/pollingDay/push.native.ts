@@ -27,6 +27,7 @@ export async function registerPush(_ask = true): Promise<PushState> {
     if (perm.status !== 'granted' && perm.canAskAgain) perm = await Notifications.requestPermissionsAsync();
     if (perm.status !== 'granted') return 'denied';
     if (Platform.OS === 'android') {
+      // eslint-disable-next-line import/namespace -- AndroidImportance is re-exported with `export *`; the TypeScript check confirms it
       await Notifications.setNotificationChannelAsync('alerts', { name: 'Alerts', importance: Notifications.AndroidImportance.HIGH });
     }
     const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });

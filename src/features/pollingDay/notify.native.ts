@@ -9,6 +9,7 @@ Notifications.setNotificationHandler({
 
 export async function ensureChannel() {
   if (Platform.OS === 'android') {
+    // eslint-disable-next-line import/namespace -- AndroidImportance is re-exported with `export *`; the TypeScript check confirms it
     await Notifications.setNotificationChannelAsync('alerts', { name: i18n.t('pd.channel'), importance: Notifications.AndroidImportance.HIGH }).catch(() => undefined);
   }
 }
