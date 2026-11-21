@@ -85,6 +85,7 @@ export default function AdminLayout() {
       <Tabs.Screen name="polling" options={NO_TAB_BUTTON} />
       <Tabs.Screen name="roll" options={NO_TAB_BUTTON} />
       <Tabs.Screen name="overview" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="banner" options={NO_TAB_BUTTON} />
     </Tabs>
   );
   // Phones: a "polling day is live" strip above every admin screen (opens the polling-day page).

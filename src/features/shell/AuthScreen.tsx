@@ -2,7 +2,8 @@ import type { ReactNode } from 'react';
 import { themed } from '@/design/theme';
 import { Image, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { AppText, BackLink, Icon, LangPill, Screen } from '@/design/components';
+import { AppText, BackLink, Icon, Screen } from '@/design/components';
+import { BrandHeader } from './Brand';
 import { useLayout } from '@/design/layout';
 import { colors, radius, spacing, web } from '@/design/tokens';
 
@@ -13,7 +14,8 @@ const MARK = require('../../../assets/brand/mark.png');
 export function AuthScreen({ children, back }: { children: ReactNode; back?: string }) {
   const { t } = useTranslation();
   const layout = useLayout();
-  if (layout === 'phone') return <Screen back={back} trailing={<LangPill />}>{children}</Screen>;
+  // spec onboarding-branding OB4/OB5: ElVote branding at the top, no language button (chosen at first launch).
+  if (layout === 'phone') return <Screen back={back}><BrandHeader />{children}</Screen>;
   return (
     <View style={s.root}>
       {layout === 'desktop' ? (
@@ -35,7 +37,6 @@ export function AuthScreen({ children, back }: { children: ReactNode; back?: str
         </View>
       ) : null}
       <ScrollView style={s.flex} contentContainerStyle={s.formWrap}>
-        <View style={s.lang}><LangPill /></View>
         <View style={s.card}>
           {back ? <View style={s.back}><BackLink label={back} /></View> : null}
           {children}
@@ -57,6 +58,5 @@ const s = themed(() => StyleSheet.create({
   flex: { flex: 1 },
   formWrap: { flexGrow: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xxxl },
   back: { paddingHorizontal: spacing.sm },
-  lang: { position: 'absolute', top: spacing.xl, right: spacing.xl },
   card: { width: '100%', maxWidth: 440, backgroundColor: colors.surface, borderRadius: radius.lg + 4, borderWidth: 1, borderColor: web.border, paddingVertical: spacing.lg, overflow: 'hidden' },
 }));

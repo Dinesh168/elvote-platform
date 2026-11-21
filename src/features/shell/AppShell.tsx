@@ -7,10 +7,8 @@ import { AppText, ChoiceRow, Icon, Sheet } from '@/design/components';
 import { useLayout } from '@/design/layout';
 import { ShellContext } from '@/design/shellContext';
 import { colors, radius, spacing, web } from '@/design/tokens';
-import { fileUrl, useAllowedLangs } from '@/features/session/customer';
+import { fileUrl } from '@/features/session/customer';
 import { activate, logout, rolesOf } from '@/features/session/session';
-import { initI18n, LANG_LABEL, LANG_MARK, LANGS, type Lang } from '@/i18n';
-import { usePrefs } from '@/stores/prefs';
 import { useActiveMembership, useSession, type Mode } from '@/stores/session';
 
 const MARK = require('../../../assets/brand/mark.png'); // ElVote mark when the customer has no logo
@@ -29,13 +27,12 @@ type Hoverable = { hovered?: boolean; pressed: boolean };
 
 /** W2: web desktop frame: left sidebar (240 px, or 72 px icon rail) + page. Phones never render this. */
 export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mode; children: ReactNode }) {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
   const layout = useLayout();
   const rail = layout === 'rail';
   const path = usePathname();
   const me = useSession((s) => s.me);
   const m = useActiveMembership();
-  const setLang = usePrefs((s) => s.setLang);
   const [acOpen, setAcOpen] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const shell = useMemo(() => ({ topPaths: items.map((i) => i.path) }), [items]);
@@ -44,9 +41,6 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
   const look = mode === 'platform' ? null : m?.look;
   const brandName = look?.appName || 'ElVote';
   const logo = fileUrl(look?.logoUrl);
-  const langs = useAllowedLangs();
-  // Super-admin: every language; teams: the languages their customer allows (C4, bilingual-roll L4).
-  const shellLangs: Lang[] = mode === 'platform' ? LANGS : LANGS.filter((l) => langs.includes(l));
   const roleLabel = mode === 'platform' ? t('web.rolePlatform') : mode === 'admin' ? t('web.roleAdmin') : t('web.roleVolunteer');
   // The current item is the one with the longest matching path prefix (so /platform/parties ≠ /platform).
   const score = (it: NavItem) =>
@@ -54,7 +48,6 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
   const best = items.reduce<NavItem | null>((a, it) => (score(it) > (a ? score(a) : -1) ? it : a), null);
   const isOn = (it: NavItem) => it === best;
   const initials = (me?.user.name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
-  const switchLang = (l: Lang) => { setLang(l); void initI18n(l); };
 
   return (
     <ShellContext.Provider value={shell}>
@@ -115,23 +108,6 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
           </ScrollView>
 
           <View style={s.foot}>
-            {langs.length < 2 && mode !== 'platform' ? null : rail ? (
-              <Pressable accessibilityRole="button" accessibilityLabel={t('common.switchLangA11y')} onPress={() => switchLang(shellLangs[(shellLangs.indexOf(i18n.language as Lang) + 1) % shellLangs.length])}
-                style={(st) => [s.item, s.itemRail, (st as Hoverable).hovered && { backgroundColor: web.hover }]}>
-                <AppText variant="callout" weight="bold">{LANG_MARK[(i18n.language as Lang)] ?? 'A'}</AppText>
-              </Pressable>
-            ) : (
-              <View style={s.langRow} role="radiogroup" aria-label={t('web.language')}>
-                {shellLangs.map((l) => [l, LANG_LABEL[l]] as [Lang, string]).map(([l, label]) => {
-                  const on = i18n.language === l;
-                  return (
-                    <Pressable key={l} role="radio" aria-checked={on} onPress={() => switchLang(l)} style={[s.lang, on && s.langOn]}>
-                      <AppText variant="footnote" weight="semibold" color={colors.text}>{label}</AppText>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            )}
             {otherRoles.length && !rail ? (
               <Pressable accessibilityRole="link" onPress={() => router.push('/choose')} style={(st) => [s.item, (st as Hoverable).hovered && { backgroundColor: web.hover }]}>
                 <Icon name="swap-horizontal" size={20} color={colors.textSecondary} />

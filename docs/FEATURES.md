@@ -158,3 +158,19 @@ Spec `docs/specs/accounts-access.md`, tests `docs/test-cases/accounts-access.md`
 
 API: `POST /v1/auth/firebase` (Google / verified email only), `PATCH /v1/me/profile`, `/v1/me` adds `user.email`, `user.profileDone`, `accessRequest`; `POST/DELETE /v1/access-requests`; `/v1/catalog/states|acs|parties`; `GET /v1/me/overview`; `GET /v1/push/vapid-key`; super-admin `/v1/admin/access-requests(/:id/approve|reject)`, `/v1/admin/users/:id/admin-access(/state/:partyId/:state)`, `/v1/admin/customers/:id/requests(/:mid/approve|reject)`, `PATCH /v1/admin/users/:id/mobile`; `/v1/admin/super-admins` and `/v1/admin/admins` take `email`.
 DB: core `006_accounts_access.sql` (`users.email`, nullable `users.mobile`, `access_requests`, `admin_scopes`, `memberships.source`). Operator: `npm run admin:super -- --email …`.
+
+## First launch, branding and team banner (2026-11-21)
+
+Spec `docs/specs/onboarding-branding.md`, tests `docs/test-cases/onboarding-branding.md`, mockups https://claude.ai/artifact/9ejYamEuznPrwstB8Jy43v.
+
+| Who | Where | What |
+|---|---|---|
+| New device | Splash → **Welcome** (`/welcome`) → **Choose language** (`/language`) → Sign in | Shown once per device (`prefs.onboarded`); English with small Hindi until a language is chosen; the choice is saved as the device language |
+| Everyone | Sign-in / registration screens | ElVote mark + wordmark at the top (phones); no language button |
+| Everyone | After sign-in | No language button on page tops or the website sidebar; **Language** row in Me (volunteer), More (admin), Overview (super-admin) |
+| Volunteer / admin | Me / More | Branding card (team logo or letter in the party colour, app name, party · assembly, the person); ElVote wordmark + version at the bottom |
+| Admin | More → **Home banner** (`/admin/banner`) | Choose (crop 2:1) or take a photo, save, remove; PNG/JPG/WebP ≤ 2 MB |
+| Super-admin | Customer settings → Look | Home banner upload |
+| Volunteer / admin | Home / Dashboard | The banner full width at the top (admin: with Edit) |
+
+API: `POST/DELETE /v1/m/:mid/banner`; `POST /v1/admin/customers/:id/upload?kind=banner`; `look.bannerUrl`, customer `bannerUrl`. DB: core `007_banner.sql` (`party_constituencies.banner_url`). App: `expo-image-picker`.

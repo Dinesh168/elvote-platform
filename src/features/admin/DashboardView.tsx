@@ -4,9 +4,10 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { TeamBanner } from '@/features/shell/TeamBanner';
 import { adminApi } from '@/api/adminApi';
 import {
-  AppText, BarList, ChoiceRow, Columns, DataTable, Grid, Group, Icon, LangPill, LargeTitle, Row, Screen, Sheet, StackedBar, TileRow, groupParts,
+  AppText, BarList, ChoiceRow, Columns, DataTable, Grid, Group, Icon, LargeTitle, Row, Screen, Sheet, StackedBar, TileRow, groupParts,
 } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { chart, colors, radius, spacing, web } from '@/design/tokens';
@@ -34,7 +35,8 @@ export function DashboardView({ booth }: { booth?: number }) {
   const g = { our: t('groups.our'), target: t('groups.target'), opp: t('groups.opp') };
 
   return (
-    <Screen back={booth ? t('admin.tabs.dashboard') : undefined} trailing={<LangPill />}>
+    <Screen back={booth ? t('admin.tabs.dashboard') : undefined}>
+      {booth ? null : <TeamBanner editable />}
       <LargeTitle
         title={booth ? t('admin.boothDash', { no: booth }) : t('admin.tabs.dashboard')}
         subtitle={m ? (!booth && adminAcs.length > 1 ? m.partyName : `${m.partyName} · ${t('admin.acTitle', { no: m.acNo, name: m.acName })}`) : undefined}

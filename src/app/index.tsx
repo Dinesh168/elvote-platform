@@ -7,6 +7,7 @@ import { ApiError } from '@/api/http';
 import { AppText, Button } from '@/design/components';
 import { colors, spacing } from '@/design/tokens';
 import { goLanding } from '@/features/session/session';
+import { usePrefs } from '@/stores/prefs';
 import { useSession } from '@/stores/session';
 
 /** Start screen: restores the session and sends the user to the right place for their role. */
@@ -17,6 +18,7 @@ export default function Index() {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const { next } = useLocalSearchParams<{ next?: string }>();
+  const onboarded = usePrefs((st) => st.onboarded);
 
   useEffect(() => {
     if (API_MODE === 'mock') return;
@@ -31,7 +33,8 @@ export default function Index() {
   }, [loaded, refresh, attempt, t, next]);
 
   if (API_MODE === 'mock') return <Redirect href="/home" />;
-  if (loaded && !refresh) return <Redirect href="/login" />;
+  // spec onboarding-branding OB1: first launch → welcome → choose language → sign in.
+  if (loaded && !refresh) return <Redirect href={onboarded ? '/login' : '/welcome'} />;
   return (
     <View style={s.root}>
       {error ? (

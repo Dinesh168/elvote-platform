@@ -5,9 +5,10 @@ import { useActiveMembership } from '@/stores/session';
 import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { TeamBanner } from '@/features/shell/TeamBanner';
 import type { GroupCode } from '@/api/types';
 import {
-  AppText, Button, ChoiceRow, Grid, Group, Icon, IconSquare, LangPill, LargeTitle, ProgressBar, Row, Screen, Sheet, SnoBadge, SyncPill,
+  AppText, Button, ChoiceRow, Grid, Group, Icon, IconSquare, LargeTitle, ProgressBar, Row, Screen, Sheet, SnoBadge, SyncPill,
 } from '@/design/components';
 import { colors, group, hairline, radius, spacing, web } from '@/design/tokens';
 import { BoothSheet } from '@/features/common/BoothSheet';
@@ -50,7 +51,8 @@ export default function HomeScreen() {
   const taskName = next?.task ? next.task.name : t('home.allVoters');
 
   return (
-    <Screen trailing={<><SyncPill /><LangPill /></>}>
+    <Screen trailing={<SyncPill />}>
+      <TeamBanner />
       <LargeTitle title={t('home.hello', { name: firstName })} subtitle={date} />
       {look?.candidateName && m ? (
         <View style={s.bannerWrap}>

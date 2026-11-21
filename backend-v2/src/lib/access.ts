@@ -32,7 +32,7 @@ export const FEATURE_KEYS = ['map', 'poll', 'zones', 'tasks', 'slip', 'surnames'
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export type Features = Record<FeatureKey, boolean>;
 export interface Look {
-  appName: string | null; logoUrl: string | null; colour: string | null;
+  appName: string | null; logoUrl: string | null; bannerUrl: string | null; colour: string | null;
   candidateName: string | null; candidatePhotoUrl: string | null; ballotNo: number | null; slogan: string | null;
   message: string | null; slipShareText: string | null; defaultLang: string | null; languages: string[];
 }
@@ -41,7 +41,7 @@ const BASE = `
   SELECT m.id, m.user_id, m.role, m.status, pc.party_id, p.name AS party_name, pc.id AS party_ac_id,
          trim(pc.state_code) AS state_code, pc.ac_no, pc.ac_name, pc.max_zones, pc.zone_count,
          pc.features, (pc.status = 'active' AND (pc.valid_until IS NULL OR pc.valid_until >= current_date)) AS active,
-         pc.app_name, pc.logo_url, pc.brand_colour, pc.candidate_name, pc.candidate_photo_url, pc.ballot_no, pc.candidate_slogan,
+         pc.app_name, pc.logo_url, pc.banner_url, pc.brand_colour, pc.candidate_name, pc.candidate_photo_url, pc.ballot_no, pc.candidate_slogan,
          pc.candidate_message, pc.slip_share_text, pc.regional_lang, pc.languages, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m,
          COALESCE(array_agg(mb.part_no ORDER BY mb.part_no) FILTER (WHERE mb.part_no IS NOT NULL), '{}') AS booths
     FROM memberships m
@@ -52,7 +52,7 @@ const BASE = `
 type Row = {
   id: string; user_id: string; role: 'admin' | 'volunteer'; status: string; party_id: string; party_name: string; party_ac_id: string;
   state_code: string; ac_no: number; ac_name: string; max_zones: number; zone_count: number; booths: number[];
-  features: Partial<Features>; active: boolean; app_name: string | null; logo_url: string | null; brand_colour: string | null;
+  features: Partial<Features>; active: boolean; app_name: string | null; logo_url: string | null; banner_url: string | null; brand_colour: string | null;
   candidate_name: string | null; candidate_photo_url: string | null; ballot_no: number | null; candidate_slogan: string | null;
   candidate_message: string | null; slip_share_text: string | null; regional_lang: string | null; languages: string[];
   sync_mode: 'live' | 'offline' | 'scheduled'; sync_minutes: number; booth_radius_m: number;
@@ -64,7 +64,7 @@ const map = (r: Row): Membership => ({
   stateCode: r.state_code, acNo: r.ac_no, acName: r.ac_name, maxZones: r.max_zones, zoneCount: r.zone_count, booths: r.booths,
   features: featuresOf(r.features), active: r.active,
   look: {
-    appName: r.app_name, logoUrl: r.logo_url, colour: r.brand_colour, candidateName: r.candidate_name, candidatePhotoUrl: r.candidate_photo_url,
+    appName: r.app_name, logoUrl: r.logo_url, bannerUrl: r.banner_url ?? null, colour: r.brand_colour, candidateName: r.candidate_name, candidatePhotoUrl: r.candidate_photo_url,
     ballotNo: r.ballot_no, slogan: r.candidate_slogan, message: r.candidate_message, slipShareText: r.slip_share_text,
     defaultLang: r.regional_lang, languages: r.languages ?? ['en', 'pa'],
   },

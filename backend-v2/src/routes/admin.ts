@@ -8,6 +8,7 @@ import { core, inParty, statePool } from '../db/pools.js';
 import { traceVoter } from '../lib/trace.js';
 import { audit, checkLimit, requireFeature, requireMembership, type FeatureKey, type Membership } from '../lib/access.js';
 import { sha256 } from '../lib/auth.js';
+import { saveImage } from '../lib/images.js';
 import { invalid, notFound } from '../lib/errors.js';
 import { DateStr, parse, PartNo, Uuid } from '../lib/http.js';
 import { DRIVE_NAMES, DRIVE_SEGMENTS, segmentSql, type Segment } from '../lib/voters.js';
@@ -234,6 +235,22 @@ export async function adminRoutes(app: FastifyInstance) {
     const { membershipId } = parse(z.object({ mid: Uuid, membershipId: Uuid }), req.params);
     const b = parse(z.object({ reason: z.string().trim().min(2).max(200) }), req.body);
     await rejectVolunteer(m, membershipId, b.reason, { userId: m.userId, role: 'admin' });
+    return { ok: true };
+  });
+
+  // ---------- Home banner (spec onboarding-branding OB8) ----------
+  app.post('/v1/m/:mid/banner', async (req) => {
+    const { m } = await admin(req);
+    const url = await saveImage(req, 2 * 1024 * 1024);
+    await core.query('UPDATE party_constituencies SET banner_url = $2, updated_at = now() WHERE id = $1', [m.partyAcId, url]);
+    await audit({ actor: m.userId, role: 'admin', action: 'customer.banner_set', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'party_ac', entityId: m.partyAcId });
+    return { url };
+  });
+
+  app.delete('/v1/m/:mid/banner', async (req) => {
+    const { m } = await admin(req);
+    await core.query('UPDATE party_constituencies SET banner_url = NULL, updated_at = now() WHERE id = $1', [m.partyAcId]);
+    await audit({ actor: m.userId, role: 'admin', action: 'customer.banner_remove', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'party_ac', entityId: m.partyAcId });
     return { ok: true };
   });
 

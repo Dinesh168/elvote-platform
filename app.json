@@ -61,6 +61,13 @@
           "resizeMode": "contain",
           "backgroundColor": "#ffffff"
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ElVote uses your photos only when you choose a banner for your team.",
+          "cameraPermission": "ElVote uses the camera only when you take a banner photo for your team."
+        }
       ]
     ]
   }

@@ -40,6 +40,9 @@ const qs = (o: Record<string, string | number | undefined>) => {
 };
 
 export const adminApi = {
+  /** spec onboarding-branding OB8: the team's Home banner (admin). */
+  uploadBanner: (mid: string, form: FormData) => http.form<{ url: string }>(`/v1/m/${mid}/banner`, form),
+  removeBanner: (mid: string) => http.del<{ ok: boolean }>(`/v1/m/${mid}/banner`),
   dashboard: (mid: string, f: { zone?: string; booth?: number } = {}) => http.get<Dashboard>(`${m(mid)}/dashboard${qs(f)}`),
   boothTable: (mid: string, zone?: string) => http.get<BoothRow[]>(`${m(mid)}/booth-table${qs({ zone })}`),
   setStrength: (mid: string, no: number, strength: 'S' | 'M' | 'W') => http.put(`${m(mid)}/booths/${no}/strength`, { strength }),
@@ -97,7 +100,7 @@ export interface Trace { voter: { id: string; name: string; epic: string; booth:
 export type FeatureKey = 'map' | 'poll' | 'zones' | 'tasks' | 'slip' | 'surnames' | 'help' | 'boothGps';
 export interface Customer {
   id: string; partyName: string; stateCode: string; acNo: number; acName: string;
-  appName: string | null; logoUrl: string | null; colour: string | null; candidateName: string | null; candidatePhotoUrl: string | null;
+  appName: string | null; logoUrl: string | null; bannerUrl?: string | null; colour: string | null; candidateName: string | null; candidatePhotoUrl: string | null;
   ballotNo: number | null; slogan: string | null; message: string | null; slipShareText: string | null;
   features: Record<FeatureKey, boolean>; defaultLang: 'en' | 'hi' | 'pa' | null; languages: ('en' | 'hi' | 'pa')[];
   maxZones: number; zoneCount: number; maxVolunteers: number | null; maxAdmins: number | null;
@@ -105,7 +108,7 @@ export interface Customer {
   syncMode: 'live' | 'offline' | 'scheduled'; syncMinutes: number;
   boothRadiusM: number;
 }
-export type CustomerPatch = Partial<Omit<Customer, 'id' | 'partyName' | 'stateCode' | 'acNo' | 'acName' | 'logoUrl' | 'candidatePhotoUrl' | 'zoneCount' | 'volunteers' | 'admins' | 'active' | 'features'>> & { features?: Partial<Record<FeatureKey, boolean>> };
+export type CustomerPatch = Partial<Omit<Customer, 'id' | 'partyName' | 'stateCode' | 'acNo' | 'acName' | 'logoUrl' | 'bannerUrl' | 'candidatePhotoUrl' | 'zoneCount' | 'volunteers' | 'admins' | 'active' | 'features'>> & { features?: Partial<Record<FeatureKey, boolean>> };
 export type UserFilter = { q?: string; role?: 'all' | 'admin' | 'volunteer' | 'super'; status?: 'all' | 'active' | 'blocked'; customer?: string; offset?: number; limit?: number };
 export interface AdminUser {
   id: string; name: string; mobile: string | null; email?: string | null; status: 'active' | 'blocked'; blockedReason: string | null; isSuperAdmin: boolean;
@@ -154,7 +157,7 @@ export const platformApi = {
   customer: (id: string) => http.get<Customer>(`/v1/admin/customers/${id}`),
   saveCustomer: (id: string, p: CustomerPatch) => http.patch<Customer>(`/v1/admin/customers/${id}`, p),
   copyCustomer: (id: string, fromId: string) => http.post<Customer>(`/v1/admin/customers/${id}/copy`, { fromId }),
-  uploadImage: (id: string, kind: 'logo' | 'photo', form: FormData) => http.form<{ url: string }>(`/v1/admin/customers/${id}/upload?kind=${kind}`, form),
+  uploadImage: (id: string, kind: 'logo' | 'photo' | 'banner', form: FormData) => http.form<{ url: string }>(`/v1/admin/customers/${id}/upload?kind=${kind}`, form),
   users: (f: UserFilter = {}) => http.get<{ items: AdminUser[]; total: number; offset: number; limit: number }>(`/v1/admin/users${qs(f)}`),
   block: (id: string, reason: string) => http.post(`/v1/admin/users/${id}/block`, { reason }),
   unblock: (id: string, reason: string) => http.post(`/v1/admin/users/${id}/unblock`, { reason }),

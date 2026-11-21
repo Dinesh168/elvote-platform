@@ -2,9 +2,6 @@
  * Super-admin CMS (spec docs/specs/customer-cms.md): customer settings, uploads, users, vote trace.
  * Registered inside platformRoutes, so the super-admin check already ran for /v1/admin/*.
  */
-import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { core, statePool } from '../db/pools.js';
@@ -12,9 +9,10 @@ import { audit, checkLimit, FEATURE_KEYS, featuresOf, forgetUserStatus } from '.
 import { ApiError, invalid, notFound } from '../lib/errors.js';
 import { Mobile, parse, PartNo, Uuid } from '../lib/http.js';
 import { areaOf, notify } from '../lib/notify.js';
+import { saveImage } from '../lib/images.js';
 import { traceVoter } from '../lib/trace.js';
 
-export const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
+export { UPLOAD_DIR } from '../lib/images.js';
 
 const Colour = z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'Use a colour like #1B5E20');
 const Lang = z.enum(['en', 'hi', 'pa']); // languages the app ships (spec bilingual-roll L4)
@@ -32,7 +30,7 @@ const Settings = z.object({
   boothRadiusM: z.number().int().min(50, 'At least 50 m').max(2000, 'At most 2,000 m'),
 }).partial().strict();
 
-const COLS = `pc.id, p.name AS party_name, trim(pc.state_code) AS state_code, pc.ac_no, pc.ac_name, pc.app_name, pc.logo_url, pc.brand_colour,
+const COLS = `pc.id, p.name AS party_name, trim(pc.state_code) AS state_code, pc.ac_no, pc.ac_name, pc.app_name, pc.logo_url, pc.banner_url, pc.brand_colour,
   pc.candidate_name, pc.candidate_photo_url, pc.ballot_no, pc.candidate_slogan, pc.candidate_message, pc.slip_share_text, pc.features,
   pc.regional_lang, pc.languages, pc.max_zones, pc.zone_count, pc.max_volunteers, pc.max_admins, pc.status,
   to_char(pc.valid_until, 'YYYY-MM-DD') AS valid_until, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m,
@@ -42,7 +40,7 @@ const COLS = `pc.id, p.name AS party_name, trim(pc.state_code) AS state_code, pc
 type Row = Record<string, unknown> & { id: string; features: Record<string, boolean>; valid_until: string | null; status: string };
 const toCustomer = (r: Row) => ({
   id: r.id, partyName: r.party_name, stateCode: r.state_code, acNo: r.ac_no, acName: r.ac_name,
-  appName: r.app_name, logoUrl: r.logo_url, colour: r.brand_colour, candidateName: r.candidate_name, candidatePhotoUrl: r.candidate_photo_url,
+  appName: r.app_name, logoUrl: r.logo_url, bannerUrl: r.banner_url ?? null, colour: r.brand_colour, candidateName: r.candidate_name, candidatePhotoUrl: r.candidate_photo_url,
   ballotNo: r.ballot_no, slogan: r.candidate_slogan, message: r.candidate_message, slipShareText: r.slip_share_text,
   features: featuresOf(r.features), defaultLang: r.regional_lang, languages: r.languages,
   maxZones: r.max_zones, zoneCount: r.zone_count, maxVolunteers: r.max_volunteers, maxAdmins: r.max_admins,
@@ -85,13 +83,6 @@ async function saveSettings(id: string, b: z.infer<typeof Settings>) {
 }
 
 /** Only real images, by their first bytes (not the file name). */
-function imageType(buf: Buffer): 'png' | 'jpg' | 'webp' | null {
-  if (buf.length > 8 && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
-  if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return 'jpg';
-  if (buf.length > 12 && buf.subarray(0, 4).toString('ascii') === 'RIFF' && buf.subarray(8, 12).toString('ascii') === 'WEBP') return 'webp';
-  return null;
-}
-
 const Reason = z.string().trim().min(3, 'Write a short reason (3+ letters).').max(200);
 
 export async function customerRoutes(app: FastifyInstance) {
@@ -121,7 +112,7 @@ export async function customerRoutes(app: FastifyInstance) {
     const src = toCustomer(await loadCustomer(fromId));
     await loadCustomer(id);
     await core.query(
-      `UPDATE party_constituencies t SET app_name = s.app_name, logo_url = s.logo_url, brand_colour = s.brand_colour, candidate_name = s.candidate_name,
+      `UPDATE party_constituencies t SET app_name = s.app_name, logo_url = s.logo_url, banner_url = s.banner_url, brand_colour = s.brand_colour, candidate_name = s.candidate_name,
               candidate_photo_url = s.candidate_photo_url, ballot_no = s.ballot_no, candidate_slogan = s.candidate_slogan, candidate_message = s.candidate_message,
               slip_share_text = s.slip_share_text, features = s.features, regional_lang = s.regional_lang, languages = s.languages, updated_at = now()
          FROM party_constituencies s WHERE t.id = $1 AND s.id = $2`, [id, src.id]);
@@ -129,22 +120,14 @@ export async function customerRoutes(app: FastifyInstance) {
     return toCustomer(await loadCustomer(id));
   });
 
-  /** Logo or candidate photo (≤ 1 MB, PNG/JPG/WebP by content). Served publicly at /files/<random>. */
+  /** Logo, candidate photo (≤ 1 MB) or Home banner (≤ 2 MB); PNG/JPG/WebP by content. Served publicly at /files/<random>. */
   app.post('/v1/admin/customers/:id/upload', async (req) => {
     const { id } = parse(z.object({ id: Uuid }), req.params);
-    const { kind } = parse(z.object({ kind: z.enum(['logo', 'photo']) }), req.query);
+    const { kind } = parse(z.object({ kind: z.enum(['logo', 'photo', 'banner']) }), req.query);
     await loadCustomer(id);
-    const file = await req.file({ limits: { fileSize: 1024 * 1024 } });
-    if (!file) throw invalid('file_missing', 'Choose an image.');
-    const buf = await file.toBuffer().catch(() => { throw invalid('file_too_big', 'The image must be 1 MB or smaller.'); });
-    if (file.file.truncated) throw invalid('file_too_big', 'The image must be 1 MB or smaller.');
-    const ext = imageType(buf);
-    if (!ext) throw invalid('not_image', 'Use a PNG, JPG or WebP image.');
-    mkdirSync(UPLOAD_DIR, { recursive: true });
-    const name = `${randomBytes(16).toString('hex')}.${ext}`;
-    writeFileSync(path.join(UPLOAD_DIR, name), buf);
-    const url = `/files/${name}`;
-    await core.query(`UPDATE party_constituencies SET ${kind === 'logo' ? 'logo_url' : 'candidate_photo_url'} = $2, updated_at = now() WHERE id = $1`, [id, url]);
+    const url = await saveImage(req, kind === 'banner' ? 2 * 1024 * 1024 : 1024 * 1024);
+    const col = kind === 'logo' ? 'logo_url' : kind === 'photo' ? 'candidate_photo_url' : 'banner_url';
+    await core.query(`UPDATE party_constituencies SET ${col} = $2, updated_at = now() WHERE id = $1`, [id, url]);
     await audit({ actor: req.userId, role: 'super_admin', action: `customer.upload_${kind}`, entity: 'party_ac', entityId: id });
     return { url };
   });

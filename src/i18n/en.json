@@ -456,7 +456,8 @@
   },
   "me2": {
     "switchRole": "Switch role",
-    "account": "Account"
+    "account": "Account",
+    "settings": "Settings"
   },
   "tasks": {
     "title": "Tasks",
@@ -1059,5 +1060,40 @@
     "row": "{{v}} volunteers · {{p}} waiting",
     "met": "{{pct}}% voters met",
     "none": "No assemblies yet."
+  },
+  "welcome": {
+    "title": "Welcome to ElVote",
+    "subtitle": "The campaign app for your party's team.",
+    "meetTitle": "Meet every voter",
+    "meetBody": "House by house, at your own booths.",
+    "offlineTitle": "Works without internet",
+    "offlineBody": "Your work is saved and sent later.",
+    "pollTitle": "Ready for polling day",
+    "pollBody": "Mark who voted, see who still needs to."
+  },
+  "lang": {
+    "title": "Choose your language",
+    "changeLater": "You can change it later in Me → Language."
+  },
+  "banner": {
+    "title": "Home banner",
+    "subtitle": "Shown at the top of Home for every volunteer of {{ac}}, and on your Dashboard.",
+    "preview": "Preview",
+    "empty": "No banner yet",
+    "hint": "Use a wide photo (2 : 1, for example 1600 × 800). JPG, PNG or WebP, up to 2 MB. You can crop it before saving.",
+    "choose": "Choose from photos",
+    "camera": "Take photo",
+    "remove": "Remove banner",
+    "removeConfirm": "Tap again to remove the banner",
+    "save": "Save banner",
+    "saved": "Banner saved. Your team sees it on Home.",
+    "removed": "Banner removed.",
+    "tooBig": "This photo is bigger than 2 MB. Choose a smaller one.",
+    "cameraDenied": "Camera access is off. Allow it in phone settings.",
+    "set": "Shown on Home",
+    "none": "Not set",
+    "edit": "Edit Home banner",
+    "editShort": "Edit",
+    "a11y": "Banner of {{name}}"
   }
 }

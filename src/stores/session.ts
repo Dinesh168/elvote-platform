@@ -43,7 +43,7 @@ export interface MembershipInfo {
 
 export type FeatureKey = 'map' | 'poll' | 'zones' | 'tasks' | 'slip' | 'surnames' | 'help' | 'boothGps';
 export interface CustomerLook {
-  appName: string | null; logoUrl: string | null; colour: string | null;
+  appName: string | null; logoUrl: string | null; bannerUrl?: string | null; colour: string | null;
   candidateName: string | null; candidatePhotoUrl: string | null; ballotNo: number | null; slogan: string | null;
   message: string | null; slipShareText: string | null; defaultLang: string | null; languages: string[];
 }

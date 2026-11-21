@@ -7,29 +7,28 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { BrandCard, ElVoteFooter } from '@/features/shell/Brand';
+import { LanguageRow } from '@/features/shell/LanguageRow';
 import { API_MODE } from '@/api/client';
 import { http } from '@/api/http';
-import { AppText, Button, Group, IconSquare, Row, Screen, SegmentedControl, SyncPill } from '@/design/components';
+import { AppText, Button, Group, IconSquare, Row, Screen, SyncPill } from '@/design/components';
 import { colors, spacing } from '@/design/tokens';
-import { syncNow, useBooths, useMe } from '@/features/data';
+import { syncNow, useBooths } from '@/features/data';
 import { logout, rolesOf } from '@/features/session/session';
-import { initI18n, type Lang } from '@/i18n';
 import { useOutbox } from '@/stores/outbox';
 import { usePrefs } from '@/stores/prefs';
 import { activeMembership, useSession } from '@/stores/session';
 import { usePollingDay } from '@/features/pollingDay/PollingGate';
 import { useAgo } from '@/features/pollingDay/PollingView';
 import { usePresence } from '@/features/pollingDay/tracker';
-import { localeOf , LANG_LABEL } from '@/i18n';
+import { localeOf } from '@/i18n';
 
 
 /** V-GEN-3 Me: who I am, my booths, language, sync, booth location (D17), switch role, log out. */
 export default function MeScreen() {
   const { t, i18n } = useTranslation();
-  const me = useMe().data;
   const booths = useBooths().data ?? [];
   const booth = usePrefs((s) => s.booth);
-  const setLang = usePrefs((s) => s.setLang);
   const session = useSession((s) => s.me);
   const pending = useOutbox((s) => s.items.length);
   const draining = useOutbox((s) => s.draining);
@@ -42,7 +41,6 @@ export default function MeScreen() {
   const langs = useAllowedLangs();
   const [loc, setLoc] = useState<{ ok: boolean; text: string } | null>(null);
   const roles = session ? rolesOf(session) : [];
-  const initials = (me?.name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
 
   const setLocation = async () => {
     setLoc(null);
@@ -60,11 +58,7 @@ export default function MeScreen() {
 
   return (
     <Screen width="narrow" trailing={<SyncPill />}>
-      <View style={s.profile}>
-        <View style={s.avatar}><AppText variant="title2" color={colors.textOnAccent}>{initials || '?'}</AppText></View>
-        <AppText variant="title2">{me?.name ?? t('tabs.me')}</AppText>
-        {me?.mobile ? <AppText variant="callout" color={colors.textSecondary}>{`+91 ${me.mobile}`}</AppText> : null}
-      </View>
+      <BrandCard roleLabel={t('web.roleVolunteer')} />
 
       <Group header={t('me3.booths')}>
         {booths.map((b, i) => (
@@ -72,17 +66,9 @@ export default function MeScreen() {
         ))}
       </Group>
 
-      {langs.length > 1 ? (
-        <Group header={t('me.language')} style={{ padding: spacing.md }}>
-          <SegmentedControl<Lang>
-            variant="answer"
-            label={t('me.language')}
-            value={i18n.language as Lang}
-            options={langs.map((l) => ({ value: l, label: LANG_LABEL[l] }))}
-            onChange={(l) => { setLang(l); void initI18n(l); }}
-          />
-        </Group>
-      ) : null}
+      <Group header={t('me2.settings')}>
+        <LanguageRow langs={langs} />
+      </Group>
 
       <PollingDayMe />
 
@@ -130,6 +116,7 @@ export default function MeScreen() {
       <AppText variant="footnote" color={colors.textTertiary} align="center" style={s.version}>
         {t('me3.version', { v: Constants.expoConfig?.version ?? '' })}
       </AppText>
+      <ElVoteFooter />
     </Screen>
   );
 }

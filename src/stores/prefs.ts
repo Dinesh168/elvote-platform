@@ -11,7 +11,10 @@ interface PrefsState {
   hydrated: boolean;
   /** True once the person picked a language themselves; then a customer's default no longer overrides it. */
   langChosen: boolean;
+  /** First launch (welcome + choose language) finished on this device (spec onboarding-branding OB1). */
+  onboarded: boolean;
   setLang: (l: Lang) => void;
+  finishOnboarding: (l: Lang) => void;
   applyDefaultLang: (l: Lang) => void;
   setBooth: (b: number) => void;
   pickTask: (id: string | null) => void;
@@ -25,7 +28,9 @@ export const usePrefs = create<PrefsState>()(
       pickedTaskId: null,
       hydrated: false,
       langChosen: false,
+      onboarded: false,
       setLang: (lang) => set({ lang, langChosen: true }),
+      finishOnboarding: (lang) => set({ lang, langChosen: true, onboarded: true }),
       applyDefaultLang: (lang) => set({ lang }),
       setBooth: (booth) => set({ booth }),
       pickTask: (pickedTaskId) => set({ pickedTaskId }),
@@ -33,7 +38,7 @@ export const usePrefs = create<PrefsState>()(
     {
       name: 'elvote.prefs.v1',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (s) => ({ lang: s.lang, langChosen: s.langChosen, booth: s.booth, pickedTaskId: s.pickedTaskId }),
+      partialize: (s) => ({ lang: s.lang, langChosen: s.langChosen, onboarded: s.onboarded, booth: s.booth, pickedTaskId: s.pickedTaskId }),
       onRehydrateStorage: () => () => usePrefs.setState({ hydrated: true }),
     },
   ),

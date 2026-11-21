@@ -69,7 +69,7 @@ export default function CustomerPage() {
     }
   };
 
-  const upload = async (kind: 'logo' | 'photo') => {
+  const upload = async (kind: 'logo' | 'photo' | 'banner') => {
     if (!d) return;
     const r = await DocumentPicker.getDocumentAsync({ type: ['image/png', 'image/jpeg', 'image/webp'], copyToCacheDirectory: true });
     if (r.canceled || !r.assets[0]) return;
@@ -81,9 +81,10 @@ export default function CustomerPage() {
     setMsg(null);
     try {
       const { url } = await platformApi.uploadImage(d.id, kind, form);
-      const next = { ...(q.data as Customer), [kind === 'logo' ? 'logoUrl' : 'candidatePhotoUrl']: url };
+      const key = kind === 'logo' ? 'logoUrl' : kind === 'photo' ? 'candidatePhotoUrl' : 'bannerUrl';
+      const next = { ...(q.data as Customer), [key]: url };
       qc.setQueryData(['customer', id], next);
-      set({ [kind === 'logo' ? 'logoUrl' : 'candidatePhotoUrl']: url } as Partial<Customer>);
+      set({ [key]: url } as Partial<Customer>);
       setMsg({ ok: true, text: t('cms.uploaded') });
     } catch (e) {
       setMsg({ ok: false, text: (e as Error).message });
@@ -112,6 +113,7 @@ export default function CustomerPage() {
           <View style={s.pad}>
             <Field label={t('cms.appName')} value={d.appName ?? ''} maxLength={30} onChangeText={(x) => set({ appName: x })} placeholder={d.partyName} />
             <ImagePick label={t('cms.logo')} url={d.logoUrl} onPick={() => void upload('logo')} square />
+            <ImagePick label={t('banner.title')} url={d.bannerUrl ?? null} onPick={() => void upload('banner')} />
             <AppText variant="footnote" color={colors.textSecondary}>{t('cms.colour')}</AppText>
             <View style={s.swatches}>
               {brandSwatches.map((c) => (

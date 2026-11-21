@@ -22,13 +22,12 @@ export function Sheet({ visible, title, onClose, children, footer }: { visible: 
   }, [wide, visible, onClose]);
   // react-native-web's Modal wraps the content in its own role="dialog" with no name (axe: aria-dialog-name): give it ours.
   useEffect(() => {
-    if (!wide || !visible) return;
-    if (typeof document === 'undefined') return;
+    if (!visible || typeof document === 'undefined') return;
     // The Modal mounts its content after the open animation starts, so try a few times.
     const name = () => document.querySelectorAll('[role="dialog"]:not([aria-label])').forEach((el) => el.setAttribute('aria-label', title));
     const ids = [0, 100, 300, 800].map((ms) => setTimeout(name, ms));
     return () => ids.forEach(clearTimeout);
-  }, [wide, visible, title]);
+  }, [visible, title]);
   if (wide)
     return (
       <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>

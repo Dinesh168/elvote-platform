@@ -3,8 +3,10 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { LANGS } from '@/i18n';
+import { LanguageRow } from '@/features/shell/LanguageRow';
 import { platformApi } from '@/api/adminApi';
-import { AppText, BarList, Grid, Group, IconSquare, LangPill, LargeTitle, Row, Screen, TileRow } from '@/design/components';
+import { AppText, BarList, Grid, Group, IconSquare, LargeTitle, Row, Screen, TileRow } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { colors, radius, spacing, web } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
@@ -23,7 +25,7 @@ export default function PlatformHome() {
   const o = q.data;
   const totals = o?.states.reduce((a, s) => ({ voters: a.voters + s.voters, booths: a.booths + s.booths, acs: a.acs + s.acs }), { voters: 0, booths: 0, acs: 0 });
   return (
-    <Screen trailing={<LangPill />}>
+    <Screen>
       <LargeTitle title={t('platform.title')} subtitle={`${t('platform.subtitle')} · ${me?.user.name ?? ''}`} />
       {!o || !totals ? (
         <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
@@ -67,6 +69,9 @@ export default function PlatformHome() {
             <Row title={t('auth.logout')} titleColor={colors.danger} onPress={() => (confirm ? void logout() : setConfirm(true))} last />
           </Group>
           </>)}
+          <Group header={t('me2.settings')}>
+            <LanguageRow langs={LANGS} />
+          </Group>
         </>
       )}
     </Screen>
