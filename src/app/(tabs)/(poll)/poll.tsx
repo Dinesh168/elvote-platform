@@ -152,7 +152,8 @@ export default function PollScreen() {
                 <AppText variant="largeTitle" tabular style={{ fontSize: 34, letterSpacing: 1 }}>{num || '—'}</AppText>
               </View>
               {num ? (
-                <Pressable accessibilityRole="button" onPress={() => setNum('')} style={s.smallBtn}>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('poll.clear')} onPress={() => setNum('')} style={[s.smallBtn, s.clearBtn]} hitSlop={6}>
+                  <Icon name="close-circle" size={20} color={colors.textSecondary} />
                   <AppText variant="callout" weight="semibold" color={colors.textSecondary}>{t('poll.clear')}</AppText>
                 </Pressable>
               ) : (
@@ -218,8 +219,10 @@ export default function PollScreen() {
               key={k}
               accessibilityRole="button"
               accessibilityLabel={ok ? t('poll.markA11y') : back ? t('poll.deleteA11y') : k}
+              accessibilityHint={back ? t('poll.holdToClear') : undefined}
               accessibilityState={ok ? { disabled: !entry.canMark } : undefined}
               onPress={() => press(k)}
+              onLongPress={back ? () => { setFlash(null); setNum(''); } : undefined}
               style={({ pressed }) => [s.key, back && { backgroundColor: colors.keypadFn }, ok && { backgroundColor: entry.canMark ? colors.success : colors.keypadDisabled }, pressed && { opacity: 0.6 }]}
             >
               {back ? (
@@ -243,6 +246,7 @@ export default function PollScreen() {
 }
 
 const s = StyleSheet.create({
+  clearBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 44 },
   live: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 10, paddingVertical: 4, borderRadius: radius.full, backgroundColor: colors.dangerTint },
   liveDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.dangerFill },
   topWide: { paddingTop: spacing.xl, gap: spacing.md },

@@ -1,6 +1,7 @@
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { colors, fonts, radius, spacing } from '../tokens';
 import { AppText } from './AppText';
+import { doneProps } from './DoneBar';
 
 /** Labelled text field (iOS grouped style). Shows an error line under the box. */
 export function Field({ label, error, hint, prefix, style, ...rest }: TextInputProps & { label: string; error?: string | null; hint?: string; prefix?: string }) {
@@ -13,6 +14,7 @@ export function Field({ label, error, hint, prefix, style, ...rest }: TextInputP
           accessibilityLabel={label}
           placeholderTextColor={colors.textTertiary}
           style={[s.input, style]}
+          {...doneProps(rest.keyboardType)}
           {...rest}
         />
       </View>

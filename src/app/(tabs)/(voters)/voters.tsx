@@ -1,11 +1,13 @@
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { themed } from '@/design/theme';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { GroupCode, Task, Voter } from '@/api/types';
 import { AppText, Icon, LargeTitle, Screen, SegmentedControl, Toast } from '@/design/components';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SyncBadge } from '@/features/sync/SyncBadge';
 import { colors, fonts, radius, spacing } from '@/design/tokens';
 import { BoothSheet } from '@/features/common/BoothSheet';
 import { QueryState } from '@/features/common/QueryState';
@@ -167,8 +169,10 @@ export default function VotersScreen() {
   return (
     <Screen width="medium"
       scroll={false}
-      back={house ? t('voters.title') : t('tabs.home')}
-      onBack={house ? () => setHouse(null) : () => router.navigate('/home')}
+      back={house ? t('voters.title') : undefined}
+      onBack={house ? () => setHouse(null) : undefined}
+      header={house ? undefined : <TeamBar trailing={<SyncBadge />} />}
+      trailing={house ? undefined : <SyncBadge />}
     >
       <LargeTitle
         title={house ? t('voters.house', { no: house }) : t('voters.title')}

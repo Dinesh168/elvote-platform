@@ -8,7 +8,8 @@ import { useLayout } from '@/design/layout';
 import { ShellContext } from '@/design/shellContext';
 import { colors, radius, spacing, web } from '@/design/tokens';
 import { fileUrl } from '@/features/session/customer';
-import { activate, logout, rolesOf } from '@/features/session/session';
+import { activate, rolesOf } from '@/features/session/session';
+import { useSignOut } from '@/features/session/useSignOut';
 import { useActiveMembership, useSession, type Mode } from '@/stores/session';
 
 const MARK = require('../../../assets/brand/mark.png'); // ElVote mark when the customer has no logo
@@ -34,7 +35,7 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
   const me = useSession((s) => s.me);
   const m = useActiveMembership();
   const [acOpen, setAcOpen] = useState(false);
-  const [confirm, setConfirm] = useState(false);
+  const signOut = useSignOut();
   const shell = useMemo(() => ({ topPaths: items.map((i) => i.path) }), [items]);
   const adminRoles = me ? rolesOf(me).filter((r) => r.mode === mode && r.mode !== 'platform') : [];
   const otherRoles = me ? rolesOf(me).filter((r) => r.mode !== mode) : [];
@@ -124,15 +125,14 @@ export function AppShell({ items, mode, children }: { items: NavItem[]; mode: Mo
               ) : null}
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={confirm ? t('web.signOutConfirm') : t('web.signOut')}
-                onPress={() => (confirm ? void logout() : setConfirm(true))}
-                onBlur={() => setConfirm(false)}
-                style={(st) => [s.iconBtn, confirm && { backgroundColor: colors.dangerTint }, (st as Hoverable).hovered && !confirm && { backgroundColor: web.hover }]}
+                accessibilityLabel={t('web.signOut')}
+                onPress={signOut.ask}
+                style={(st) => [s.iconBtn, (st as Hoverable).hovered && { backgroundColor: web.hover }]}
               >
-                <Icon name="log-out-outline" size={20} color={confirm ? colors.danger : colors.textSecondary} />
+                <Icon name="log-out-outline" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
-            {confirm && !rail ? <AppText variant="footnote" color={colors.danger} style={s.confirm}>{t('web.signOutConfirm')}</AppText> : null}
+            {signOut.dialog}
           </View>
         </View>
         <View style={s.main} role="main">{children}</View>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { doneProps } from '@/design/components/DoneBar';
 import { themed } from '@/design/theme';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -219,6 +220,7 @@ function DevLogin() {
               value={mobile}
               onChangeText={(x) => setMobile(x.replace(/\D/g, '').slice(0, 10))}
               keyboardType="number-pad"
+              {...doneProps('number-pad')}
               autoFocus
               maxLength={10}
               hint={mobile.length > 0 && !mobileOk ? t('auth.enter10') : t('auth.mobileHint')}
@@ -240,6 +242,7 @@ function DevLogin() {
               value={code}
               onChangeText={(x) => setCode(x.replace(/\D/g, '').slice(0, 6))}
               keyboardType="number-pad"
+              {...doneProps('number-pad')}
               autoFocus
               maxLength={6}
               error={error}

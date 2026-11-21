@@ -1,15 +1,16 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BrandCard, ElVoteFooter } from '@/features/shell/Brand';
 import { LanguageRow } from '@/features/shell/LanguageRow';
-import { adminApi } from '@/api/adminApi';
 import { Group, IconSquare, LargeTitle, Row, Screen } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { colors } from '@/design/tokens';
 import { useAllowedLangs, useFeature } from '@/features/session/customer';
 import { useAdminPolling } from '@/features/pollingDay/adminHooks';
-import { logout, rolesOf } from '@/features/session/session';
+import { rolesOf } from '@/features/session/session';
+import { useSignOut } from '@/features/session/useSignOut';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SyncBadge } from '@/features/sync/SyncBadge';
 import { useActiveMembership, useSession } from '@/stores/session';
 
 /** Admin More (D18): Polling day, Zones, Branding, join code, language, switch role, log out. */
@@ -17,8 +18,7 @@ export default function More() {
   const { t } = useTranslation();
   const m = useActiveMembership();
   const me = useSession((s) => s.me);
-  const [code, setCode] = useState<string | null>(null);
-  const [confirm, setConfirm] = useState(false);
+  const signOut = useSignOut();
   const roles = me ? rolesOf(me) : [];
   // spec accounts-access AC9: admins of several assemblies (or a whole state) get the overview.
   const adminAcs = (me?.memberships ?? []).filter((x) => x.role === 'admin' && x.status === 'approved').length;
@@ -28,7 +28,7 @@ export default function More() {
   const langs = useAllowedLangs();
   const pd = useAdminPolling();
   return (
-    <Screen width="narrow">
+    <Screen width="narrow" header={<TeamBar trailing={<SyncBadge />} />} trailing={<SyncBadge />}>
       <LargeTitle title={t('admin.tabs.more')} />
       <BrandCard roleLabel={t('web.roleAdmin')} />
       {pd.day ? (
@@ -47,19 +47,20 @@ export default function More() {
         <Row title={t('banner.title')} subtitle={m?.look?.bannerUrl ? t('banner.set') : t('banner.none')} leading={<IconSquare name="image" bg={colors.accent} />} chevron onPress={() => router.push('/admin/banner')} />
         <LanguageRow langs={langs} />
       </Group>
-      <Group header={t('admin.joinCode')} footer={code ? t('admin.newCodeShown', { code }) : undefined}>
-        <Row title={t('admin.newCode')} leading={<IconSquare name="key" bg={colors.accent} />} onPress={() => m && void adminApi.newJoinCode(m.id).then((r) => setCode(r.code))} last />
+      <Group header={t('admin.joinCode')}>
+        <Row title={t('qr.title')} subtitle={t('qr.rowSub')} leading={<IconSquare name="qr-code" bg={colors.success} />} chevron onPress={() => router.push('/admin/team-qr')} last />
       </Group>
       {wide ? null : (<>
-      <Group header={t('me2.account')} footer={confirm ? t('auth.logoutConfirm') : undefined}>
+      <Group header={t('me2.account')}>
         {roles.length > 1 ? <Row title={t('me2.switchRole')} chevron onPress={() => router.push('/choose')} /> : null}
-        <Row title={t('auth.logout')} titleColor={colors.danger} onPress={() => (confirm ? void logout() : setConfirm(true))} last />
+        <Row title={t('auth.logout')} titleColor={colors.danger} leading={<IconSquare name="log-out-outline" bg={colors.danger} />} onPress={signOut.ask} last />
       </Group>
       </>)}
       <Group>
         <Row title={t('del.row')} titleColor={colors.danger} leading={<IconSquare name="trash" bg={colors.danger} />} chevron onPress={() => router.push('/delete-account')} last />
       </Group>
       <ElVoteFooter />
+      {signOut.dialog}
     </Screen>
   );
 }

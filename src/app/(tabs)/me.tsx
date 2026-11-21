@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import { useSyncStatus } from '@/features/sync/SyncStatus';
 import { useAllowedLangs, useFeature } from '@/features/session/customer';
 import { themed } from '@/design/theme';
@@ -11,10 +10,13 @@ import { BrandCard, ElVoteFooter } from '@/features/shell/Brand';
 import { LanguageRow } from '@/features/shell/LanguageRow';
 import { API_MODE } from '@/api/client';
 import { http } from '@/api/http';
-import { AppText, Button, Group, IconSquare, Row, Screen, SyncPill } from '@/design/components';
+import { AppText, Button, Group, IconSquare, LargeTitle, Row, Screen } from '@/design/components';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SyncBadge } from '@/features/sync/SyncBadge';
+import { useSignOut } from '@/features/session/useSignOut';
 import { colors, spacing } from '@/design/tokens';
 import { syncNow, useBooths } from '@/features/data';
-import { logout, rolesOf } from '@/features/session/session';
+import { rolesOf } from '@/features/session/session';
 import { useOutbox } from '@/stores/outbox';
 import { usePrefs } from '@/stores/prefs';
 import { activeMembership, useSession } from '@/stores/session';
@@ -36,7 +38,7 @@ export default function MeScreen() {
   const lastSyncedAt = useOutbox((s) => s.lastSyncedAt);
   const sync = useSyncStatus();
   const when = (iso: string) => new Date(iso).toLocaleString(localeOf(i18n.language), { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
-  const [confirm, setConfirm] = useState(false);
+  const signOut = useSignOut();
   const gpsOn = useFeature('boothGps');
   const langs = useAllowedLangs();
   const [loc, setLoc] = useState<{ ok: boolean; text: string } | null>(null);
@@ -57,7 +59,8 @@ export default function MeScreen() {
   };
 
   return (
-    <Screen width="narrow" trailing={<SyncPill />}>
+    <Screen width="narrow" header={<TeamBar trailing={<SyncBadge />} />} trailing={<SyncBadge />}>
+      <LargeTitle title={t('tabs.me')} />
       <BrandCard roleLabel={t('web.roleVolunteer')} />
 
       <Group header={t('me3.booths')}>
@@ -103,9 +106,9 @@ export default function MeScreen() {
       ) : null}
 
       {API_MODE === 'http' ? (
-        <Group header={t('me2.account')} footer={confirm ? t('auth.logoutConfirm') : undefined}>
+        <Group header={t('me2.account')}>
           {roles.length > 1 ? <Row title={t('me2.switchRole')} chevron onPress={() => router.push('/choose')} /> : null}
-          <Row title={t('auth.logout')} titleColor={colors.danger} onPress={() => (confirm ? void logout() : setConfirm(true))} last />
+          <Row title={t('auth.logout')} titleColor={colors.danger} leading={<IconSquare name="log-out-outline" bg={colors.danger} />} onPress={signOut.ask} last />
         </Group>
       ) : null}
       {API_MODE === 'http' ? (
@@ -113,10 +116,8 @@ export default function MeScreen() {
           <Row title={t('del.row')} titleColor={colors.danger} leading={<IconSquare name="trash" bg={colors.danger} />} chevron onPress={() => router.push('/delete-account')} last />
         </Group>
       ) : null}
-      <AppText variant="footnote" color={colors.textTertiary} align="center" style={s.version}>
-        {t('me3.version', { v: Constants.expoConfig?.version ?? '' })}
-      </AppText>
       <ElVoteFooter />
+      {signOut.dialog}
     </Screen>
   );
 }

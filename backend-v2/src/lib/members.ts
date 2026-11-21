@@ -5,6 +5,7 @@ import { core, statePool } from '../db/pools.js';
 import { audit, checkLimit } from './access.js';
 import { invalid, notFound } from './errors.js';
 import { areaOf, notify } from './notify.js';
+import { assertOneRole } from './roles.js';
 
 interface Customer { partyAcId: string; partyId: string; stateCode: string; acNo: number }
 type Actor = { userId: string; role: 'admin' | 'super_admin' };
@@ -21,6 +22,8 @@ export async function approveVolunteer(c: Customer, membershipId: string, booths
   const valid = await pool.query('SELECT part_no FROM booths WHERE ac_no = $1 AND part_no = ANY($2::smallint[])', [c.acNo, booths]);
   if (valid.rowCount !== new Set(booths).size) throw invalid('booth_invalid', 'Pick booths from the list.');
   await checkLimit(c.partyAcId, 'volunteer', membershipId);
+  const who = await core.query<{ user_id: string }>('SELECT user_id FROM memberships WHERE id = $1 AND party_constituency_id = $2', [membershipId, c.partyAcId]);
+  if (who.rows[0]) await assertOneRole(who.rows[0].user_id, 'volunteer'); // spec usability-r2 R1
   const r = await core.query<{ user_id: string }>(
     `UPDATE memberships SET status = 'approved', decided_by = $3, decided_at = now(), reject_reason = NULL, updated_at = now()
       WHERE id = $1 AND party_constituency_id = $2 AND role = 'volunteer' RETURNING user_id`, [membershipId, c.partyAcId, by.userId]);

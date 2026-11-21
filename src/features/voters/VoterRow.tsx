@@ -1,4 +1,5 @@
 import { memo, useState } from 'react';
+import { doneProps } from '@/design/components/DoneBar';
 import { useFeature } from '@/features/session/customer';
 import { themed } from '@/design/theme';
 import { router } from 'expo-router';
@@ -96,6 +97,7 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, on
                 onBlur={saveMobile}
                 onSubmitEditing={saveMobile}
                 keyboardType="number-pad"
+              {...doneProps('number-pad')}
                 returnKeyType="done"
                 placeholder={t('voters.mobilePh')}
                 placeholderTextColor={colors.textTertiary}

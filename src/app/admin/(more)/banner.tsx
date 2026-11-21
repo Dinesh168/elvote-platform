@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { Image, Platform, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { adminApi } from '@/api/adminApi';
+import { ConfirmDialog } from '@/design/components/ConfirmDialog';
+import { appendFile } from '@/api/upload';
 import { AppText, Button, Group, Icon, LargeTitle, Row, Screen } from '@/design/components';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing } from '@/design/tokens';
@@ -48,8 +50,7 @@ export default function BannerScreen() {
       const form = new FormData();
       const name = picked.fileName ?? 'banner.jpg';
       const type = picked.mimeType ?? 'image/jpeg';
-      if (Platform.OS === 'web') form.append('file', await (await fetch(picked.uri)).blob(), name);
-      else form.append('file', { uri: picked.uri, name, type } as unknown as Blob);
+      await appendFile(form, 'file', { uri: picked.uri, name, type, file: picked.file ?? null });
       await adminApi.uploadBanner(m.id, form);
       await loadMe();
       setPicked(null);
@@ -99,11 +100,13 @@ export default function BannerScreen() {
           <Row title={t('banner.camera')} titleColor={colors.accent} leading={<Icon name="camera-outline" size={22} color={colors.accent} />} onPress={busy ? undefined : () => void pick(true)} last={!current} />
         ) : null}
         {current ? (
-          <Row title={confirmRemove ? t('banner.removeConfirm') : t('banner.remove')} titleColor={colors.danger} leading={<Icon name="trash-outline" size={22} color={colors.danger} />}
-            onPress={busy ? undefined : () => (confirmRemove ? void remove() : setConfirmRemove(true))} last />
+          <Row title={t('banner.remove')} titleColor={colors.danger} leading={<Icon name="trash-outline" size={22} color={colors.danger} />}
+            onPress={busy ? undefined : () => setConfirmRemove(true)} last />
         ) : null}
       </Group>
       {msg ? <AppText variant="callout" color={msg.ok ? colors.successText : colors.danger} style={s.msg}>{msg.text}</AppText> : null}
+      <ConfirmDialog visible={confirmRemove} onDismiss={() => setConfirmRemove(false)} title={t('banner.removeTitle')} message={t('banner.removeBody')}
+        actions={[{ label: t('common.cancel'), style: 'cancel', onPress: () => setConfirmRemove(false) }, { label: t('banner.remove'), style: 'destructive', onPress: () => void remove() }]} />
       <View style={s.pad}>
         <Button block label={t('banner.save')} disabled={!picked || busy} onPress={() => void save()} />
       </View>

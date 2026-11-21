@@ -5,17 +5,22 @@ import { useTranslation } from 'react-i18next';
 import { AppText, BackLink, Icon, Screen } from '@/design/components';
 import { BrandHeader } from './Brand';
 import { useLayout } from '@/design/layout';
+import { i18n } from '@/i18n';
+import { usePrefs } from '@/stores/prefs';
 import { colors, radius, spacing, web } from '@/design/tokens';
 
 const MARK = require('../../../assets/brand/mark.png');
 
 
 /** W5: sign-in frame. Phone: the normal screen. Web desktop: brand panel + centred form card. */
-export function AuthScreen({ children, back }: { children: ReactNode; back?: string }) {
-  const { t } = useTranslation();
+export function AuthScreen({ children, back, onBack }: { children: ReactNode; back?: string; onBack?: () => void }) {
+  const { t: tLang } = useTranslation();
+  // Before a language is chosen (first launch) the brand panel is in English (spec onboarding-branding OB2).
+  const langChosen = usePrefs((st) => st.langChosen);
+  const t = langChosen ? tLang : i18n.getFixedT('en');
   const layout = useLayout();
   // spec onboarding-branding OB4/OB5: ElVote branding at the top, no language button (chosen at first launch).
-  if (layout === 'phone') return <Screen back={back}><BrandHeader />{children}</Screen>;
+  if (layout === 'phone') return <Screen back={back} onBack={onBack}><BrandHeader />{children}</Screen>;
   return (
     <View style={s.root}>
       {layout === 'desktop' ? (
@@ -38,7 +43,7 @@ export function AuthScreen({ children, back }: { children: ReactNode; back?: str
       ) : null}
       <ScrollView style={s.flex} contentContainerStyle={s.formWrap}>
         <View style={s.card}>
-          {back ? <View style={s.back}><BackLink label={back} /></View> : null}
+          {back ? <View style={s.back}><BackLink label={back} onPress={onBack} /></View> : null}
           {children}
         </View>
       </ScrollView>

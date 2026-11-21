@@ -5,7 +5,6 @@ import { Icon } from '@/design/components';
 import { colors, fonts, hairline } from '@/design/tokens';
 import { useWide } from '@/design/layout';
 import { useGuard } from '@/features/session/Guard';
-import { NO_TAB_BUTTON } from '@/features/shell/tabs';
 import { useSyncEngine } from '@/features/sync/engine';
 import { useActiveMembership } from '@/stores/session';
 import { AppShell, type NavItem } from '@/features/shell/AppShell';
@@ -17,6 +16,8 @@ const ICONS: Record<string, [string, string]> = {
   poll: ['checkbox', 'checkbox-outline'],
   me: ['person-circle', 'person-circle-outline'],
 };
+/** Tab route "(home)" → icon key "home". */
+const iconKey = (name: string) => name.replace(/[()]/g, '');
 
 export default function TabsLayout() {
   const { t, i18n } = useTranslation();
@@ -55,18 +56,14 @@ export default function TabsLayout() {
           paddingTop: 4,
         },
         tabBarItemStyle: { paddingBottom: Platform.OS === 'web' ? 6 : 0 },
-        tabBarIcon: ({ focused, color }) => <Icon name={ICONS[route.name]?.[focused ? 0 : 1] ?? 'ellipse'} size={26} color={color} />,
+        tabBarIcon: ({ focused, color }) => <Icon name={ICONS[iconKey(route.name)]?.[focused ? 0 : 1] ?? 'ellipse'} size={26} color={color} />,
       })}
     >
-      <Tabs.Screen name="home" options={{ title: t('tabs.home') }} />
-      <Tabs.Screen name="voters" options={{ title: t('tabs.voters') }} />
-      <Tabs.Screen name="poll" options={{ title: t('tabs.poll'), href: on('poll') ? undefined : null }} />
+      {/* spec usability-r2 U2: each tab is a page stack, so swipe / Android back return to the previous page. */}
+      <Tabs.Screen name="(home)" options={{ title: t('tabs.home') }} />
+      <Tabs.Screen name="(voters)" options={{ title: t('tabs.voters') }} />
+      <Tabs.Screen name="(poll)" options={{ title: t('tabs.poll'), href: on('poll') ? undefined : null }} />
       <Tabs.Screen name="me" options={{ title: t('tabs.me') }} />
-      <Tabs.Screen name="stats/[kind]" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="tasks" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="surnames" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="slip" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="help" options={NO_TAB_BUTTON} />
     </Tabs>
   );
   // Polling day (spec polling-day V1/V3): location required inside the window; away banner on every screen.

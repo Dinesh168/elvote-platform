@@ -148,3 +148,13 @@ The server enforces super-admin with `validatePrivateUser(userId)` in `private.j
 | `https://election-trend.vercel.app/trend` | `TrendAnalyticsScreen` (iframe / WebView) |
 | `https://elvote-trends.champn.in/map` | `MapScreen.web.js` |
 | `https://trends.electiontoday.co.in/trend` | `MapScreen.native.js` |
+
+## Usability round 2 (2026-11-21, spec usability-r2)
+| Method | Path | Who | Notes |
+|---|---|---|---|
+| GET | `/v1/m/:mid/surnames?zone&booth` | admin | `{ voters, surnames: [{ surname, total, met, our, target, opp }] }` (last word of the name; aggregates only) |
+| GET | `/v1/admin/volunteer-requests?state&customer` | super-admin | pending volunteer requests of every team, oldest first (approve/reject: `/v1/admin/customers/:id/requests/:membershipId/approve|reject`) |
+| GET | `/v1/admin/customers/:id/as-admin` | super-admin | the team as an admin membership (`asSuperAdmin: true`, id = team id); `/v1/m/<team id>/…` admin routes then accept the super-admin; audit `actor_role = super_admin` |
+| — | `POST /v1/join`, `/v1/join/check`, `/v1/access-requests`, approvals, admin-access grants | — | `409 role_conflict` when the account already is / asked to be the other role (one account = one role) |
+| GET | `/v1/catalog/acs` | signed in | now also `district` |
+| POST | `/v1/join/check` | signed in | now also `stateCode` |

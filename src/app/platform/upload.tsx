@@ -1,9 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
 import { useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { platformApi, type HeldRow, type ImportJob, type RollKind } from '@/api/adminApi';
+import { appendFile } from '@/api/upload';
 import { AppText, Button, Field, Group, LargeTitle, Row, Screen, SegmentedControl } from '@/design/components';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing, web } from '@/design/tokens';
@@ -70,8 +71,7 @@ export default function Upload() {
     if (publishedOn) form.append('publishedOn', publishedOn);
     if (acName.trim()) form.append('acName', acName.trim());
     if (acNameLocal.trim()) form.append('acNameLocal', acNameLocal.trim());
-    if (Platform.OS === 'web' && file.file) form.append('file', file.file, file.name);
-    else form.append('file', { uri: file.uri, name: file.name, type: file.mimeType ?? 'text/csv' } as unknown as Blob);
+    await appendFile(form, 'file', { uri: file.uri, name: file.name, type: file.mimeType ?? 'text/csv', file: file.file ?? null });
     const r = await platformApi.upload(form);
     await poll(r.jobId);
   });

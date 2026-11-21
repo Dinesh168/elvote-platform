@@ -1,11 +1,11 @@
 import { Tabs } from 'expo-router';
+import { SuperAdminStrip } from '@/features/shell/SuperAdminStrip';
 import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@/design/components';
 import { colors, fonts, hairline } from '@/design/tokens';
 import { useWide } from '@/design/layout';
 import { useGuard } from '@/features/session/Guard';
-import { NO_TAB_BUTTON } from '@/features/shell/tabs';
 import { useSyncEngine } from '@/features/sync/engine';
 import { useActiveMembership, useSession } from '@/stores/session';
 import { AppShell, type NavItem } from '@/features/shell/AppShell';
@@ -39,7 +39,7 @@ export default function AdminLayout() {
   if (guard) return guard;
   const nav: NavItem[] = [
     ...(adminAcs > 1 ? [{ path: '/admin/overview', label: t('overview.title'), icon: ['albums', 'albums-outline'] as [string, string] }] : []),
-    { path: '/admin/dashboard', label: t('admin.tabs.dashboard'), icon: ICONS.dashboard, also: ['/admin/booth', '/admin/roll'] },
+    { path: '/admin/dashboard', label: t('admin.tabs.dashboard'), icon: ICONS.dashboard, also: ['/admin/booth', '/admin/roll', '/admin/surnames'] },
     ...(pd.day ? [{ path: '/admin/polling', label: t('pd.title'), icon: ['location', 'location-outline'] as [string, string], badge: pd.unseen }] : []),
     { path: '/admin/map', label: t('admin.tabs.map'), icon: ICONS.map },
     { path: '/admin/team', label: t('admin.tabs.team'), icon: ICONS.team },
@@ -47,7 +47,7 @@ export default function AdminLayout() {
     { path: '/admin/poll', label: t('admin.poll'), icon: ['checkbox', 'checkbox-outline'] },
     { path: '/admin/zones', label: t('admin.zones'), icon: ['grid', 'grid-outline'] },
     { path: '/admin/trace', label: t('trace.title'), icon: ['git-commit', 'git-commit-outline'] },
-    { path: '/admin/more', label: t('admin.tabs.more'), icon: ICONS.more },
+    { path: '/admin/more', label: t('admin.tabs.more'), icon: ICONS.more, also: ['/admin/banner', '/admin/team-qr', '/admin/trace'] },
   ].filter((it) => !(
     (it.path === '/admin/map' && !f.map) || (it.path === '/admin/tasks' && !f.tasks) ||
     (it.path === '/admin/poll' && !f.poll) || (it.path === '/admin/zones' && !f.zones))) as NavItem[];
@@ -70,24 +70,23 @@ export default function AdminLayout() {
           paddingTop: 4,
         },
         tabBarItemStyle: { paddingBottom: Platform.OS === 'web' ? 6 : 0 },
-        tabBarIcon: ({ focused, color }) => <Icon name={ICONS[route.name]?.[focused ? 0 : 1] ?? 'ellipse'} size={26} color={color} />,
+        tabBarIcon: ({ focused, color }) => <Icon name={ICONS[route.name.replace(/[()]/g, '')]?.[focused ? 0 : 1] ?? 'ellipse'} size={26} color={color} />,
       })}
     >
-      <Tabs.Screen name="dashboard" options={{ title: t('admin.tabs.dashboard') }} />
+      {/* spec usability-r2 U2: Dashboard and More are page stacks (booth, surnames, zones, banner… open on top). */}
+      <Tabs.Screen name="(dashboard)" options={{ title: t('admin.tabs.dashboard') }} />
       <Tabs.Screen name="map" options={{ title: t('admin.tabs.map'), href: f.map ? undefined : null }} />
       <Tabs.Screen name="team" options={{ title: t('admin.tabs.team') }} />
       <Tabs.Screen name="tasks" options={{ title: t('admin.tabs.tasks'), href: f.tasks ? undefined : null }} />
-      <Tabs.Screen name="more" options={{ title: t('admin.tabs.more') }} />
-      <Tabs.Screen name="booth" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="poll" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="zones" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="trace" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="polling" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="roll" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="overview" options={NO_TAB_BUTTON} />
-      <Tabs.Screen name="banner" options={NO_TAB_BUTTON} />
+      <Tabs.Screen name="(more)" options={{ title: t('admin.tabs.more') }} />
     </Tabs>
   );
   // Phones: a "polling day is live" strip above every admin screen (opens the polling-day page).
-  return wide ? <AppShell items={nav} mode="admin">{tabs}</AppShell> : <AdminLiveBanner>{tabs}</AdminLiveBanner>;
+  const body = (
+    <>
+      <SuperAdminStrip />
+      {tabs}
+    </>
+  );
+  return wide ? <AppShell items={nav} mode="admin">{body}</AppShell> : <AdminLiveBanner>{body}</AdminLiveBanner>;
 }

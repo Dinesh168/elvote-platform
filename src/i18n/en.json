@@ -11,7 +11,8 @@
     "metOf": "{{met}} of {{total}} met",
     "loading": "Loading…",
     "loadError": "Could not load. Check the internet and try again.",
-    "switchLangA11y": "Language — tap to change"
+    "switchLangA11y": "Language — tap to change",
+    "cancel": "Cancel"
   },
   "tabs": {
     "home": "Home",
@@ -62,7 +63,13 @@
       "forbidden": "No access to this team",
       "subscription_ended": "Subscription ended",
       "error": "Not accepted"
-    }
+    },
+    "title": "Sync",
+    "sheetFoot": "Your work is saved on this phone first and sent to the team when there is internet.",
+    "status": "Status",
+    "waitingRow": "Waiting to send",
+    "lastSent": "Last sent",
+    "sendNow": "Send now"
   },
   "groups": {
     "our": "Our",
@@ -171,7 +178,8 @@
     "deleteA11y": "Delete",
     "last": "Last",
     "lastEmpty": "Marked voters show here, with Undo.",
-    "keyboardHint": "Type the serial number on your keyboard. Enter marks Voted, Backspace deletes, Esc clears."
+    "keyboardHint": "Type the serial number on your keyboard. Enter marks Voted, Backspace deletes, Esc clears.",
+    "holdToClear": "Hold to clear the number"
   },
   "me": {
     "language": "Language / ਭਾਸ਼ਾ"
@@ -402,7 +410,8 @@
       "neverSynced": "Never",
       "syncLine": "Last sync {{time}} · {{n}} unsent"
     },
-    "review": "Review"
+    "review": "Review",
+    "visitsToday": "{{n}} visits today"
   },
   "platform": {
     "title": "All states",
@@ -558,7 +567,9 @@
     "deletedUser": "Deleted user",
     "reauth": "Please sign in again to confirm it is you.",
     "passwordLabel": "Your password",
-    "googleAgain": "To confirm, you will sign in with Google once more."
+    "googleAgain": "To confirm, you will sign in with Google once more.",
+    "unsentWarn_one": "1 change is not sent yet. It is sent before the account is deleted; without internet you cannot delete yet.",
+    "unsentWarn_other": "{{count}} changes are not sent yet. They are sent before the account is deleted; without internet you cannot delete yet."
   },
   "cms": {
     "customers": "Customers",
@@ -1051,7 +1062,14 @@
     "createAndApprove": "Create and approve",
     "reason": "Reason (shown to the person)",
     "volunteers_one": "Volunteer request ({{count}})",
-    "volunteers_other": "Volunteer requests ({{count}})"
+    "volunteers_other": "Volunteer requests ({{count}})",
+    "kind": "Requests",
+    "admins": "Admins · {{n}}",
+    "volunteers": "Volunteers · {{n}}",
+    "noneVol": "No volunteer is waiting.",
+    "oldestFirst": "Waiting · oldest first",
+    "booths": "Booths {{list}}",
+    "rejectTitle": "Reject {{name}}?"
   },
   "overview": {
     "title": "All my assemblies",
@@ -1094,6 +1112,83 @@
     "none": "Not set",
     "edit": "Edit Home banner",
     "editShort": "Edit",
-    "a11y": "Banner of {{name}}"
+    "a11y": "Banner of {{name}}",
+    "removeTitle": "Remove the Home banner?",
+    "removeBody": "Your team will no longer see it on Home."
+  },
+  "signout": {
+    "title": "Sign out of ElVote?",
+    "body": "You can sign in again any time.",
+    "unsent_one": "1 change is not sent yet. It will be sent first. Without internet you stay signed in, so nothing is lost.",
+    "unsent_other": "{{count}} changes are not sent yet. They will be sent first. Without internet you stay signed in, so nothing is lost.",
+    "sendAndSignOut": "Send and sign out"
+  },
+  "qr": {
+    "title": "Team QR code",
+    "rowSub": "Volunteers scan it to join",
+    "scanTitle": "Scan code",
+    "point": "Point at the team QR code",
+    "notTeam": "This is not an ElVote team code",
+    "cameraOff": "Camera access is off. Allow it to scan the team code.",
+    "openSettings": "Open settings",
+    "allowCamera": "Allow camera",
+    "typeInstead": "Type the code instead",
+    "scanButton": "Scan team QR code",
+    "scanHint": "Ask your admin to show the code",
+    "orType": "or type the code",
+    "a11y": "Team QR code. Code {{code}}",
+    "codeLabel": "Team code",
+    "howTo": "Volunteers open ElVote → Join your team → Scan team QR code, or type this code.",
+    "none": "No team code on this phone yet.",
+    "noneHint": "Create a code to show or share. A new code replaces the old one.",
+    "share": "Share code",
+    "shareText": "Join {{team}} on ElVote. Team code: {{code}}\n{{link}}",
+    "newCode": "New code",
+    "create": "Create team code",
+    "newTitle": "Make a new team code?",
+    "newBody": "The old code and any printed QR stop working. Volunteers already in the team are not affected."
+  },
+  "join": {
+    "sub": "Scan the team QR code or type the code your admin gave you.",
+    "yourTeam": "Your team (from the code)",
+    "searchBooth": "Booth number or place",
+    "pickBooths": "Choose your booths · {{n}} selected",
+    "boothsFoot": "Your admin approves your booths. More than one volunteer can share a booth.",
+    "send": "Send request · {{n}} booths"
+  },
+  "assemblies": {
+    "title": "Your assemblies",
+    "other": "Other",
+    "choose": "Choose assemblies",
+    "whole": "Whole state ({{n}})",
+    "search": "Search name or number",
+    "remove": "Remove",
+    "wholeTitle": "All {{n}} assemblies of {{state}}",
+    "wholeBody": "You ask to manage the whole state. The super-admin decides.",
+    "none": "No assembly matches.",
+    "wholeCount": "Whole state · {{n}} assemblies",
+    "count": "{{n}} of {{of}} assemblies selected",
+    "wholeShort": "Whole state",
+    "selected": "{{n}} selected",
+    "notChosen": "Not chosen"
+  },
+  "asur": {
+    "title": "Surnames",
+    "rowSub": "Voter count for every surname",
+    "requests": "Volunteer requests",
+    "waiting_one": "1 waiting",
+    "waiting_other": "{{count}} waiting",
+    "none": "None waiting",
+    "sub": "{{n}} surnames · {{voters}} voters",
+    "search": "Search surname",
+    "most": "Most voters",
+    "az": "A–Z",
+    "a11y": "{{name}}: {{n}} voters, {{met}}% met, {{our}}% our",
+    "line": "{{met}}% met · {{our}}% our · {{target}} target · {{opp}} opp."
+  },
+  "asAdmin": {
+    "strip": "Super-admin · {{team}}",
+    "exit": "Exit",
+    "open": "Open as admin"
   }
 }

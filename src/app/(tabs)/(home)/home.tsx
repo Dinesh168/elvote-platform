@@ -6,9 +6,12 @@ import { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { TeamBanner } from '@/features/shell/TeamBanner';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SummaryCard } from '@/features/shell/SummaryCard';
+import { SyncBadge } from '@/features/sync/SyncBadge';
 import type { GroupCode } from '@/api/types';
 import {
-  AppText, Button, ChoiceRow, Grid, Group, Icon, IconSquare, LargeTitle, ProgressBar, Row, Screen, Sheet, SnoBadge, SyncPill,
+  AppText, Button, ChoiceRow, Grid, Group, Icon, IconSquare, LargeTitle, Row, Screen, Sheet, SnoBadge,
 } from '@/design/components';
 import { colors, group, hairline, radius, spacing, web } from '@/design/tokens';
 import { BoothSheet } from '@/features/common/BoothSheet';
@@ -23,7 +26,6 @@ import { usePrefs } from '@/stores/prefs';
 import { relText } from '@/features/voters/rel';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
-const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)}%` : '0%');
 const GROUPS: GroupCode[] = ['our', 'target', 'opp'];
 
 export default function HomeScreen() {
@@ -51,7 +53,7 @@ export default function HomeScreen() {
   const taskName = next?.task ? next.task.name : t('home.allVoters');
 
   return (
-    <Screen trailing={<SyncPill />}>
+    <Screen header={<TeamBar trailing={<SyncBadge />} />} trailing={<SyncBadge />}>
       <TeamBanner />
       <LargeTitle title={t('home.hello', { name: firstName })} subtitle={date} />
       {look?.candidateName && m ? (
@@ -66,17 +68,33 @@ export default function HomeScreen() {
         </View>
       ) : null}
 
-      <Group style={{ marginTop: spacing.lg }}>
-        <Row
-          title={t('common.booth', { no: booth })}
-          subtitle={boothInfo?.name}
-          leading={<IconSquare name="location" bg={colors.accent} />}
-          trailing={<AppText variant="body" color={colors.accent}>{t('common.change')}</AppText>}
-          onPress={() => setSheet('booth')}
-          last
-          a11yLabel={`${t('common.booth', { no: booth })}, ${boothInfo?.name ?? ''}. ${t('common.change')}`}
+      {stats ? (
+        // spec usability-r2 H1: one summary card like Polling day (ring, booth + Change, counts that open the list).
+        <SummaryCard
+          pct={stats.total ? (stats.met / stats.total) * 100 : 0}
+          title={t('common.metOf', { met: fmt(stats.met), total: fmt(stats.total) })}
+          subtitle={`${t('common.booth', { no: booth })} · ${boothInfo?.name ?? ''}`}
+          action={t('common.change')}
+          onAction={() => setSheet('booth')}
+          actionA11y={`${t('common.booth', { no: booth })}, ${boothInfo?.name ?? ''}. ${t('common.metOf', { met: fmt(stats.met), total: fmt(stats.total) })}. ${t('common.change')}`}
+          cells={[
+            ...GROUPS.map((g) => ({ key: g, value: stats[g], label: t(`groups.${g}`), color: group[g].strong, onPress: () => openVoters({ chip: g }) })),
+            { key: 'todo', value: stats.notMet, label: t('admin.notMet'), color: colors.text, onPress: () => openVoters({ chip: 'todo' }) },
+          ]}
         />
-      </Group>
+      ) : (
+        <Group style={{ marginTop: spacing.lg }}>
+          <Row
+            title={t('common.booth', { no: booth })}
+            subtitle={boothInfo?.name}
+            leading={<IconSquare name="location" bg={colors.accent} />}
+            trailing={<AppText variant="body" color={colors.accent}>{t('common.change')}</AppText>}
+            onPress={() => setSheet('booth')}
+            last
+            a11yLabel={`${t('common.booth', { no: booth })}, ${boothInfo?.name ?? ''}. ${t('common.change')}`}
+          />
+        </Group>
+      )}
 
       {!stats ? (
         <QueryState loading={votersQ.isLoading} error={votersQ.isError} onRetry={() => void votersQ.refetch()} />
@@ -124,45 +142,6 @@ export default function HomeScreen() {
             </AppText>
           </Pressable>
 
-          <Group header={t('home.myWork')} footer={t('home.left', { count: stats.notMet })}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={`${t('home.votersMet')} ${stats.met} / ${stats.total}`}
-              onPress={() => openVoters({ chip: 'todo' })}
-              style={({ pressed }) => [s.work, pressed && { backgroundColor: colors.pressed }]}
-            >
-              <View style={s.workTop}>
-                <AppText variant="body">{t('home.votersMet')}</AppText>
-                <AppText variant="title2" tabular>
-                  {fmt(stats.met)}
-                  <AppText variant="body" color={colors.textSecondary}>{` / ${fmt(stats.total)}`}</AppText>
-                </AppText>
-              </View>
-              <ProgressBar value={stats.met / stats.total} />
-            </Pressable>
-          </Group>
-
-          <Group header={t('home.groups')} style={s.groups}>
-            {GROUPS.map((g, i) => (
-              <Pressable
-                key={g}
-                accessibilityRole="button"
-                accessibilityLabel={`${t(`groups.${g}`)} ${stats[g]}, ${pct(stats[g], stats.total)}`}
-                onPress={() => openVoters({ chip: g })}
-                style={({ pressed }) => [s.groupCell, i < 2 && s.groupDivider, pressed && { backgroundColor: colors.pressed }]}
-              >
-                <AppText variant="title2" color={group[g].strong} tabular style={{ fontSize: 26, lineHeight: 32 }}>
-                  {fmt(stats[g])}
-                </AppText>
-                <AppText variant="callout" weight="semibold" color={group[g].strong}>
-                  {t(`groups.${g}`)}
-                </AppText>
-                <AppText variant="footnote" color={colors.textSecondary}>
-                  {pct(stats[g], stats.total)}
-                </AppText>
-              </Pressable>
-            ))}
-          </Group>
           </View>
 
           <View>

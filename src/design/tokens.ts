@@ -29,6 +29,14 @@ export const colors = {
   dangerTint: 'rgba(255,59,48,0.12)',
   warning: '#B45309',
   warningFill: '#FF9500',
+  /** Amber pill background ("3 to send"), spec usability-r2 H2. */
+  warningTint: 'rgba(255,149,0,0.16)',
+  /** iPhone keyboard Done bar (spec usability-r2 U3). */
+  keyboardBar: '#F0F1F3',
+  /** Camera screen background (QR scanner). */
+  cameraBg: '#0B0B0C',
+  /** Light overlay on an accent-coloured button (scan icon box). */
+  onAccentTint: 'rgba(255,255,255,0.18)',
   overlay: 'rgba(0,0,0,0.32)',
   toast: 'rgba(28,28,30,0.94)',
   toastAction: '#A5B4FC',
@@ -129,7 +137,7 @@ export const web = {
   sidebarBg: '#FBFBFD',
   navActive: 'rgba(24,75,161,0.10)',
   focus: '#184BA1',
-  buttonHover: '#4338CA',
+  buttonHover: '#144089', // ElVote blue, 15% darker (party colours derive their own in theme.ts)
 } as const;
 
 export const touch ={ min: 44, primary: 50, group: 56, row: 52 } as const;

@@ -1,4 +1,5 @@
 import { Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, useFonts } from '@expo-google-fonts/inter';
+import { DoneBarHost } from '@/design/components/DoneBar';
 import { NotoSansGurmukhi_400Regular, NotoSansGurmukhi_600SemiBold, NotoSansGurmukhi_700Bold } from '@expo-google-fonts/noto-sans-gurmukhi';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { persistQueryClientRestore, persistQueryClientSubscribe } from '@tanstack/react-query-persist-client';
@@ -97,6 +98,7 @@ export default function RootLayout() {
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />
           <NoticeHost />
+          <DoneBarHost />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

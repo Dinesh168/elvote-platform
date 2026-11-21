@@ -2,7 +2,14 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
-const withQuery = (ui: React.ReactElement) => <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>;
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+const METRICS = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
+const withQuery = (ui: React.ReactElement) => (
+  <SafeAreaProvider initialMetrics={METRICS}>
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>{ui}</QueryClientProvider>
+  </SafeAreaProvider>
+);
 
 const mockProfile = jest.fn(async (_p: unknown) => ({ ok: true }));
 const mockRequest = jest.fn(async (_p: unknown) => ({ id: 'r1' }));
@@ -77,7 +84,10 @@ describe('admin request (AC6)', () => {
     expect(send).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Party name'), 'Jan Vikas Party');
     await fireEvent.press(await screen.findByRole('radio', { name: 'Punjab' }));
-    await fireEvent.press(screen.getByRole('radio', { name: 'Whole state' }));
+    // spec usability-r2 A1: assemblies are chosen on their own page (whole state or a list).
+    await fireEvent.press(await screen.findByText('Your assemblies'));
+    await fireEvent.press(await screen.findByText('Whole state (2)'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     await fireEvent.changeText(screen.getByLabelText('Your position in the party'), 'State secretary');
     await fireEvent.press(screen.getByRole('button', { name: 'Send request' }));
     await waitFor(() => expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({ partyName: 'Jan Vikas Party', stateCode: 'PB', wholeState: true, designation: 'State secretary' })));
@@ -88,10 +98,15 @@ describe('admin request (AC6)', () => {
     await render(withQuery(<RegisterAdmin />));
     await fireEvent.changeText(screen.getByLabelText('Party name'), 'Jan Vikas Party');
     await fireEvent.press(await screen.findByRole('radio', { name: 'Punjab' }));
-    await fireEvent.press(screen.getByRole('radio', { name: 'Some assemblies' }));
     await fireEvent.changeText(screen.getByLabelText('Your position in the party'), 'Halqa incharge');
     expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
-    await fireEvent.press(await screen.findByRole('checkbox', { name: /66 · Rampur/ }));
+    await fireEvent.press(await screen.findByText('Your assemblies'));
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText('Search name or number'), '66');
+    expect(screen.queryByRole('checkbox', { name: /50 Nawanpind/ })).toBeNull();
+    await fireEvent.press(await screen.findByRole('checkbox', { name: /66 Rampur/ }));
+    expect(screen.getByText('1 of 2 assemblies selected')).toBeTruthy();
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Send request' }));
     await waitFor(() => expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({ wholeState: false, acNos: [66] })));
   });

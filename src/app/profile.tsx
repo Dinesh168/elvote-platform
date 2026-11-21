@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { doneProps } from '@/design/components/DoneBar';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '@/api/adminApi';
@@ -57,6 +58,7 @@ export default function Profile() {
           value={mobile}
           onChangeText={(x) => setMobile(x.replace(/\D/g, '').slice(0, 10))}
           keyboardType="number-pad"
+              {...doneProps('number-pad')}
           maxLength={10}
           autoComplete="tel"
           hint={mobile.length > 0 && !isValidMobile(mobile) ? t('auth.enter10') : t('profile.mobileHint')}

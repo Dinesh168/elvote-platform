@@ -7,7 +7,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { env } from '../config.js';
 import { core, inParty, statePool } from '../db/pools.js';
-import { audit, membershipsOf } from '../lib/access.js';
+import { audit, membershipsOf, teamAsSuperAdmin } from '../lib/access.js';
+import { assertOneRole } from '../lib/roles.js';
+import { clientMemberships } from './me.js';
 import { ApiError, invalid, notFound } from '../lib/errors.js';
 import { Mobile, parse, PartNo, Uuid } from '../lib/http.js';
 import { approveVolunteer, customerById, rejectVolunteer } from '../lib/members.js';
@@ -66,6 +68,7 @@ export async function accessUserRoutes(app: FastifyInstance) {
   // AC6: admin request.
   app.post('/v1/access-requests', async (req) => {
     await requireProfile(req.userId);
+    await assertOneRole(req.userId, 'admin'); // spec usability-r2 R1
     const b = parse(z.object({
       partyId: Uuid.optional(),
       partyName: z.string().trim().min(2).max(100),
@@ -140,8 +143,10 @@ export async function accessUserRoutes(app: FastifyInstance) {
   app.get('/v1/catalog/acs', async (req) => {
     const q = parse(z.object({ state: State }), req.query);
     const pool = await statePool(q.state).catch(() => { throw invalid('state_unknown', 'Pick a state from the list.'); });
-    const r = await pool.query<{ ac_no: number; name: string; name_local: string | null }>('SELECT ac_no, name, name_local FROM assembly_constituencies ORDER BY ac_no');
-    return r.rows.map((x) => ({ acNo: x.ac_no, name: x.name, nameLocal: x.name_local }));
+    // spec usability-r2 A1: with the district, so a long list (300+ assemblies) can be grouped.
+    const r = await pool.query<{ ac_no: number; name: string; name_local: string | null; district: string | null }>(
+      'SELECT a.ac_no, a.name, a.name_local, d.name AS district FROM assembly_constituencies a LEFT JOIN districts d ON d.code = a.district_code ORDER BY a.ac_no');
+    return r.rows.map((x) => ({ acNo: x.ac_no, name: x.name, nameLocal: x.name_local, district: x.district }));
   });
   app.get('/v1/catalog/parties', async () => {
     const r = await core.query<{ id: string; name: string }>('SELECT id, name FROM parties WHERE deleted_at IS NULL ORDER BY name');
@@ -178,6 +183,7 @@ export async function accessAdminRoutes(app: FastifyInstance) {
     const row = ar.rows[0];
     if (!row) throw notFound();
     if (row.status !== 'pending') throw invalid('not_pending', 'This request was already decided.');
+    await assertOneRole(row.user_id, 'admin');
     if (!b.wholeState && !b.acNos?.length) throw invalid('area_required', 'Pick the whole state or at least one assembly.');
     let partyId = b.partyId;
     if (!partyId) {
@@ -217,6 +223,7 @@ export async function accessAdminRoutes(app: FastifyInstance) {
     const b = parse(z.object({ partyId: Uuid, stateCode: State, wholeState: z.boolean().optional(), acNos: AcNos.optional(), createMissing: z.boolean().optional() }), req.body);
     const u = await core.query('SELECT 1 FROM users WHERE id = $1 AND deleted_at IS NULL', [id]);
     if (!u.rowCount) throw notFound();
+    await assertOneRole(id, 'admin');
     if (b.wholeState) await grantState(req.userId, id, b.partyId, b.stateCode);
     else if (b.acNos?.length) await grantAssemblies(req.userId, id, b.partyId, b.stateCode, b.acNos, b.createMissing);
     else throw invalid('area_required', 'Pick the whole state or at least one assembly.');
@@ -227,6 +234,38 @@ export async function accessAdminRoutes(app: FastifyInstance) {
     const p = parse(z.object({ id: Uuid, partyId: Uuid, state: State }), req.params);
     if (!(await revokeState(req.userId, p.id, p.partyId, p.state))) throw notFound();
     return adminAccessOf(p.id);
+  });
+
+  // spec usability-r2 S1: volunteer requests of every team, oldest first (approve/reject with the per-team routes below).
+  app.get('/v1/admin/volunteer-requests', async (req) => {
+    const q = parse(z.object({ state: State.optional(), customer: Uuid.optional() }), req.query);
+    const params: unknown[] = [];
+    let where = '';
+    if (q.state) { params.push(q.state); where += ` AND trim(pc.state_code) = $${params.length}`; }
+    if (q.customer) { params.push(q.customer); where += ` AND pc.id = $${params.length}`; }
+    const r = await core.query<{ id: string; user_id: string; name: string; mobile: string | null; email: string | null; requested_at: Date; booths: number[];
+      party_ac_id: string; party_name: string; app_name: string | null; state_code: string; ac_no: number; ac_name: string }>(
+      `SELECT ms.id, u.id AS user_id, u.name, u.mobile, u.email, ms.requested_at,
+              COALESCE(array_agg(mb.part_no ORDER BY mb.part_no) FILTER (WHERE mb.part_no IS NOT NULL), '{}') AS booths,
+              pc.id AS party_ac_id, p.name AS party_name, pc.app_name, trim(pc.state_code) AS state_code, pc.ac_no, pc.ac_name
+         FROM memberships ms JOIN users u ON u.id = ms.user_id
+         JOIN party_constituencies pc ON pc.id = ms.party_constituency_id AND pc.deleted_at IS NULL
+         JOIN parties p ON p.id = pc.party_id
+         LEFT JOIN membership_booths mb ON mb.membership_id = ms.id
+        WHERE ms.status = 'pending' AND ms.role = 'volunteer'${where}
+        GROUP BY ms.id, u.id, pc.id, p.id ORDER BY ms.requested_at LIMIT 500`, params);
+    return r.rows.map((x) => ({
+      membershipId: x.id, userId: x.user_id, name: x.name, mobile: x.mobile, email: x.email, requestedAt: x.requested_at, booths: x.booths,
+      customerId: x.party_ac_id, partyName: x.party_name, appName: x.app_name, stateCode: x.state_code, acNo: x.ac_no, acName: x.ac_name,
+    }));
+  });
+
+  // spec usability-r2 S2: open a team as its admin (the app uses this as the active membership; writes are logged as super_admin).
+  app.get('/v1/admin/customers/:id/as-admin', async (req) => {
+    const { id } = parse(z.object({ id: Uuid }), req.params);
+    const m = await teamAsSuperAdmin(req.userId, id);
+    await audit({ actor: req.userId, role: 'super_admin', action: 'team.open_as_admin', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'party_constituency', entityId: id });
+    return (await clientMemberships([m]))[0];
   });
 
   // AC10: volunteer requests of one customer, decided by the super-admin.

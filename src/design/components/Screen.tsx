@@ -20,8 +20,11 @@ export function Screen({
   onBack,
   scrollProps,
   width,
+  header,
 }: {
   children: ReactNode;
+  /** Phones: replaces the top bar (e.g. the team bar on main tabs, spec usability-r2 H1). Desktop keeps `trailing`. */
+  header?: ReactNode;
   scroll?: boolean;
   /** Web desktop content width: default 1200; `medium` 960 (lists); `narrow` 720 (forms, settings). */
   width?: 'medium' | 'narrow';
@@ -38,7 +41,7 @@ export function Screen({
   const hasBar = !!(back || inlineTitle || trailing);
   return (
     <View style={[s.root, { paddingTop: insets.top }]}>
-      {hasBar && (
+      {header ?? (hasBar && (
         <View style={s.bar}>
           {back ? <BackLink label={back} onPress={onBack} /> : <View />}
           {inlineTitle ? (
@@ -48,7 +51,7 @@ export function Screen({
           ) : null}
           <View style={s.trailing}>{trailing}</View>
         </View>
-      )}
+      ))}
       {scroll ? (
         <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxxl }} keyboardShouldPersistTaps="handled" {...scrollProps}>
           {children}

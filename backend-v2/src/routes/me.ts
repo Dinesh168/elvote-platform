@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { core, statePool } from '../db/pools.js';
-import { isSuperAdmin, membershipsOf } from '../lib/access.js';
+import { isSuperAdmin, membershipsOf, type Membership } from '../lib/access.js';
+import { assertOneRole } from '../lib/roles.js';
 import { requestDeletion, sendDeletionCode } from '../lib/account.js';
 import { acLangs } from '../lib/lang.js';
 import { pollingDayOf } from '../lib/presence.js';
@@ -11,25 +12,31 @@ import { parse, PartNo } from '../lib/http.js';
 import { adminsOf, notify } from '../lib/notify.js';
 import { latestRequestOf, requireProfile } from './access.js';
 
+/** Memberships as the app reads them (also used for the super-admin's "open team as admin", spec usability-r2 S2). */
+export async function clientMemberships(ms: Membership[]) {
+  const days = await pollingDayOf(ms);
+  // spec bilingual-roll L1: the regional language of each membership's assembly
+  const langs = new Map<string, Map<number, string>>();
+  for (const st of [...new Set(ms.map((m) => m.stateCode))]) langs.set(st, await acLangs(st, ms.filter((m) => m.stateCode === st).map((m) => m.acNo)));
+  return ms.map((m, i) => ({
+    id: m.id, role: m.role, status: m.status, partyId: m.partyId, partyName: m.partyName, partyAcId: m.partyAcId,
+    stateCode: m.stateCode, acNo: m.acNo, acName: m.acName, booths: m.booths, maxZones: m.maxZones, zoneCount: m.zoneCount,
+    active: m.active, features: m.features, look: m.look, sync: m.sync,
+    boothRadiusM: m.boothRadiusM, pollingDay: days[i], dataLang: langs.get(m.stateCode)?.get(m.acNo) ?? 'hi',
+    ...(m.asSuperAdmin ? { asSuperAdmin: true } : {}),
+  }));
+}
+
 export async function meRoutes(app: FastifyInstance) {
   app.get('/v1/me', async (req) => {
     const u = await core.query<{ id: string; mobile: string | null; email: string | null; name: string; lang: string }>('SELECT id, mobile, email, name, lang FROM users WHERE id = $1', [req.userId]);
     const user = u.rows[0];
     const [sup, ms, accessRequest] = await Promise.all([isSuperAdmin(req.userId), membershipsOf(req.userId), latestRequestOf(req.userId)]);
-    const days = await pollingDayOf(ms);
-    // spec bilingual-roll L1: the regional language of each membership's assembly
-    const langs = new Map<string, Map<number, string>>();
-    for (const st of [...new Set(ms.map((m) => m.stateCode))]) langs.set(st, await acLangs(st, ms.filter((m) => m.stateCode === st).map((m) => m.acNo)));
     return {
       user: { id: user.id, mobile: user.mobile, email: user.email, name: user.name, lang: user.lang, profileDone: !!user.mobile && !!user.name.trim() },
       isSuperAdmin: sup,
       accessRequest,
-      memberships: ms.map((m, i) => ({
-        id: m.id, role: m.role, status: m.status, partyId: m.partyId, partyName: m.partyName, partyAcId: m.partyAcId,
-        stateCode: m.stateCode, acNo: m.acNo, acName: m.acName, booths: m.booths, maxZones: m.maxZones, zoneCount: m.zoneCount,
-        active: m.active, features: m.features, look: m.look, sync: m.sync,
-        boothRadiusM: m.boothRadiusM, pollingDay: days[i], dataLang: langs.get(m.stateCode)?.get(m.acNo) ?? 'hi',
-      })),
+      memberships: await clientMemberships(ms),
     };
   });
 
@@ -69,13 +76,14 @@ export async function meRoutes(app: FastifyInstance) {
   /** Checks a join code and returns the AC and its booths, so the volunteer can pick booths. */
   app.post('/v1/join/check', async (req) => {
     await requireProfile(req.userId, { nameLater: true }); // the join form may still ask for the name
+    await assertOneRole(req.userId, 'volunteer'); // spec usability-r2 R1
     const { code } = parse(z.object({ code: z.string().trim().min(4).max(20) }), req.body);
     const pc = await findCode(code);
     const pool = await statePool(pc.state_code);
     const booths = await pool.query<{ part_no: number; name: string; locality: string }>(
       'SELECT part_no, name, locality FROM booths WHERE ac_no = $1 AND deleted_at IS NULL ORDER BY part_no', [pc.ac_no],
     );
-    return { partyName: pc.party_name, acNo: pc.ac_no, acName: pc.ac_name, booths: booths.rows.map((b) => ({ no: b.part_no, name: b.name, village: b.locality })) };
+    return { partyName: pc.party_name, stateCode: String(pc.state_code).trim(), acNo: pc.ac_no, acName: pc.ac_name, booths: booths.rows.map((b) => ({ no: b.part_no, name: b.name, village: b.locality })) };
   });
 
   app.post('/v1/join', async (req) => {
@@ -86,6 +94,7 @@ export async function meRoutes(app: FastifyInstance) {
       booths: z.array(PartNo).min(1).max(10),
     }), req.body);
     await requireProfile(req.userId, { nameLater: true });
+    await assertOneRole(req.userId, 'volunteer'); // spec usability-r2 R1
     const pc = await findCode(b.code);
     const pool = await statePool(pc.state_code);
     const valid = await pool.query<{ part_no: number }>('SELECT part_no FROM booths WHERE ac_no = $1 AND part_no = ANY($2::smallint[])', [pc.ac_no, b.booths]);

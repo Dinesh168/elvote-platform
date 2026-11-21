@@ -37,6 +37,8 @@ export interface MembershipInfo {
   /** Polling day for this team's assembly, if one is set (spec polling-day S1); remembered offline. */
   pollingDay?: { electionId: string; name: string; date: string; opensAt: string; closesAt: string; radiusM: number } | null;
   boothRadiusM?: number;
+  /** Super-admin working inside this team as its admin (spec usability-r2 S2); id = team id. */
+  asSuperAdmin?: boolean;
   /** Regional language of this assembly's data (spec bilingual-roll L1). */
   dataLang?: 'hi' | 'pa';
 }
@@ -86,6 +88,9 @@ interface SessionState {
   me: MeInfo | null;
   mode: Mode | null;
   membershipId: string | null;
+  /** spec usability-r2 S2: team opened by the super-admin as its admin (memory only: a reload returns to Overview). */
+  asTeam: MembershipInfo | null;
+  setAsTeam: (m: MembershipInfo | null) => void;
   load: () => Promise<void>;
   setTokens: (access: string, refresh: string) => Promise<void>;
   setAccess: (access: string) => void;
@@ -101,6 +106,8 @@ export const useSession = create<SessionState>()((set) => ({
   me: null,
   mode: null,
   membershipId: null,
+  asTeam: null,
+  setAsTeam: (asTeam) => set({ asTeam }),
   load: async () => {
     const [refresh, active, cached] = await Promise.all([store.get(REFRESH_KEY), AsyncStorage.getItem(ACTIVE_KEY), durable.getItem(ME_KEY).catch(() => null)]);
     const a = active ? (JSON.parse(active) as { mode: Mode; membershipId: string | null }) : null;
@@ -122,19 +129,22 @@ export const useSession = create<SessionState>()((set) => ({
     await AsyncStorage.setItem(ACTIVE_KEY, JSON.stringify({ mode, membershipId }));
   },
   signOut: async () => {
-    set({ accessToken: null, refreshToken: null, me: null, mode: null, membershipId: null });
+    set({ accessToken: null, refreshToken: null, me: null, mode: null, membershipId: null, asTeam: null });
     await Promise.all([store.set(REFRESH_KEY, null), AsyncStorage.removeItem(ACTIVE_KEY), durable.removeItem(ME_KEY).catch(() => undefined)]);
   },
 }));
 
 /** The membership the app is currently working in. */
 export function activeMembership(): MembershipInfo | null {
-  const { me, membershipId } = useSession.getState();
+  const { me, membershipId, asTeam } = useSession.getState();
+  if (asTeam && asTeam.id === membershipId) return asTeam;
   return me?.memberships.find((m) => m.id === membershipId) ?? null;
 }
 
 export function useActiveMembership(): MembershipInfo | null {
   const me = useSession((s) => s.me);
   const id = useSession((s) => s.membershipId);
+  const asTeam = useSession((s) => s.asTeam);
+  if (asTeam && asTeam.id === id) return asTeam;
   return me?.memberships.find((m) => m.id === id) ?? null;
 }

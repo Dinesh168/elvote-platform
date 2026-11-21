@@ -19,6 +19,9 @@ export default function Index() {
   const [attempt, setAttempt] = useState(0);
   const { next } = useLocalSearchParams<{ next?: string }>();
   const onboarded = usePrefs((st) => st.onboarded);
+  // Phones load saved settings a moment after start: decide welcome vs sign in only once they are loaded.
+  const [prefsReady, setPrefsReady] = useState(() => usePrefs.persist.hasHydrated());
+  useEffect(() => (prefsReady ? undefined : usePrefs.persist.onFinishHydration(() => setPrefsReady(true))), [prefsReady]);
 
   useEffect(() => {
     if (API_MODE === 'mock') return;
@@ -34,7 +37,7 @@ export default function Index() {
 
   if (API_MODE === 'mock') return <Redirect href="/home" />;
   // spec onboarding-branding OB1: first launch → welcome → choose language → sign in.
-  if (loaded && !refresh) return <Redirect href={onboarded ? '/login' : '/welcome'} />;
+  if (loaded && !refresh && prefsReady) return <Redirect href={onboarded ? '/login' : '/welcome'} />;
   return (
     <View style={s.root}>
       {error ? (

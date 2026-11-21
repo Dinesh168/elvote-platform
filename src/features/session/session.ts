@@ -3,7 +3,7 @@
  * The server decides access; this only picks which screens to show.
  */
 import { router } from 'expo-router';
-import { authApi } from '@/api/adminApi';
+import { authApi, platformApi } from '@/api/adminApi';
 import { signOutFirebase } from '@/features/auth/firebaseAuth';
 import { ApiError } from '@/api/http';
 import { clearDeviceCache, queryClient } from '@/features/data';
@@ -84,7 +84,7 @@ export async function activate(t: Target) {
   const s = useSession.getState();
   if (s.mode !== t.mode || s.membershipId !== t.membershipId) queryClient.clear();
   await s.activate(t.mode, t.membershipId);
-  const mem = s.me?.memberships.find((x) => x.id === t.membershipId);
+  const mem = s.me?.memberships.find((x) => x.id === t.membershipId) ?? (s.asTeam?.id === t.membershipId ? s.asTeam : undefined);
   // Customer look (spec customer-cms C1/C4): party colour for the whole app, default language unless the person chose one.
   applyBrand(t.mode === 'platform' ? null : mem?.look?.colour ?? null);
   const def = mem?.look?.defaultLang;
@@ -117,6 +117,20 @@ export async function goLanding(next?: string) {
     if (mem && mem.active === false) return router.replace('/paused');
     router.replace((next && AREA[to.mode].test(next) ? next : to.path) as never);
   }
+}
+
+/** spec usability-r2 S2: the super-admin opens a team with full admin control (every write is logged as them). */
+export async function openTeamAsAdmin(customerId: string) {
+  const m = await platformApi.teamAsAdmin(customerId);
+  useSession.getState().setAsTeam({ ...m, asSuperAdmin: true });
+  await activate({ mode: 'admin', membershipId: m.id, path: '/admin/dashboard' });
+  router.replace('/admin/dashboard');
+}
+
+export async function exitTeam() {
+  useSession.getState().setAsTeam(null);
+  await activate({ mode: 'platform', membershipId: null, path: '/platform' });
+  router.replace('/platform');
 }
 
 export async function logout() {

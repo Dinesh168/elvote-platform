@@ -1,4 +1,5 @@
 import { Redirect, router } from 'expo-router';
+import { useOutbox } from '@/stores/outbox';
 import { themed } from '@/design/theme';
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -34,6 +35,7 @@ export default function DeleteAccount() {
   const fb = firebaseOn();
   const [method, setMethod] = useState<'google' | 'password' | null>(null);
   const [password, setPassword] = useState('');
+  const unsent = useOutbox((o) => o.items.length + o.problems.length);
   useEffect(() => { if (fb) void signInMethod().then(setMethod); }, [fb]);
   if (!me) return <Redirect href="/" />;
   const mobile = me.user.mobile;
@@ -90,6 +92,13 @@ export default function DeleteAccount() {
     <AuthScreen back={t('common.back')}>
       <LargeTitle title={t('del.title')} subtitle={t('del.sub')} />
       <View style={s.body}>
+        {unsent ? (
+          // spec usability-r2 U1: warn before anything else when work is not sent yet.
+          <View style={s.unsent} accessibilityRole="alert">
+            <Icon name="warning" size={20} color={colors.danger} />
+            <AppText variant="callout" weight="semibold" color={colors.danger} style={s.flex}>{t('del.unsentWarn', { count: unsent })}</AppText>
+          </View>
+        ) : null}
         <View style={s.info}>
           {(['what1', 'what2', 'what3'] as const).map((k) => (
             <View key={k} style={s.point}>
@@ -130,6 +139,7 @@ export default function DeleteAccount() {
 }
 
 const s = themed(() => StyleSheet.create({
+  unsent: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.dangerTint },
   body: { padding: spacing.lg, gap: spacing.lg, marginTop: spacing.md },
   info: { gap: spacing.md, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.fill },
   point: { flexDirection: 'row', gap: spacing.md, alignItems: 'flex-start' },

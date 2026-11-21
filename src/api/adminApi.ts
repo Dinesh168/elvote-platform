@@ -1,6 +1,6 @@
 /** Admin + super-admin API (backend-v2). Types mirror the server responses. */
 import { http } from './http';
-import type { MeInfo } from '@/stores/session';
+import type { MeInfo, MembershipInfo } from '@/stores/session';
 
 export interface Totals {
   total: number; met: number; our: number; target: number; opp: number; moved: number;
@@ -27,6 +27,7 @@ export interface Dashboard {
 }
 
 export interface BoothRow { no: number; name: string; zone: string | null; strength: 'S' | 'M' | 'W'; workers: number; total: number; met: number; houses: number; housesVisited: number; withMobile: number; our: number; target: number; opp: number }
+export interface Surnames { voters: number; surnames: { surname: string; total: number; met: number; our: number; target: number; opp: number }[] }
 export interface Zones { maxZones: number; zoneCount: number; zones: { id: string; number: number; name: string; booths: number[] }[]; unassigned: number[] }
 export interface TeamMember { membershipId: string; userId: string; name: string; mobile: string; epic: string | null; role: 'admin' | 'volunteer'; status: string; requestedAt: string; rejectReason: string | null; booths: number[]; contactedToday: number; contactedTotal: number; lastSyncAt?: string | null; unsent?: number }
 export interface Drive { id: string; kind: string; name: string; startsOn: string; endsOn: string; scope: string; status: 'not_started' | 'ongoing' | 'completed'; daysLeft: number; targeted: number; completed: number; pct: number; byZone: { zone: string; targeted: number; completed: number; pct: number }[] }
@@ -47,6 +48,8 @@ export const adminApi = {
   boothTable: (mid: string, zone?: string) => http.get<BoothRow[]>(`${m(mid)}/booth-table${qs({ zone })}`),
   setStrength: (mid: string, no: number, strength: 'S' | 'M' | 'W') => http.put(`${m(mid)}/booths/${no}/strength`, { strength }),
   zones: (mid: string) => http.get<Zones>(`${m(mid)}/zones`),
+  /** spec usability-r2 A2: surnames of the assembly (optionally one zone or booth). */
+  surnames: (mid: string, f: { zone?: string; booth?: number } = {}) => http.get<Surnames>(`${m(mid)}/surnames${qs(f)}`),
   setZoneCount: (mid: string, count: number) => http.put<{ zoneCount: number }>(`${m(mid)}/zones/count`, { count }),
   renameZone: (mid: string, id: string, name: string) => http.patch(`${m(mid)}/zones/${id}`, { name }),
   moveBooths: (mid: string, booths: number[], zoneId: string | null) => http.put(`${m(mid)}/zones/booths`, { booths, zoneId }),
@@ -183,6 +186,10 @@ export const platformApi = {
     http.post<AdminAccess>(`/v1/admin/users/${userId}/admin-access`, p),
   removeStateAccess: (userId: string, partyId: string, state: string) => http.del<AdminAccess>(`/v1/admin/users/${userId}/admin-access/state/${partyId}/${state}`),
   volunteerRequests: (customerId: string) => http.get<VolunteerRequest[]>(`/v1/admin/customers/${customerId}/requests`),
+  /** spec usability-r2 S1: volunteer requests of every team (oldest first). */
+  allVolunteerRequests: (f: { state?: string; customer?: string } = {}) => http.get<TeamVolunteerRequest[]>(`/v1/admin/volunteer-requests${qs(f)}`),
+  /** spec usability-r2 S2: a team as its admin (used as the active membership). */
+  teamAsAdmin: (customerId: string) => http.get<MembershipInfo>(`/v1/admin/customers/${customerId}/as-admin`),
   approveVolunteer: (customerId: string, membershipId: string, booths: number[]) => http.post(`/v1/admin/customers/${customerId}/requests/${membershipId}/approve`, { booths }),
   rejectVolunteer: (customerId: string, membershipId: string, reason: string) => http.post(`/v1/admin/customers/${customerId}/requests/${membershipId}/reject`, { reason }),
   setUserMobile: (userId: string, mobile: string | null, reason: string) => http.patch(`/v1/admin/users/${userId}/mobile`, { mobile, reason }),
@@ -197,7 +204,7 @@ export const authApi = {
   me: () => http.get<MeInfo>('/v1/me'),
   firebase: (idToken: string) => http.open<{ accessToken: string; refreshToken: string; deletionCancelled?: boolean }>('/v1/auth/firebase', { idToken }),
   logout: (refreshToken: string) => http.open('/v1/auth/logout', { refreshToken }),
-  checkCode: (code: string) => http.post<{ partyName: string; acNo: number; acName: string; booths: { no: number; name: string; village: string }[] }>('/v1/join/check', { code }),
+  checkCode: (code: string) => http.post<{ partyName: string; stateCode?: string; acNo: number; acName: string; booths: { no: number; name: string; village: string }[] }>('/v1/join/check', { code }),
   join: (code: string, name: string, booths: number[]) => http.post<{ status: string }>('/v1/join', { code, name, booths }),
   /** spec accounts-access */
   profile: (p: { name: string; mobile: string; lang?: string }) => http.patch<{ ok: boolean }>('/v1/me/profile', p),
@@ -225,4 +232,5 @@ export interface AdminAccess {
   states: { partyId: string; partyName: string; stateCode: string; since: string }[];
   assemblies: { membershipId: string; partyId: string; partyName: string; stateCode: string; acNo: number; acName: string; source: 'direct' | 'state' }[];
 }
+export interface TeamVolunteerRequest extends VolunteerRequest { customerId: string; partyName: string; appName: string | null; stateCode: string; acNo: number; acName: string }
 export interface VolunteerRequest { membershipId: string; userId: string; name: string; mobile: string | null; email: string | null; requestedAt: string; booths: number[] }

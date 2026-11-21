@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { LANGS } from '@/i18n';
@@ -10,7 +9,8 @@ import { AppText, BarList, Grid, Group, IconSquare, LargeTitle, Row, Screen, Til
 import { useWide } from '@/design/layout';
 import { colors, radius, spacing, web } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
-import { logout, rolesOf } from '@/features/session/session';
+import { rolesOf } from '@/features/session/session';
+import { useSignOut } from '@/features/session/useSignOut';
 import { useSession } from '@/stores/session';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
@@ -20,7 +20,7 @@ export default function PlatformHome() {
   const { t } = useTranslation();
   const me = useSession((s) => s.me);
   const q = useQuery({ queryKey: ['overview'], queryFn: platformApi.overview });
-  const [confirm, setConfirm] = useState(false);
+  const signOut = useSignOut();
   const wide = useWide();
   const o = q.data;
   const totals = o?.states.reduce((a, s) => ({ voters: a.voters + s.voters, booths: a.booths + s.booths, acs: a.acs + s.acs }), { voters: 0, booths: 0, acs: 0 });
@@ -64,9 +64,9 @@ export default function PlatformHome() {
             <Row title={t('platform.upload')} leading={<IconSquare name="cloud-upload" bg={colors.success} />} chevron onPress={() => router.push('/platform/upload')} />
             <Row title={t('platform.superAdmins')} leading={<IconSquare name="shield-checkmark" bg={colors.text} />} chevron onPress={() => router.push('/platform/super-admins')} last />
           </Group>
-          <Group header={t('me2.account')} footer={confirm ? t('auth.logoutConfirm') : undefined}>
+          <Group header={t('me2.account')}>
             {me && rolesOf(me).length > 1 ? <Row title={t('me2.switchRole')} chevron onPress={() => router.push('/choose')} /> : null}
-            <Row title={t('auth.logout')} titleColor={colors.danger} onPress={() => (confirm ? void logout() : setConfirm(true))} last />
+            <Row title={t('auth.logout')} titleColor={colors.danger} onPress={signOut.ask} last />
           </Group>
           </>)}
           <Group header={t('me2.settings')}>
@@ -74,6 +74,7 @@ export default function PlatformHome() {
           </Group>
         </>
       )}
+      {signOut.dialog}
     </Screen>
   );
 }

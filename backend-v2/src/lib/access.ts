@@ -26,6 +26,8 @@ export interface Membership {
   sync: { mode: 'live' | 'offline' | 'scheduled'; minutes: number };
   /** Polling day: counts as at the booth within this many metres (spec polling-day S3). */
   boothRadiusM: number;
+  /** Super-admin working inside this team as its admin (spec usability-r2 S2): no membership row; id = team id. */
+  asSuperAdmin?: boolean;
 }
 
 export const FEATURE_KEYS = ['map', 'poll', 'zones', 'tasks', 'slip', 'surnames', 'help', 'boothGps'] as const;
@@ -82,9 +84,28 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
   return !!r.rowCount;
 }
 
+const TEAM = BASE
+  .replace('SELECT m.id, m.user_id, m.role, m.status,', `SELECT pc.id, $2::uuid AS user_id, 'admin' AS role, 'approved' AS status,`)
+  .replace(/FROM memberships m\s+JOIN party_constituencies pc ON pc.id = m.party_constituency_id AND pc.deleted_at IS NULL/, 'FROM party_constituencies pc')
+  .replace('LEFT JOIN membership_booths mb ON mb.membership_id = m.id', 'LEFT JOIN membership_booths mb ON false');
+
+/**
+ * S2: the super-admin opens a team (party · AC, by its id) with full admin rights. Every write is audit-logged with
+ * the super-admin as the actor (`actorRole` = super_admin). Callers must have checked isSuperAdmin.
+ */
+export async function teamAsSuperAdmin(userId: string, partyAcId: string): Promise<Membership> {
+  const r = await core.query<Row>(`${TEAM} WHERE pc.id = $1 GROUP BY pc.id, p.id`, [partyAcId, userId]);
+  if (!r.rows[0]) throw forbidden();
+  return { ...map(r.rows[0]), asSuperAdmin: true };
+}
+
+/** Audit role for a write made through a membership. */
+export const actorRole = (m: Membership): 'admin' | 'super_admin' => (m.asSuperAdmin ? 'super_admin' : 'admin');
+
 /** Loads an approved membership that belongs to the caller. */
 export async function requireMembership(userId: string, membershipId: string, role?: 'admin'): Promise<Membership> {
   const r = await core.query<Row>(`${BASE} WHERE m.id = $1 AND m.user_id = $2 GROUP BY m.id, pc.id, p.id`, [membershipId, userId]);
+  if (!r.rows[0] && (await isSuperAdmin(userId))) return teamAsSuperAdmin(userId, membershipId);
   const m = r.rows[0] && map(r.rows[0]);
   if (!m || m.status !== 'approved') throw forbidden();
   if (role === 'admin' && m.role !== 'admin') throw forbidden();

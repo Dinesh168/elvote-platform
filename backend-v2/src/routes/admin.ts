@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { approveVolunteer, rejectVolunteer } from '../lib/members.js';
 import { core, inParty, statePool } from '../db/pools.js';
 import { traceVoter } from '../lib/trace.js';
-import { audit, checkLimit, requireFeature, requireMembership, type FeatureKey, type Membership } from '../lib/access.js';
+import { actorRole, audit, checkLimit, requireFeature, requireMembership, type FeatureKey, type Membership } from '../lib/access.js';
 import { sha256 } from '../lib/auth.js';
 import { saveImage } from '../lib/images.js';
 import { invalid, notFound } from '../lib/errors.js';
@@ -165,7 +165,7 @@ export async function adminRoutes(app: FastifyInstance) {
       }
     });
     await core.query('UPDATE party_constituencies SET zone_count = $2, updated_at = now() WHERE id = $1', [m.partyAcId, count]);
-    await audit({ actor: m.userId, role: 'admin', action: 'zones.count', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, details: { from: m.zoneCount, to: count } });
+    await audit({ actor: m.userId, role: actorRole(m), action: 'zones.count', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, details: { from: m.zoneCount, to: count } });
     return { ok: true, zoneCount: count };
   });
 
@@ -191,7 +191,7 @@ export async function adminRoutes(app: FastifyInstance) {
         else await c.query('DELETE FROM zone_booths WHERE party_id = $1 AND booth_id = $2', [m.partyId, id]);
       }
     });
-    await audit({ actor: m.userId, role: 'admin', action: 'zones.booths', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, details: { booths: b.booths.length } });
+    await audit({ actor: m.userId, role: actorRole(m), action: 'zones.booths', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, details: { booths: b.booths.length } });
     return { ok: true };
   });
 
@@ -226,7 +226,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { m } = await admin(req);
     const { membershipId } = parse(z.object({ mid: Uuid, membershipId: Uuid }), req.params);
     const b = parse(z.object({ booths: z.array(PartNo).min(1).max(20) }), req.body);
-    await approveVolunteer(m, membershipId, b.booths, { userId: m.userId, role: 'admin' });
+    await approveVolunteer(m, membershipId, b.booths, { userId: m.userId, role: actorRole(m) });
     return { ok: true };
   });
 
@@ -234,7 +234,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { m } = await admin(req);
     const { membershipId } = parse(z.object({ mid: Uuid, membershipId: Uuid }), req.params);
     const b = parse(z.object({ reason: z.string().trim().min(2).max(200) }), req.body);
-    await rejectVolunteer(m, membershipId, b.reason, { userId: m.userId, role: 'admin' });
+    await rejectVolunteer(m, membershipId, b.reason, { userId: m.userId, role: actorRole(m) });
     return { ok: true };
   });
 
@@ -243,14 +243,14 @@ export async function adminRoutes(app: FastifyInstance) {
     const { m } = await admin(req);
     const url = await saveImage(req, 2 * 1024 * 1024);
     await core.query('UPDATE party_constituencies SET banner_url = $2, updated_at = now() WHERE id = $1', [m.partyAcId, url]);
-    await audit({ actor: m.userId, role: 'admin', action: 'customer.banner_set', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'party_ac', entityId: m.partyAcId });
+    await audit({ actor: m.userId, role: actorRole(m), action: 'customer.banner_set', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'party_ac', entityId: m.partyAcId });
     return { url };
   });
 
   app.delete('/v1/m/:mid/banner', async (req) => {
     const { m } = await admin(req);
     await core.query('UPDATE party_constituencies SET banner_url = NULL, updated_at = now() WHERE id = $1', [m.partyAcId]);
-    await audit({ actor: m.userId, role: 'admin', action: 'customer.banner_remove', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'party_ac', entityId: m.partyAcId });
+    await audit({ actor: m.userId, role: actorRole(m), action: 'customer.banner_remove', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'party_ac', entityId: m.partyAcId });
     return { ok: true };
   });
 
@@ -260,7 +260,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const code = randomBytes(6).toString('base64url').replace(/[^A-Za-z0-9]/g, '').slice(0, 8).toUpperCase().padEnd(8, '7');
     await core.query('UPDATE join_codes SET revoked_at = now() WHERE party_constituency_id = $1 AND revoked_at IS NULL', [m.partyAcId]);
     await core.query('INSERT INTO join_codes (party_constituency_id, code_hash, hint, created_by) VALUES ($1,$2,$3,$4)', [m.partyAcId, sha256(code), code.slice(-2), m.userId]);
-    await audit({ actor: m.userId, role: 'admin', action: 'joincode.new', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo });
+    await audit({ actor: m.userId, role: actorRole(m), action: 'joincode.new', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo });
     return { code }; // shown once; only the hash is stored
   });
 
@@ -305,7 +305,7 @@ export async function adminRoutes(app: FastifyInstance) {
       }
       return did;
     });
-    await audit({ actor: m.userId, role: 'admin', action: 'drive.create', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'drive', entityId: id });
+    await audit({ actor: m.userId, role: actorRole(m), action: 'drive.create', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'drive', entityId: id });
     return { id };
   });
 
@@ -313,7 +313,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { m, pool } = await admin(req, 'tasks');
     const { driveId } = parse(z.object({ mid: Uuid, driveId: Uuid }), req.params);
     await inParty(pool, m.partyId, (c) => c.query('UPDATE drives SET deleted_at = now() WHERE id = $1 AND party_id = $2', [driveId, m.partyId]));
-    await audit({ actor: m.userId, role: 'admin', action: 'drive.delete', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'drive', entityId: driveId });
+    await audit({ actor: m.userId, role: actorRole(m), action: 'drive.delete', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, entity: 'drive', entityId: driveId });
     return { ok: true };
   });
 
@@ -367,6 +367,29 @@ export async function adminRoutes(app: FastifyInstance) {
   });
 
   /** spec bilingual-roll U6/U9: the roll in use, new voters, and voters not in the latest roll. */
+  // spec usability-r2 A2: surnames of the assembly (last word of the name) with counts. Aggregates only.
+  app.get('/v1/m/:mid/surnames', async (req) => {
+    const { m, pool } = await admin(req);
+    const q = parse(z.object({ zone: Uuid.optional(), booth: PartNo.optional() }), req.query);
+    const params: unknown[] = [m.partyId, m.acNo];
+    let where = '';
+    if (q.booth) { params.push(q.booth); where += ` AND v.part_no = $${params.length}`; }
+    if (q.zone) { params.push(q.zone); where += ` AND v.booth_id IN (SELECT booth_id FROM zone_booths WHERE party_id = $1 AND zone_id = $${params.length})`; }
+    return inParty(pool, m.partyId, async (c) => {
+      const r = await c.query<{ surname: string; total: number; met: number; our: number; target: number; opp: number }>(
+        `SELECT regexp_replace(trim(v.name), '^.*\\s', '') AS surname, count(*)::int AS total,
+                count(*) FILTER (WHERE c.first_contacted_at IS NOT NULL OR c.group_code IS NOT NULL)::int AS met,
+                count(*) FILTER (WHERE c.group_code = 'our')::int AS our,
+                count(*) FILTER (WHERE c.group_code = 'target')::int AS target,
+                count(*) FILTER (WHERE c.group_code = 'opp')::int AS opp
+           FROM voters v LEFT JOIN voter_contacts c ON c.party_id = $1 AND c.ac_no = v.ac_no AND c.voter_id = v.id
+          WHERE v.ac_no = $2 AND v.status IN ('active','added')${where}
+          GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 3000`, params);
+      const voters = r.rows.reduce((a, x) => a + x.total, 0);
+      return { voters, surnames: r.rows.map((x) => ({ surname: x.surname, total: x.total, met: x.met, our: x.our, target: x.target, opp: x.opp })) };
+    });
+  });
+
   app.get('/v1/m/:mid/roll', async (req) => {
     const { m, pool } = await admin(req);
     const rv = await pool.query<{ kind: string; published_on: string | null; created_at: Date }>(

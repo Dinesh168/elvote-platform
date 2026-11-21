@@ -5,9 +5,12 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { TeamBanner } from '@/features/shell/TeamBanner';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SummaryCard } from '@/features/shell/SummaryCard';
+import { SyncBadge } from '@/features/sync/SyncBadge';
 import { adminApi } from '@/api/adminApi';
 import {
-  AppText, BarList, ChoiceRow, Columns, DataTable, Grid, Group, Icon, LargeTitle, Row, Screen, Sheet, StackedBar, TileRow, groupParts,
+  AppText, BarList, ChoiceRow, Columns, DataTable, Grid, Group, Icon, IconSquare, LargeTitle, Row, Screen, Sheet, StackedBar, groupParts,
 } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { chart, colors, radius, spacing, web } from '@/design/tokens';
@@ -33,9 +36,12 @@ export function DashboardView({ booth }: { booth?: number }) {
   const adminAcs = me ? rolesOf(me).filter((r) => r.mode === 'admin') : [];
   const d = q.data;
   const g = { our: t('groups.our'), target: t('groups.target'), opp: t('groups.opp') };
+  const surnamesOn = m?.features?.surnames !== false;
+  const pendQ = useQuery({ queryKey: ['team', mid, 'pending'], queryFn: () => adminApi.team(mid, 'pending'), enabled: !!mid && !booth });
+  const pendingN = pendQ.data?.length ?? 0;
 
   return (
-    <Screen back={booth ? t('admin.tabs.dashboard') : undefined}>
+    <Screen back={booth ? t('admin.tabs.dashboard') : undefined} header={booth ? undefined : <TeamBar trailing={<SyncBadge />} />}>
       {booth ? null : <TeamBanner editable />}
       <LargeTitle
         title={booth ? t('admin.boothDash', { no: booth }) : t('admin.tabs.dashboard')}
@@ -66,12 +72,27 @@ export function DashboardView({ booth }: { booth?: number }) {
         <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
       ) : (
         <>
-          <TileRow>
-            <Tile label={t('admin.visitedToday')} value={fmt(d.visitedToday)} />
-            <Tile label={t('admin.contacted')} value={`${pct(d.totals.met, d.totals.total)}%`} sub={`${fmt(d.totals.met)} / ${fmt(d.totals.total)}`} />
-            <Tile label={t('admin.notContacted')} value={fmt(d.totals.total - d.totals.met)} sub={`${pct(d.totals.total - d.totals.met, d.totals.total)}%`} />
-            <Tile label={t('admin.housesVisited')} value={`${pct(d.totals.housesVisited, d.totals.houses)}%`} sub={`${fmt(d.totals.housesVisited)} / ${fmt(d.totals.houses)}`} />
-          </TileRow>
+          {/* spec usability-r2 H1: one summary card like Polling day */}
+          <SummaryCard
+            pct={pct(d.totals.met, d.totals.total)}
+            title={t('common.metOf', { met: fmt(d.totals.met), total: fmt(d.totals.total) })}
+            subtitle={`${zone ? d.charts.zones.find((z) => z.id === zone)?.name ?? '' : booth ? t('common.booth', { no: booth }) : t('admin.allZones')} · ${t('admin.visitsToday', { n: fmt(d.visitedToday) })}`}
+            cells={[
+              { key: 'our', value: d.charts.groups.our, label: g.our, color: chart.our },
+              { key: 'target', value: d.charts.groups.target, label: g.target, color: chart.target },
+              { key: 'opp', value: d.charts.groups.opp, label: t('poll.oppShort'), color: chart.opp },
+              { key: 'notMet', value: d.charts.groups.notMet, label: t('admin.notMet'), color: colors.text },
+            ]}
+          />
+          {!booth ? (
+            <Group>
+              {surnamesOn ? <Row title={t('asur.title')} subtitle={t('asur.rowSub')} leading={<IconSquare name="people-circle" bg={colors.iconGender} />} chevron onPress={() => router.push('/admin/surnames')} /> : null}
+              <Row title={t('admin.housesVisited')} value={`${pct(d.totals.housesVisited, d.totals.houses)}%`} leading={<IconSquare name="home" bg={colors.iconHouse} />} />
+              <Row title={t('asur.requests')} subtitle={pendingN ? t('asur.waiting', { count: pendingN }) : t('asur.none')} leading={<IconSquare name="person-add" bg={colors.iconTask} />}
+                trailing={pendingN ? <View style={s.badge}><AppText variant="footnote" weight="bold" color={colors.textOnAccent}>{String(pendingN)}</AppText></View> : undefined}
+                chevron onPress={() => router.push('/admin/team')} last />
+            </Group>
+          ) : null}
 
           <Grid cols={2}>
 
@@ -198,17 +219,6 @@ export function DashboardView({ booth }: { booth?: number }) {
   );
 }
 
-function Tile({ label, value, sub }: { label: string; value: string; sub?: string }) {
-  const wide = useWide();
-  return (
-    <View style={[s.tile, wide && s.tileWide]} accessible accessibilityLabel={`${label}: ${value}${sub ? `, ${sub}` : ''}`}>
-      <AppText variant="footnote" color={colors.textSecondary} numberOfLines={1}>{label}</AppText>
-      <AppText variant={wide ? 'largeTitle' : 'title2'} weight="bold" tabular>{value}</AppText>
-      {sub ? <AppText variant="footnote" color={colors.textSecondary} numberOfLines={1}>{sub}</AppText> : null}
-    </View>
-  );
-}
-
 function PctCell({ v }: { v: number }) {
   return (
     <View style={s.pctCell}>
@@ -223,6 +233,7 @@ function Dot({ color }: { color: string }) {
 }
 
 const s = themed(() => StyleSheet.create({
+  badge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
   acSwitch: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.lg, paddingTop: 4 },
   chips: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   chip: { height: 36, paddingHorizontal: 14, borderRadius: radius.full, justifyContent: 'center', backgroundColor: colors.surface },

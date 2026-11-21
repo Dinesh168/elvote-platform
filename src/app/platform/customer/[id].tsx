@@ -1,10 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { openTeamAsAdmin } from '@/features/session/session';
 import * as DocumentPicker from 'expo-document-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Image, Platform, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Switch, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { platformApi, type Customer, type CustomerPatch, type FeatureKey } from '@/api/adminApi';
+import { appendFile } from '@/api/upload';
 import { AppText, Button, ChoiceRow, Field, Group, Icon, LargeTitle, Row, Screen, SegmentedControl, Sheet } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { accentFrom, contrastOnWhite } from '@/design/theme';
@@ -27,6 +29,7 @@ const PLANS: Record<'basic' | 'pro' | 'all', FeatureKey[]> = {
 /** C1–C7: everything about one customer's app, set by the super-admin, with a live preview. */
 export default function CustomerPage() {
   const { t } = useTranslation();
+  const [err, setErr] = useState<string | null>(null);
   const wide = useWide();
   const qc = useQueryClient();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -75,8 +78,7 @@ export default function CustomerPage() {
     if (r.canceled || !r.assets[0]) return;
     const a = r.assets[0] as DocumentPicker.DocumentPickerAsset & { file?: File };
     const form = new FormData();
-    if (Platform.OS === 'web' && a.file) form.append('file', a.file, a.name);
-    else form.append('file', { uri: a.uri, name: a.name, type: a.mimeType ?? 'image/png' } as unknown as Blob);
+    await appendFile(form, 'file', { uri: a.uri, name: a.name, type: a.mimeType ?? 'image/png', file: a.file ?? null });
     setBusy(true);
     setMsg(null);
     try {
@@ -260,11 +262,13 @@ export default function CustomerPage() {
   return (
     <Screen back={t('cms.customers')} trailing={
       <View style={s.trail}>
+        <Button compact label={t('asAdmin.open')} onPress={() => void openTeamAsAdmin(d.id).catch((e: Error) => setErr(e.message))} />
         <Button kind="tinted" compact label={t('cms.copyFrom')} onPress={() => setCopyOpen(true)} />
         <Button kind="tinted" compact label={t('cms.teamData')} onPress={() => router.push({ pathname: '/platform/party-ac/[id]', params: { id: d.id } })} />
       </View>
     }>
       <LargeTitle title={d.appName || d.partyName} subtitle={`${d.partyName} · ${d.stateCode} ${d.acNo} ${d.acName}`} />
+      {err ? <AppText variant="footnote" color={colors.danger} style={{ paddingHorizontal: spacing.xl }}>{err}</AppText> : null}
       {wide ? (
         <View style={s.split}>
           {form}
