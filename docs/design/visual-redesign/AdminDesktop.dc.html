@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Admin website</title>
+<script src="./_runtime/react.js"></script>
+<script src="./_runtime/react-dom.js"></script>
+<script src="./_runtime/support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#184BA1}a:hover{color:#123A7D}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 844px; box-sizing: border-box; background: #F4F6FA; font-family: Inter, -apple-system, sans-serif; color: #0F172A; display: flex; flex-wrap: wrap;">
+<nav aria-label="Main" style="flex: 1 1 240px; max-width: 260px; min-width: 220px; background: #FFFFFF; border-right: 1px solid #E2E8F0; display: flex; flex-direction: column; padding: 20px 12px; gap: 4px; box-sizing: border-box;">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 8px 18px;"><span style="width: 36px; height: 36px; border-radius: 10px; background: #15803D; color: #FFFFFF; font-weight: 800; display: flex; align-items: center; justify-content: center;">J</span><span style="display: flex; flex-direction: column;"><span style="font-size: 15px; font-weight: 800;">JVP Rampur</span><span style="font-size: 12px; color: #64748B;">AC 66 · Admin</span></span></div>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; background: #E8EEF9; color: #184BA1; text-decoration: none; font-weight: 700; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#184BA1" stroke-width="2.3" stroke-linecap="round" aria-hidden="true"><path d="M5 20V11M10 20V5M15 20v-7M20 20V9"></path></svg>Dashboard</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: #334155; text-decoration: none; font-weight: 600; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"></path></svg>Map</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: #334155; text-decoration: none; font-weight: 600; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7"></path></svg><span style="flex-grow: 1;">Team</span><span style="min-width: 22px; height: 22px; border-radius: 11px; background: #C81E2C; color: #FFFFFF; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center;">2</span></a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: #334155; text-decoration: none; font-weight: 600; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 21V4h11l-2 4 2 4H5"></path></svg>Tasks</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: #334155; text-decoration: none; font-weight: 600; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Families</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: #334155; text-decoration: none; font-weight: 600; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="m8.5 12.5 2.5 2.5 4.5-5"></path></svg>Polling day</a>
+<span style="height: 1px; background: #E2E8F0; margin: 10px 8px;"></span>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: #334155; text-decoration: none; font-weight: 600; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"></rect><path d="m21 16-5-5-8 8"></path></svg>Home banner</a>
+<a href="#" style="display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 0 10px; border-radius: 10px; color: #334155; text-decoration: none; font-weight: 600; font-size: 15px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"></path></svg>Settings</a>
+<span style="flex-grow: 1;"></span>
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 8px; border-top: 1px solid #E2E8F0;"><span style="width: 36px; height: 36px; border-radius: 18px; background: #FDF3E4; color: #B45309; font-weight: 800; display: flex; align-items: center; justify-content: center;">AM</span><span style="display: flex; flex-direction: column; flex-grow: 1;"><span style="font-size: 14px; font-weight: 700;">Amit Mehta</span><span style="font-size: 12px; color: #64748B;">Profile</span></span><button type="button" aria-label="Sign out" style="all: unset; cursor: pointer; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center;"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l5-5-5-5M15 12H3"></path></svg></button></div>
+</nav>
+<main style="flex: 999 1 560px; min-width: 0; padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 18px; box-sizing: border-box;">
+<div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+<h1 style="margin: 0; font-size: 28px; font-weight: 800; flex-grow: 1;">Dashboard</h1>
+<span style="display: flex; background: #FFFFFF; border-radius: 10px; padding: 3px; border: 1px solid #E2E8F0;"><button type="button" style="all: unset; padding: 7px 14px; border-radius: 8px; background: #0F172A; color: #FFFFFF; font-size: 13px; font-weight: 700;">All zones</button><button type="button" style="all: unset; padding: 7px 14px; font-size: 13px; font-weight: 600; color: #334155;">Zone 1</button><button type="button" style="all: unset; padding: 7px 14px; font-size: 13px; font-weight: 600; color: #334155;">Zone 2</button><button type="button" style="all: unset; padding: 7px 14px; font-size: 13px; font-weight: 600; color: #334155;">Zone 3</button></span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+<div style="background: #184BA1; color: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; opacity: 0.9;">Voters met</span><span style="font-size: 32px; font-weight: 800;">40%</span><span style="font-size: 13px; opacity: 0.9;">10,843 of 26,897</span></div>
+<div style="background: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; color: #64748B;">Met today</span><span style="font-size: 32px; font-weight: 800; color: #15803D;">312</span><span style="font-size: 13px; color: #15803D; font-weight: 700;">▲ 18% vs yesterday</span></div>
+<div style="background: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 4px;"><span style="font-size: 13px; color: #64748B;">Volunteers active</span><span style="font-size: 32px; font-weight: 800; color: #6D28D9;">34 / 41</span><span style="font-size: 13px; color: #B45309; font-weight: 700;">7 quiet for 3+ days</span></div>
+<div style="background: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 4px; border: 2px solid #C81E2C;"><span style="font-size: 13px; color: #64748B;">Waiting to join</span><span style="font-size: 32px; font-weight: 800; color: #C81E2C;">2</span><a href="#" style="font-size: 13px; font-weight: 700; text-decoration: none;">Review now</a></div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px;">
+<div style="background: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px;">
+<span style="font-size: 16px; font-weight: 800;">Voters by group</span>
+<div style="display: flex; height: 26px; border-radius: 13px; overflow: hidden; gap: 2px;" role="img" aria-label="Ours 24%, Target 10%, Opposition 6%, Not met 60%"><span style="width: 24%; background: #15803D;"></span><span style="width: 10%; background: #D97706;"></span><span style="width: 6%; background: #C81E2C;"></span><span style="width: 60%; background: #D1D5DB;"></span></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; font-size: 13px; font-weight: 700;"><span style="color: #15803D; display: flex; flex-direction: column;"><span style="font-size: 20px; font-weight: 800;">6,466</span>Ours 24%</span><span style="color: #B45309; display: flex; flex-direction: column;"><span style="font-size: 20px; font-weight: 800;">2,796</span>Target 10%</span><span style="color: #C81E2C; display: flex; flex-direction: column;"><span style="font-size: 20px; font-weight: 800;">1,581</span>Opp. 6%</span><span style="color: #4B5563; display: flex; flex-direction: column;"><span style="font-size: 20px; font-weight: 800;">16,054</span>Not met 60%</span></div>
+</div>
+<div style="background: #FFFFFF; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 12px;">
+<span style="font-size: 16px; font-weight: 800;">Last 7 days · voters met</span>
+<div style="display: flex; align-items: flex-end; justify-content: space-between; height: 110px;" role="img" aria-label="Voters met each day: 210, 264, 180, 298, 240, 265, 312">
+<span style="width: 11%; height: 67%; background: #9DB6E2; border-radius: 6px 6px 2px 2px;"></span><span style="width: 11%; height: 85%; background: #9DB6E2; border-radius: 6px 6px 2px 2px;"></span><span style="width: 11%; height: 58%; background: #9DB6E2; border-radius: 6px 6px 2px 2px;"></span><span style="width: 11%; height: 95%; background: #9DB6E2; border-radius: 6px 6px 2px 2px;"></span><span style="width: 11%; height: 77%; background: #9DB6E2; border-radius: 6px 6px 2px 2px;"></span><span style="width: 11%; height: 85%; background: #9DB6E2; border-radius: 6px 6px 2px 2px;"></span><span style="width: 11%; height: 100%; background: #184BA1; border-radius: 6px 6px 2px 2px;"></span>
+</div>
+</div>
+</div>
+<div style="background: #FFFFFF; border-radius: 18px; padding: 18px; overflow-x: auto;">
+<span style="display: block; font-size: 16px; font-weight: 800; margin-bottom: 10px;">Booths needing attention</span>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px;">
+<thead><tr style="text-align: left; color: #64748B; font-size: 12px;"><th style="padding: 8px 6px; font-weight: 700;">Booth</th><th style="padding: 8px 6px; font-weight: 700;">Volunteer</th><th style="padding: 8px 6px; font-weight: 700; width: 40%;">Met</th><th style="padding: 8px 6px; font-weight: 700;">Status</th></tr></thead>
+<tbody>
+<tr style="border-top: 1px solid #EEF1F5;"><td style="padding: 10px 6px; font-weight: 700;">120 · Kheri</td><td style="padding: 10px 6px; color: #C81E2C; font-weight: 700;">None</td><td style="padding: 10px 6px;"><span style="display: block; height: 8px; background: #EEF1F5; border-radius: 4px;"><span style="display: block; width: 8%; height: 8px; background: #C81E2C; border-radius: 4px;"></span></span></td><td style="padding: 10px 6px;"><span style="padding: 3px 10px; border-radius: 10px; background: #FDECEC; color: #C81E2C; font-weight: 700; font-size: 12px;">Weak</span></td></tr>
+<tr style="border-top: 1px solid #EEF1F5;"><td style="padding: 10px 6px; font-weight: 700;">118 · Nabha</td><td style="padding: 10px 6px;">Mohan Sharma</td><td style="padding: 10px 6px;"><span style="display: block; height: 8px; background: #EEF1F5; border-radius: 4px;"><span style="display: block; width: 21%; height: 8px; background: #D97706; border-radius: 4px;"></span></span></td><td style="padding: 10px 6px;"><span style="padding: 3px 10px; border-radius: 10px; background: #FDF3E4; color: #B45309; font-weight: 700; font-size: 12px;">Slow</span></td></tr>
+<tr style="border-top: 1px solid #EEF1F5;"><td style="padding: 10px 6px; font-weight: 700;">112 · Rampur</td><td style="padding: 10px 6px;">Suresh Kumar</td><td style="padding: 10px 6px;"><span style="display: block; height: 8px; background: #EEF1F5; border-radius: 4px;"><span style="display: block; width: 62%; height: 8px; background: #15803D; border-radius: 4px;"></span></span></td><td style="padding: 10px 6px;"><span style="padding: 3px 10px; border-radius: 10px; background: #E7F5EC; color: #15803D; font-weight: 700; font-size: 12px;">Good</span></td></tr>
+</tbody>
+</table>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1360,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -2,6 +2,8 @@
 
 Read this file before you change anything. It is the entry point for any coding agent (Claude Code, Codex, Cursor, etc.). `AGENTS.md` points here.
 
+**Resuming work? Read `docs/HANDOFF.md` first** — it says where the last session stopped and what is waiting for the owner.
+
 ## What this repo is
 
 ElVote Max is an election campaign app: admins monitor a constituency, volunteers canvass voters. This is a monorepo with two parts:
