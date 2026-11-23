@@ -13,6 +13,7 @@ import { createCustomer } from '../lib/scopes.js';
 import { accessAdminRoutes } from './access.js';
 import { customerRoutes } from './customers.js';
 import { pollingAdminRoutes } from './polling.js';
+import { pastResultsAdminRoutes } from './results.js';
 
 const State = z.string().regex(/^[A-Z]{2}$/);
 const Email = z.string().trim().toLowerCase().email('Enter a valid email address').max(200);
@@ -45,6 +46,7 @@ export async function platformRoutes(app: FastifyInstance) {
   await customerRoutes(app);
   await accessAdminRoutes(app);
   await pollingAdminRoutes(app);
+  await pastResultsAdminRoutes(app);
 
   app.get('/v1/admin/overview', async () => {
     const pcs = await core.query<{ id: string; party_id: string; party_name: string; state_code: string; ac_no: number; ac_name: string; max_zones: number; zone_count: number; status: string; admins: number; volunteers: number; pending: number }>(

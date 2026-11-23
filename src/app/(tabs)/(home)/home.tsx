@@ -8,6 +8,8 @@ import { useTranslation } from 'react-i18next';
 import { TeamBanner } from '@/features/shell/TeamBanner';
 import { TeamBar } from '@/features/shell/TeamBar';
 import { SummaryCard } from '@/features/shell/SummaryCard';
+import { ProgressCard } from '@/features/home/Progress';
+import { Tips } from '@/features/home/Tips';
 import { SyncBadge } from '@/features/sync/SyncBadge';
 import type { GroupCode } from '@/api/types';
 import {
@@ -55,6 +57,7 @@ export default function HomeScreen() {
   return (
     <Screen header={<TeamBar trailing={<SyncBadge />} />} trailing={<SyncBadge />}>
       <TeamBanner />
+      <Tips />
       <LargeTitle title={t('home.hello', { name: firstName })} subtitle={date} />
       {look?.candidateName && m ? (
         <View style={s.bannerWrap}>
@@ -95,6 +98,8 @@ export default function HomeScreen() {
           />
         </Group>
       )}
+
+      <ProgressCard booth={booth} />
 
       {!stats ? (
         <QueryState loading={votersQ.isLoading} error={votersQ.isError} onRetry={() => void votersQ.refetch()} />

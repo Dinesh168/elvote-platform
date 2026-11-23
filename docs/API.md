@@ -153,6 +153,16 @@ The server enforces super-admin with `validatePrivateUser(userId)` in `private.j
 | Method | Path | Who | Notes |
 |---|---|---|---|
 | GET | `/v1/m/:mid/surnames?zone&booth` | admin | `{ voters, surnames: [{ surname, total, met, our, target, opp }] }` (last word of the name; aggregates only) |
+| GET | `/v1/m/:mid/trend?level=assembly\|zone\|booth\|village&key&party` | admin | Past results for the caller's AC (spec map-trend T3/T5): `{ acNo, level, name, parties, party, sample, years: [{ year, total, votes, shares, ours, winner, margin }], swing, margin, children: [{ key, name, ours, swing, winner, margin, group }], closeLosses }`; booth level adds `group`, `toWin: { needed, oursFound, toGo }`, `metPct` |
+| GET | `/v1/m/:mid/results-map?year&party` | admin | `{ year, years, party, parties, booths: [{ partNo, name, lat, lng, winner, ours, margin, prevOurs, metPct }], legend: { won, lost, lostUnder50 } }` |
+| GET | `/v1/m/:mid/win-plan?party` | admin | `{ year, party, winnerVotes, rivalVotes, needed, oursFound, toGo, groups: { safe, swing, tough: { booths, count } }, uncoveredSwing }` (safe = won by ≥ 100, tough = lost by > 100) |
+| DELETE | `/v1/m/:mid/booths/:no/strength` | admin | Back to the worked-out strength (spec real-demo-data B3). `booth-table` and `map` rows carry `strength` + `strengthSource: admin\|auto`; trend years carry `estimated` (booths with estimated votes) |
+| POST | `/v1/m/:mid/remind` | admin | `{ userIds, template: booth_needs_you\|days_left\|call_me }` → `{ sent, skipped }`; only approved volunteers of the team; 429 `remind_limit` within 12 h |
+| GET | `/v1/m/:mid/my-booth-result?booth` | member (own booth) | `{ year, partNo, result: won\|lost, margin }` or `null` |
+| GET | `/v1/m/:mid/my-progress` | member | `{ today, target, streak, week, rank, teamSize, badges: [{ key: met100\|met500\|phones50\|streak5, earned, have, need }] }` |
+| POST | `/v1/admin/past-results` | super-admin | JSON `{ stateCode, csv, sample? }` (election-trend CSV; replaces each AC × year in the file) → `{ rows, acs, years, parties }`; 422 `invalid_csv` with the line |
+| GET | `/v1/admin/past-results?state` | super-admin | `{ items: [{ acNo, year, booths, sample, loadedAt }] }` |
+| DELETE | `/v1/admin/past-results?state&ac&year` | super-admin | `{ deleted }` |
 | GET | `/v1/admin/volunteer-requests?state&customer` | super-admin | pending volunteer requests of every team, oldest first (approve/reject: `/v1/admin/customers/:id/requests/:membershipId/approve|reject`) |
 | GET | `/v1/admin/customers/:id/as-admin` | super-admin | the team as an admin membership (`asSuperAdmin: true`, id = team id); `/v1/m/<team id>/…` admin routes then accept the super-admin; audit `actor_role = super_admin` |
 | — | `POST /v1/join`, `/v1/join/check`, `/v1/access-requests`, approvals, admin-access grants | — | `409 role_conflict` when the account already is / asked to be the other role (one account = one role) |

@@ -40,6 +40,8 @@ export default function More() {
       <Group>
         {poll ? <Row title={t('admin.poll')} leading={<IconSquare name="checkbox" bg={colors.success} />} chevron onPress={() => router.push('/admin/poll')} /> : null}
         {zones ? <Row title={t('admin.zones')} subtitle={m ? `${m.zoneCount} / ${m.maxZones}` : undefined} leading={<IconSquare name="grid" bg={colors.accent} />} chevron onPress={() => router.push('/admin/zones')} /> : null}
+        <Row title={t('trend.title')} subtitle={t('trend.menuSub')} leading={<IconSquare name="trending-up" bg={colors.warning} />} chevron onPress={() => router.push('/admin/trend')} />
+        <Row title={t('win.title')} subtitle={t('win.rowSub')} leading={<IconSquare name="trophy" bg={colors.success} />} chevron onPress={() => router.push('/admin/win-plan')} />
         <Row title={t('trace.title')} subtitle={t('trace.sub')} leading={<IconSquare name="git-commit" bg={colors.text} />} chevron onPress={() => router.push('/admin/trace')} last={adminAcs < 2} />
         {adminAcs > 1 ? <Row title={t('overview.title')} subtitle={t('overview.count', { count: adminAcs })} leading={<IconSquare name="albums" bg={colors.accent} />} chevron onPress={() => router.push('/admin/overview')} last /> : null}
       </Group>

@@ -136,6 +136,12 @@ export default function PollScreen() {
               })}
             </View>
             <AppText variant="caption" color={colors.textSecondary} align="center" style={{ paddingBottom: 6 }}>{t('poll.notVotedYet').toLocaleUpperCase()}</AppText>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('call.row')} onPress={() => router.push('/call-list')} style={({ pressed }) => [s.helpRow, pressed && { backgroundColor: colors.pressed }]}>
+              <Icon name="call" size={20} color={colors.success} />
+              <AppText variant="body" style={{ flex: 1 }}>{t('call.row')}</AppText>
+              <AppText variant="body" color={colors.textSecondary} tabular>{left ? left.our : 0}</AppText>
+              <Icon name="chevron-forward" size={18} color={colors.chevron} />
+            </Pressable>
             {helpOn ? (
             <Pressable accessibilityRole="button" accessibilityLabel={`${t('poll.needsHelp')} ${needsHelp}`} onPress={() => router.push('/help')} style={({ pressed }) => [s.helpRow, pressed && { backgroundColor: colors.pressed }]}>
               <AppText variant="body" style={{ flex: 1 }}>{t('poll.needsHelp')}</AppText>

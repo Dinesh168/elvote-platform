@@ -61,6 +61,7 @@ export default function PlatformHome() {
             <Row title={t('pd.boothsTitle')} leading={<IconSquare name="location" bg={colors.success} />} chevron onPress={() => router.push('/platform/booths')} />
             <Row title={t('users.title')} leading={<IconSquare name="people" bg={colors.iconGender} />} chevron onPress={() => router.push('/platform/users')} />
             <Row title={t('trace.title')} leading={<IconSquare name="git-commit" bg={colors.text} />} chevron onPress={() => router.push('/platform/trace')} />
+            <Row title={t('past.title')} leading={<IconSquare name="trending-up" bg={colors.warning} />} chevron onPress={() => router.push('/platform/past-results')} />
             <Row title={t('platform.upload')} leading={<IconSquare name="cloud-upload" bg={colors.success} />} chevron onPress={() => router.push('/platform/upload')} />
             <Row title={t('platform.superAdmins')} leading={<IconSquare name="shield-checkmark" bg={colors.text} />} chevron onPress={() => router.push('/platform/super-admins')} last />
           </Group>

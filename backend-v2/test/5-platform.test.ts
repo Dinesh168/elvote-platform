@@ -42,7 +42,7 @@ describe('B11 super-admin', () => {
 
   it('overview: totals per state and per party AC', async () => {
     const o = (await sup.get('/v1/admin/overview')).json();
-    expect(o.states.map((s: { code: string }) => s.code).sort()).toEqual(['HR', 'PB']);
+    expect(o.states.map((s: { code: string }) => s.code).sort()).toEqual(['HR', 'PB', 'UP']);
     const pb = o.states.find((s: { code: string }) => s.code === 'PB');
     expect(pb.acs).toBe(2);
     expect(pb.booths).toBe(45);

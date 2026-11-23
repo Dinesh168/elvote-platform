@@ -33,6 +33,7 @@ if (env.NODE_ENV === 'production' && env.AUTH_MODE === 'dev') {
 export const LOCAL_STATES = [
   { code: 'PB', stateNo: 3, name: 'Punjab', nameLocal: 'ਪੰਜਾਬ', lang: 'pa', db: 'elvote_pb', hostRef: 'STATE_DB_PB' },
   { code: 'HR', stateNo: 6, name: 'Haryana', nameLocal: 'हरियाणा', lang: 'hi', db: 'elvote_hr', hostRef: 'STATE_DB_HR' },
+  { code: 'UP', stateNo: 9, name: 'Uttar Pradesh', nameLocal: 'उत्तर प्रदेश', lang: 'hi', db: 'elvote_up', hostRef: 'STATE_DB_UP' },
 ] as const;
 
 export const pgUrl = (db: string, user = env.PG_API_USER, pass = env.PG_API_PASS) =>

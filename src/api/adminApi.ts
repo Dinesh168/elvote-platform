@@ -11,6 +11,9 @@ export interface Totals {
 }
 
 export interface Dashboard {
+  /** spec map-trend Y1, Q1 */
+  yesterday?: { met: number; metChange: number | null; ours: number; oursChange: number | null; bestBooth: number | null };
+  quiet?: { userId: string; name: string; booths: number[]; days: number | null }[];
   scope: { zone: string | null; booth: number | null; acNo: number; acName: string };
   visitedToday: number;
   totals: Totals;
@@ -26,7 +29,7 @@ export interface Dashboard {
   topWorkers: { userId: string; name: string; contacted: number; today: number }[];
 }
 
-export interface BoothRow { no: number; name: string; zone: string | null; strength: 'S' | 'M' | 'W'; workers: number; total: number; met: number; houses: number; housesVisited: number; withMobile: number; our: number; target: number; opp: number }
+export interface BoothRow { no: number; name: string; zone: string | null; strength: 'S' | 'M' | 'W'; strengthSource?: 'admin' | 'auto'; workers: number; total: number; met: number; houses: number; housesVisited: number; withMobile: number; our: number; target: number; opp: number }
 export interface Surnames { voters: number; surnames: { surname: string; total: number; met: number; our: number; target: number; opp: number }[] }
 export interface Zones { maxZones: number; zoneCount: number; zones: { id: string; number: number; name: string; booths: number[] }[]; unassigned: number[] }
 export interface TeamMember { membershipId: string; userId: string; name: string; mobile: string; epic: string | null; role: 'admin' | 'volunteer'; status: string; requestedAt: string; rejectReason: string | null; booths: number[]; contactedToday: number; contactedTotal: number; lastSyncAt?: string | null; unsent?: number }
@@ -47,6 +50,8 @@ export const adminApi = {
   dashboard: (mid: string, f: { zone?: string; booth?: number } = {}) => http.get<Dashboard>(`${m(mid)}/dashboard${qs(f)}`),
   boothTable: (mid: string, zone?: string) => http.get<BoothRow[]>(`${m(mid)}/booth-table${qs({ zone })}`),
   setStrength: (mid: string, no: number, strength: 'S' | 'M' | 'W') => http.put(`${m(mid)}/booths/${no}/strength`, { strength }),
+  /** spec real-demo-data B3: back to the worked-out strength. */
+  resetStrength: (mid: string, no: number) => http.del(`${m(mid)}/booths/${no}/strength`),
   zones: (mid: string) => http.get<Zones>(`${m(mid)}/zones`),
   /** spec usability-r2 A2: surnames of the assembly (optionally one zone or booth). */
   surnames: (mid: string, f: { zone?: string; booth?: number } = {}) => http.get<Surnames>(`${m(mid)}/surnames${qs(f)}`),
@@ -72,7 +77,29 @@ export const adminApi = {
   setBoothLocation: (mid: string, no: number, lat: number, lng: number) => http.put(`${m(mid)}/booths/${no}/location`, { lat, lng }),
   /** spec bilingual-roll U6/U9 */
   roll: (mid: string) => http.get<RollInfo>(`${m(mid)}/roll`),
+  /** spec map-trend T3–T5, W1, Q1 */
+  trend: (mid: string, f: { level: TrendLevel; key?: string; party?: string }) => http.get<Trend>(`${m(mid)}/trend${qs(f)}`),
+  resultsMap: (mid: string, f: { year?: number; party?: string } = {}) => http.get<ResultsMap>(`${m(mid)}/results-map${qs(f)}`),
+  winPlan: (mid: string, party?: string) => http.get<WinPlan>(`${m(mid)}/win-plan${qs({ party })}`),
+  remind: (mid: string, userIds: string[], template: RemindTemplate) => http.post<{ sent: number; skipped: number }>(`${m(mid)}/remind`, { userIds, template }),
 };
+
+export type TrendLevel = 'assembly' | 'zone' | 'booth' | 'village';
+export type BoothGroup = 'safe' | 'swing' | 'tough';
+export type RemindTemplate = 'booth_needs_you' | 'days_left' | 'call_me';
+export interface TrendYear { year: number; total: number; votes: Record<string, number>; shares: Record<string, number>; ours: number; winner: string | null; margin: number; estimated?: number }
+export interface TrendChild { key: string; name: string; ours: number | null; swing: number | null; winner: string | null; margin: number | null; group: BoothGroup | null }
+export interface Trend {
+  acNo: number; acName: string; level: TrendLevel; key: string | null; name: string; parties: string[]; party: string | null; sample: boolean;
+  years: TrendYear[]; swing: number | null; margin: number | null; children: TrendChild[]; closeLosses: number[];
+  group?: BoothGroup; toWin?: { needed: number; oursFound: number; toGo: number }; metPct?: number;
+}
+export interface ResultsMapBooth { partNo: number; name: string; lat: number | null; lng: number | null; winner: string | null; ours: number; margin: number; prevOurs: number | null; metPct: number }
+export interface ResultsMap { year: number | null; years: number[]; party: string | null; parties: string[]; booths: ResultsMapBooth[]; legend: { won: number; lost: number; lostUnder50: number } }
+export interface WinPlan {
+  year: number | null; party: string | null; winnerVotes?: number; rivalVotes: number | null; needed: number | null; oursFound: number; toGo: number | null;
+  groups: Record<BoothGroup, { booths: number[]; count: number }>; uncoveredSwing: number[];
+}
 
 export type RollKind = 'draft' | 'final' | 'supplement';
 export interface RollInfo {
@@ -133,6 +160,10 @@ export interface ImportJob {
 }
 
 export const platformApi = {
+  /** spec map-trend T2: past election results (super-admin only). */
+  pastResults: (state: string) => http.get<{ items: { acNo: number; year: number; booths: number; sample: boolean; loadedAt: string }[] }>(`/v1/admin/past-results?state=${state}`),
+  uploadPastResults: (stateCode: string, csv: string, sample: boolean) => http.post<{ rows: number; acs: number[]; years: number[]; parties: string[] }>('/v1/admin/past-results', { stateCode, csv, sample }),
+  deletePastResults: (state: string, ac: number, year: number) => http.del<{ deleted: number }>(`/v1/admin/past-results?state=${state}&ac=${ac}&year=${year}`),
   overview: () => http.get<Overview>('/v1/admin/overview'),
   acs: (state: string) => http.get<{ acNo: number; name: string; nameLocal: string | null; regionalLang: 'hi' | 'pa'; booths: number; voters: number }[]>(`/v1/admin/acs?state=${state}`),
   setAc: (state: string, ac: number, p: { regionalLang?: 'hi' | 'pa'; nameLocal?: string }) => http.patch(`/v1/admin/acs/${state}/${ac}`, p),

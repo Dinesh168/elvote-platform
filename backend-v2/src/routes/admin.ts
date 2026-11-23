@@ -12,6 +12,8 @@ import { saveImage } from '../lib/images.js';
 import { invalid, notFound } from '../lib/errors.js';
 import { DateStr, parse, PartNo, Uuid } from '../lib/http.js';
 import { DRIVE_NAMES, DRIVE_SEGMENTS, segmentSql, type Segment } from '../lib/voters.js';
+import { autoStrength, loadAc, pickParty } from '../lib/pastResults.js';
+import { teamParty } from './results.js';
 
 const Mid = z.object({ mid: Uuid });
 const COUNTER_COLS = ['total', 'met', 'our', 'target', 'opp', 'moved', 'with_mobile', 'our_mobile', 'target_mobile', 'opp_mobile', 'houses', 'houses_visited',
@@ -37,6 +39,13 @@ function scopeSql(params: unknown[], zone?: string, booth?: number) {
   return sql;
 }
 
+/** Worked-out strength per booth for this team (spec real-demo-data B3); an admin's own setting overrides it. */
+async function strengthOf(pool: pg.Pool, m: Membership) {
+  const res = await loadAc(pool, m.acNo);
+  const auto = autoStrength(res, pickParty(res, undefined, await teamParty(m)));
+  return (part: number, set: string | null) => (set ? { strength: set, strengthSource: 'admin' as const } : { strength: auto.get(part) ?? 'M', strengthSource: 'auto' as const });
+}
+
 async function workersByBooth(m: Membership): Promise<Map<number, number>> {
   const r = await core.query<{ part_no: number; n: number }>(
     `SELECT mb.part_no, count(*)::int AS n FROM memberships ms JOIN membership_booths mb ON mb.membership_id = ms.id
@@ -51,6 +60,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { m, pool } = await admin(req);
     const q = parse(z.object({ zone: Uuid.optional(), booth: PartNo.optional() }), req.query);
     const workers = await workersByBooth(m);
+    const sOf = await strengthOf(pool, m);
     return inParty(pool, m.partyId, async (c) => {
       const params: unknown[] = [m.partyId, m.acNo];
       const scope = scopeSql(params, q.zone, q.booth);
@@ -62,7 +72,7 @@ export async function adminRoutes(app: FastifyInstance) {
       const strength = { S: 0, M: 0, W: 0 };
       let withWorker = 0;
       for (const b of booths.rows) {
-        strength[(b.strength ?? 'M') as 'S' | 'M' | 'W']++;
+        strength[sOf(b.part_no, b.strength).strength as 'S' | 'M' | 'W']++;
         if (workers.get(b.part_no)) withWorker++;
       }
 
@@ -87,8 +97,36 @@ export async function adminRoutes(app: FastifyInstance) {
           GROUP BY user_id ORDER BY contacted DESC LIMIT 10`, [m.partyId, m.acNo]);
       const names = await namesOf(top.rows.map((t) => t.user_id));
 
+      // spec map-trend Y1: yesterday vs the day before (India time), and the best booth yesterday.
+      const ist = `(at AT TIME ZONE 'Asia/Kolkata')::date`;
+      const day0 = `(now() AT TIME ZONE 'Asia/Kolkata')::date`;
+      const yd = await c.query<{ d: number; met: number; ours: number }>(
+        `SELECT (${day0} - ${ist})::int AS d, count(DISTINCT voter_id)::int AS met, count(DISTINCT voter_id) FILTER (WHERE change->>'group' = 'our')::int AS ours
+           FROM contact_events WHERE party_id = $1 AND ac_no = $2 AND at > now() - interval '3 days' AND (${day0} - ${ist}) IN (1, 2) GROUP BY 1`, [m.partyId, m.acNo]);
+      const best = await c.query<{ part_no: number; n: number }>(
+        `SELECT part_no, count(DISTINCT voter_id)::int AS n FROM contact_events
+          WHERE party_id = $1 AND ac_no = $2 AND at > now() - interval '3 days' AND (${day0} - ${ist}) = 1 GROUP BY part_no ORDER BY 2 DESC, 1 LIMIT 1`, [m.partyId, m.acNo]);
+      const y1 = yd.rows.find((x) => x.d === 1) ?? { met: 0, ours: 0 };
+      const y2 = yd.rows.find((x) => x.d === 2) ?? { met: 0, ours: 0 };
+      const change = (a: number, b: number) => (b ? Math.round(((a - b) / b) * 100) : null);
+      // Quiet volunteers: approved, no meeting for 3 days or more (or never).
+      const vols = await core.query<{ user_id: string; name: string; booths: number[] }>(
+        `SELECT ms.user_id, u.name, COALESCE(array_agg(mb.part_no ORDER BY mb.part_no) FILTER (WHERE mb.part_no IS NOT NULL), '{}') AS booths
+           FROM memberships ms JOIN users u ON u.id = ms.user_id LEFT JOIN membership_booths mb ON mb.membership_id = ms.id AND NOT mb.requested
+          WHERE ms.party_constituency_id = $1 AND ms.role = 'volunteer' AND ms.status = 'approved' GROUP BY ms.user_id, u.name`, [m.partyAcId]);
+      const lastAt = await c.query<{ user_id: string; last: Date }>(
+        `SELECT user_id, max(at) AS last FROM contact_events WHERE party_id = $1 AND ac_no = $2 AND user_id = ANY($3::uuid[]) GROUP BY user_id`,
+        [m.partyId, m.acNo, vols.rows.map((v) => v.user_id)]);
+      const lastOf = new Map(lastAt.rows.map((x) => [x.user_id, x.last]));
+      const quiet = vols.rows
+        .map((v) => { const l = lastOf.get(v.user_id); return { userId: v.user_id, name: v.name, booths: v.booths, days: l ? Math.floor((Date.now() - l.getTime()) / 86_400_000) : null }; })
+        .filter((v) => v.days === null || v.days >= 3)
+        .sort((a, b) => (b.days ?? 9999) - (a.days ?? 9999));
+
       const today = trend.rows.at(-1)?.contacted ?? 0;
       return {
+        yesterday: { met: y1.met, metChange: change(y1.met, y2.met), ours: y1.ours, oursChange: change(y1.ours, y2.ours), bestBooth: best.rows[0]?.part_no ?? null },
+        quiet,
         scope: { zone: q.zone ?? null, booth: q.booth ?? null, acNo: m.acNo, acName: m.acName },
         visitedToday: today,
         totals: toCamel(tot),
@@ -110,6 +148,7 @@ export async function adminRoutes(app: FastifyInstance) {
     const { m, pool } = await admin(req);
     const q = parse(z.object({ zone: Uuid.optional() }), req.query);
     const workers = await workersByBooth(m);
+    const sOf = await strengthOf(pool, m);
     return inParty(pool, m.partyId, async (c) => {
       const params: unknown[] = [m.partyId, m.acNo];
       const scope = scopeSql(params, q.zone);
@@ -119,7 +158,7 @@ export async function adminRoutes(app: FastifyInstance) {
            LEFT JOIN zone_booths zb ON zb.party_id = s.party_id AND zb.booth_id = s.booth_id LEFT JOIN zones z ON z.id = zb.zone_id
           WHERE s.party_id = $1 AND s.ac_no = $2${scope} ORDER BY s.part_no`, params);
       return r.rows.map((b) => ({
-        no: b.part_no, name: b.name, zone: b.zone, strength: b.strength ?? 'M', workers: workers.get(b.part_no) ?? 0,
+        no: b.part_no, name: b.name, zone: b.zone, ...sOf(b.part_no, b.strength), workers: workers.get(b.part_no) ?? 0,
         total: b.total, met: b.met, houses: b.houses, housesVisited: b.houses_visited, withMobile: b.with_mobile, our: b.our, target: b.target, opp: b.opp,
       }));
     });
@@ -136,6 +175,15 @@ export async function adminRoutes(app: FastifyInstance) {
                      ON CONFLICT (party_id, booth_id) DO UPDATE SET strength = EXCLUDED.strength, updated_by = EXCLUDED.updated_by, updated_at = now()`,
         [m.partyId, booth.rows[0].id, b.strength, m.userId]);
     });
+    return { ok: true };
+  });
+
+  /** spec real-demo-data B3: back to the worked-out strength. */
+  app.delete('/v1/m/:mid/booths/:no/strength', async (req) => {
+    const { m, pool } = await admin(req);
+    const { no } = parse(z.object({ mid: Uuid, no: PartNo }), req.params);
+    await inParty(pool, m.partyId, (c) => c.query(
+      'DELETE FROM booth_party_info WHERE party_id = $1 AND booth_id IN (SELECT id FROM booths WHERE ac_no = $2 AND part_no = $3)', [m.partyId, m.acNo, no]));
     return { ok: true };
   });
 
@@ -343,6 +391,7 @@ export async function adminRoutes(app: FastifyInstance) {
   // ---------- Map ----------
   app.get('/v1/m/:mid/map', async (req) => {
     const { m, pool } = await admin(req, 'map');
+    const sOf = await strengthOf(pool, m);
     return inParty(pool, m.partyId, async (c) => {
       const r = await c.query<{ part_no: number; name: string; lat: string | null; lng: string | null; total: number; met: number; our: number; target: number; opp: number; strength: string | null; zone: string | null }>(
         `SELECT b.part_no, b.name, b.lat, b.lng, COALESCE(s.total, 0) AS total, COALESCE(s.met, 0) AS met, COALESCE(s.our, 0) AS our, COALESCE(s.target, 0) AS target, COALESCE(s.opp, 0) AS opp,
@@ -351,7 +400,7 @@ export async function adminRoutes(app: FastifyInstance) {
            LEFT JOIN booth_party_info bp ON bp.party_id = $1 AND bp.booth_id = b.id
            LEFT JOIN zone_booths zb ON zb.party_id = $1 AND zb.booth_id = b.id LEFT JOIN zones z ON z.id = zb.zone_id
           WHERE b.ac_no = $2 AND b.deleted_at IS NULL ORDER BY b.part_no`, [m.partyId, m.acNo]);
-      return r.rows.map((b) => ({ no: b.part_no, name: b.name, lat: b.lat ? Number(b.lat) : null, lng: b.lng ? Number(b.lng) : null, total: b.total, met: b.met, our: b.our, target: b.target, opp: b.opp, strength: b.strength ?? 'M', zone: b.zone, pct: b.total ? Math.round((b.met / b.total) * 1000) / 10 : 0 }));
+      return r.rows.map((b) => ({ no: b.part_no, name: b.name, lat: b.lat ? Number(b.lat) : null, lng: b.lng ? Number(b.lng) : null, total: b.total, met: b.met, our: b.our, target: b.target, opp: b.opp, ...sOf(b.part_no, b.strength), zone: b.zone, pct: b.total ? Math.round((b.met / b.total) * 1000) / 10 : 0 }));
     });
   });
 

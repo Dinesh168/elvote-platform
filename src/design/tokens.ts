@@ -38,6 +38,8 @@ export const colors = {
   /** Light overlay on an accent-coloured button (scan icon box). */
   onAccentTint: 'rgba(255,255,255,0.18)',
   overlay: 'rgba(0,0,0,0.32)',
+  /** Dim layer behind tips and the side menu. */
+  scrim: 'rgba(0,0,0,0.55)',
   toast: 'rgba(28,28,30,0.94)',
   toastAction: '#A5B4FC',
   toastSuccess: '#30D158',

@@ -1,6 +1,6 @@
 # Handoff: where the work stopped (read this first in a new session)
 
-Last updated: 2026-11-23.
+Last updated: 2026-11-23 (theelvote account session).
 
 ## Committed and deployed
 - Branch `feature/usability-r2` (commit `dde384c`, pushed to `platform`): usability round 2
@@ -22,11 +22,42 @@ Last updated: 2026-11-23.
 - Colour key (same everywhere): green = ours/done, amber = target, red = opposition/alert, grey = not met,
   blue = actions/menu, purple = tasks. Super-admin pages are out of scope for this redesign.
 
-## Waiting for the owner (do not start code until "confirm")
-1. Navigation: bottom tabs + side menu from the photo (proposed), or side menu only?
-2. Meeting buttons: icon + word (proposed), or icons only?
-3. Keep the extras: Profile weekly chart, Help video, "quiet volunteers", admin goal % (default 80%)?
-4. Any screen changes.
+## Owner decisions (confirmed 2026-11-23)
+- Navigation: bottom tabs + side menu from the photo. Meeting buttons: icon + word.
+- Keep: Profile weekly chart, quiet volunteers, admin goal + insights. Drop: Help video.
+- Added (approved): today's target ring (default 25/day), streak + badges + team rank, picture tips (3.8),
+  polling-day call list (5.4), remind quiet volunteers (6.8), yesterday summary (Insights), map colours by % met.
+- NEW: Map & Trend from past elections (replaces the separate D:\Personal\projects\election-trend app):
+  T1 `booth_results` per state DB (ac, booth, year, party, votes, total) loaded ONLY by super-admin upload
+  (same CSV format as election-trend); T2 Trend page (admin selects state → own assembly → party (default own) →
+  level assembly/zone/booth/village; vote share by year, swing); T3 Results map (who won / our share; lost by <50);
+  T4 Booth detail + dashboard show last election. Demo gets made-up sample results. Same map component as admin Map.
+- Updates are delivered over the air (EAS Update) after each change; new APK only for new native modules.
+- Trend works at every level by tap-through + breadcrumbs: 9.1 assembly → 9.3 zone → 9.4 booth ("to win this booth now").
+  9.5 Win plan: votes needed, booths Safe (won by 100+) / Swing (within 100) / Tough (lost by 100+), uncovered swing booths.
+  Volunteer Home shows their booth's last result ("lost here by 40") — no analysis screens for volunteers.
+  Voter slip is optional (small WhatsApp button on Meet), never forced after Save.
+- Updated canvas (theelvote account, 52 screens, row 9 = Map & Trend): https://claude.ai/artifact/3jixJcLCVeAUxv8x3Xza6J
+
+## Built 2026-11-23 (not committed yet)
+- Spec `docs/specs/map-trend.md`, tests `docs/test-cases/map-trend.md`, server `backend-v2/src/routes/results.ts` + `src/lib/pastResults.ts`,
+  migrations state/005 + core/008, test `test/95-past-results.test.ts` (server 185/185, app 133/133).
+- App: `/admin/trend`, `/admin/results-map`, `/admin/win-plan`, `/platform/past-results`, Home ProgressCard, Me badges.
+- Deployed to the demo (API + sample results + website) and EAS update `ea19dcc2-118f-4542-be10-4c241caee05d` (channel demo).
+  Demo DB backups before the migration: /root/backups/demo_elvote_*-20261123-0451.dump.
+
+- Second step (same day): side menu (`src/features/shell/SideMenu.tsx`, ☰ in TeamBar), picture tips (`src/features/home/Tips.tsx`),
+  call list (`src/app/(tabs)/(poll)/call-list.tsx`), remind (`src/app/admin/(dashboard)/remind.tsx`), Yesterday card + quiet volunteers
+  (dashboard API), icon + word group buttons. EAS update `9e850f73-8b04-4a8c-80e1-d6ed6946ade2`. Server 186/186, app 136/136.
+
+- Third step: real demo data (spec `docs/specs/real-demo-data.md`): parties AAP/INC/SAD/BJP/SP/BSP; teams **AAP – PB AC 50 Rupnagar**
+  and **BJP – UP AC 361 Ballia Nagar** (no admins yet: super-admin assigns); real booths, locations, 2022 results; voters with made-up
+  names; booth strength worked out per party (admin can override + Reset). State UP added. Backups /root/backups/demo_elvote_*-20261123-0608.dump.
+  EAS update `f049c217-42bb-41df-8834-8fe7197ccea8`. The ECI captcha scraper (ElvoteDataScraping) must not be used.
+
+## Next
+1. Owner checks the demo on the phone; fix what they report. Then "commit and push" when asked.
+2. Screen checks still open: TC-MT-21, 22, 23, 25, 26, 27 (real phone, Hindi/Punjabi, 130 % font, speed on demo).
 
 ## Then (mandatory workflow, CLAUDE.md + .claude/skills/elvote-change)
 Spec `docs/specs/visual-redesign.md` → test cases → code (screen by screen, keep existing data/API;

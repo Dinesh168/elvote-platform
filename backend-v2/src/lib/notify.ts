@@ -5,7 +5,7 @@
 import { core } from '../db/pools.js';
 import { sendPush, type PushMessage } from './push.js';
 
-export type NoticeType = 'volunteer_request' | 'admin_request' | 'approved' | 'rejected' | 'removed';
+export type NoticeType = 'volunteer_request' | 'admin_request' | 'approved' | 'rejected' | 'removed' | 'remind_booth' | 'remind_days' | 'remind_call';
 type Lang = 'en' | 'hi' | 'pa';
 type P = Record<string, string>;
 
@@ -30,6 +30,21 @@ const T: Record<NoticeType, Record<Lang, { title: string; body: (p: P) => string
     hi: { title: 'अनुरोध मंज़ूर नहीं हुआ', body: (p) => p.reason },
     pa: { title: 'ਬੇਨਤੀ ਮਨਜ਼ੂਰ ਨਹੀਂ ਹੋਈ', body: (p) => p.reason },
   },
+  remind_booth: {
+    en: { title: 'Your booth needs you today 🙏', body: (p) => `${p.party} · ${p.area}. Tap to start meeting voters.` },
+    hi: { title: 'आज आपके बूथ को आपकी ज़रूरत है 🙏', body: (p) => `${p.party} · ${p.area}. मतदाताओं से मिलना शुरू करें।` },
+    pa: { title: 'ਅੱਜ ਤੁਹਾਡੇ ਬੂਥ ਨੂੰ ਤੁਹਾਡੀ ਲੋੜ ਹੈ 🙏', body: (p) => `${p.party} · ${p.area}. ਵੋਟਰਾਂ ਨੂੰ ਮਿਲਣਾ ਸ਼ੁਰੂ ਕਰੋ।` },
+  },
+  remind_days: {
+    en: { title: 'Few days left — let us meet everyone', body: (p) => `${p.party} · ${p.area}. Every voter counts.` },
+    hi: { title: 'कुछ ही दिन बाकी — सबसे मिलें', body: (p) => `${p.party} · ${p.area}. हर वोट ज़रूरी है।` },
+    pa: { title: 'ਕੁਝ ਦਿਨ ਬਾਕੀ — ਸਭ ਨੂੰ ਮਿਲੋ', body: (p) => `${p.party} · ${p.area}. ਹਰ ਵੋਟ ਜ਼ਰੂਰੀ ਹੈ।` },
+  },
+  remind_call: {
+    en: { title: 'Call me if you need help', body: (p) => `${p.name} · ${p.party} · ${p.area}` },
+    hi: { title: 'मदद चाहिए तो मुझे कॉल करें', body: (p) => `${p.name} · ${p.party} · ${p.area}` },
+    pa: { title: 'ਮਦਦ ਚਾਹੀਦੀ ਹੋਵੇ ਤਾਂ ਮੈਨੂੰ ਕਾਲ ਕਰੋ', body: (p) => `${p.name} · ${p.party} · ${p.area}` },
+  },
   removed: {
     en: { title: 'Access removed', body: (p) => `Your access to ${p.party} · ${p.area} was removed.` },
     hi: { title: 'पहुँच हटा दी गई', body: (p) => `${p.party} · ${p.area} की आपकी पहुँच हटा दी गई।` },
@@ -44,6 +59,9 @@ const URL: Record<NoticeType, string> = {
   approved: '/',
   rejected: '/waiting',
   removed: '/',
+  remind_booth: '/',
+  remind_days: '/',
+  remind_call: '/',
 };
 
 let log: (e: Error) => void = () => undefined;

@@ -12,3 +12,8 @@ export type PickedFile = { uri: string; name: string; type?: string; file?: Blob
 export async function appendFile(form: FormData, field: string, f: PickedFile): Promise<void> {
   form.append(field, new File(f.uri) as unknown as Blob, f.name);
 }
+
+/** Reads a picked text file (CSV) as a string (spec map-trend T2). */
+export async function readText(f: PickedFile): Promise<string> {
+  return new File(f.uri).text();
+}

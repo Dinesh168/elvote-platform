@@ -11,6 +11,7 @@ import { LanguageRow } from '@/features/shell/LanguageRow';
 import { API_MODE } from '@/api/client';
 import { http } from '@/api/http';
 import { AppText, Button, Group, IconSquare, LargeTitle, Row, Screen } from '@/design/components';
+import { Badges } from '@/features/home/Progress';
 import { TeamBar } from '@/features/shell/TeamBar';
 import { SyncBadge } from '@/features/sync/SyncBadge';
 import { useSignOut } from '@/features/session/useSignOut';
@@ -63,6 +64,7 @@ export default function MeScreen() {
       <LargeTitle title={t('tabs.me')} />
       <BrandCard roleLabel={t('web.roleVolunteer')} />
 
+      <Badges />
       <Group header={t('me3.booths')}>
         {booths.map((b, i) => (
           <Row key={b.no} title={`${t('common.booth', { no: b.no })} · ${b.name}`} subtitle={b.village} leading={<IconSquare name="location" bg={colors.accent} />} last={i === booths.length - 1} />

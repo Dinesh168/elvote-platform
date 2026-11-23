@@ -8,3 +8,8 @@ export async function appendFile(form: FormData, field: string, f: PickedFile): 
   const blob = f.file ?? (await (await fetch(f.uri)).blob());
   form.append(field, blob, f.name);
 }
+
+/** Reads a picked text file (CSV) as a string (spec map-trend T2). */
+export async function readText(f: PickedFile): Promise<string> {
+  return f.file ? f.file.text() : (await fetch(f.uri)).text();
+}

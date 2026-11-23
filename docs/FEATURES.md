@@ -174,3 +174,14 @@ Spec `docs/specs/onboarding-branding.md`, tests `docs/test-cases/onboarding-bran
 | Volunteer / admin | Home / Dashboard | The banner full width at the top (admin: with Edit) |
 
 API: `POST/DELETE /v1/m/:mid/banner`; `POST /v1/admin/customers/:id/upload?kind=banner`; `look.bannerUrl`, customer `bannerUrl`. DB: core `007_banner.sql` (`party_constituencies.banner_url`). App: `expo-image-picker`.
+
+## Map & Trend, Win plan, volunteer progress (2026-11-23, spec docs/specs/map-trend.md)
+- **Admin → Menu → Map & Trend** (`/admin/trend`): past results of the admin's own assembly; party chips (default own party), Zone/booth or Village view, our share + swing, vote share by year, tap a zone/village/booth to go down a level (booth: "to win this booth now", Booth details, Start a task).
+- **Admin → Map → Past results** (`/admin/results-map`): booths coloured by who won or by our share, yellow ring = lost by < 50, year switch, closest booths list.
+- **Admin → Menu → Win plan** (`/admin/win-plan`): votes needed, ours found, swing booths without a volunteer, booths in Swing / Tough / Safe groups.
+- **Volunteer Home:** today's target ring (default 25/day), days in a row, team rank, "last time we won/lost here by N". **Me:** badges (100 met, 500 met, 50 phones, 5 days in a row).
+- **Super-admin → Past results** (`/platform/past-results`): upload election-trend CSV per state, list, delete an AC × year. Demo has sample results (`npm run sample-results -- --demo`).
+- **Side menu (☰ in the top bar of every main page):** every page of the role, grouped (admin: Today / Win & analyse / Polling day / Team set-up; volunteer: My work / Polling day / Me), icon + word; switched-off features hidden.
+- **Admin Dashboard:** Yesterday card (+met ▲%, +ours ▲%, best booth); "Needs you today": Quiet volunteers → **Remind** (`/admin/remind`, pick a message, send alert, once per 12 h), Map & Trend, Win plan.
+- **Polling day → Call list** (`/call-list`): ours / needs-help not voted, call buttons, countdown to closing (works offline).
+- **Picture tips** on Home, first use only (Skip / Next). Meeting colour buttons show icon + word (👍 ours, ◎ maybe, 👎 other).

@@ -18,6 +18,7 @@ import { QueryState } from '@/features/common/QueryState';
 import { activate, rolesOf } from '@/features/session/session';
 import { useActiveMembership, useSession } from '@/stores/session';
 import { RollStrip } from './RollStrip';
+import { BoothStrength } from './BoothStrength';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
@@ -84,6 +85,35 @@ export function DashboardView({ booth }: { booth?: number }) {
               { key: 'notMet', value: d.charts.groups.notMet, label: t('admin.notMet'), color: colors.text },
             ]}
           />
+          {!booth && !zone && d.yesterday ? (
+            // spec map-trend Y1: yesterday at a glance
+            <View style={s.yday} accessible accessibilityLabel={t('yday.a11y', { met: d.yesterday.met, ours: d.yesterday.ours, booth: d.yesterday.bestBooth ?? '-' })}>
+              <AppText variant="caption" weight="bold" color={colors.textOnAccent}>{t('yday.title')}</AppText>
+              <View style={s.ydayRow}>
+                {[
+                  { k: 'met', v: d.yesterday.met, c: d.yesterday.metChange },
+                  { k: 'ours', v: d.yesterday.ours, c: d.yesterday.oursChange },
+                ].map((x) => (
+                  <View key={x.k} style={s.ydayCell}>
+                    <AppText variant="title2" color={colors.textOnAccent} tabular>{`+${fmt(x.v)}`}</AppText>
+                    <AppText variant="caption" color={colors.textOnAccent}>{`${t(`yday.${x.k}`)}${x.c === null ? '' : ` ${x.c >= 0 ? '▲' : '▼'}${Math.abs(x.c)}%`}`}</AppText>
+                  </View>
+                ))}
+                <View style={s.ydayCell}>
+                  <AppText variant="title2" color={colors.textOnAccent} tabular>{d.yesterday.bestBooth ? String(d.yesterday.bestBooth) : '–'}</AppText>
+                  <AppText variant="caption" color={colors.textOnAccent}>{t('yday.best')}</AppText>
+                </View>
+              </View>
+            </View>
+          ) : null}
+          {!booth ? (
+            <Group header={t('yday.needsYou')}>
+              <Row title={t('remind.row', { count: d.quiet?.length ?? 0 })} subtitle={t('remind.rowSub')} leading={<IconSquare name="notifications" bg={colors.iconTask} />}
+                chevron onPress={() => router.push('/admin/remind')} />
+              <Row title={t('trend.title')} subtitle={t('trend.menuSub')} leading={<IconSquare name="trending-up" bg={colors.warning} />} chevron onPress={() => router.push('/admin/trend')} />
+              <Row title={t('win.title')} subtitle={t('win.rowSub')} leading={<IconSquare name="trophy" bg={colors.success} />} chevron onPress={() => router.push('/admin/win-plan')} last />
+            </Group>
+          ) : null}
           {!booth ? (
             <Group>
               {surnamesOn ? <Row title={t('asur.title')} subtitle={t('asur.rowSub')} leading={<IconSquare name="people-circle" bg={colors.iconGender} />} chevron onPress={() => router.push('/admin/surnames')} /> : null}
@@ -144,6 +174,7 @@ export function DashboardView({ booth }: { booth?: number }) {
             <Row title={t('admin.helpNeeded')} value={fmt(d.totals.helpNeeded)} last />
           </Group>
 
+          {booth ? <BoothStrength mid={mid} booth={booth} /> : null}
           {!booth ? (
             <Group header={t('admin.booths')}>
               <BarList a11yLabel={t('admin.strength')} items={[
@@ -233,6 +264,9 @@ function Dot({ color }: { color: string }) {
 }
 
 const s = themed(() => StyleSheet.create({
+  yday: { marginHorizontal: spacing.lg, marginTop: spacing.md, padding: spacing.lg, gap: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.accentStrong },
+  ydayRow: { flexDirection: 'row' },
+  ydayCell: { flex: 1 },
   badge: { minWidth: 22, height: 22, borderRadius: 11, paddingHorizontal: 6, backgroundColor: colors.danger, alignItems: 'center', justifyContent: 'center' },
   acSwitch: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: spacing.lg, paddingTop: 4 },
   chips: { gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.lg },

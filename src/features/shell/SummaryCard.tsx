@@ -12,7 +12,7 @@ export type SummaryCell = { key: string; value: number; label: string; color: st
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 
-export function Ring({ pct, size = 56, stroke = 6, color = colors.accent }: { pct: number; size?: number; stroke?: number; color?: string }) {
+export function Ring({ pct, size = 56, stroke = 6, color = colors.accent, label }: { pct: number; size?: number; stroke?: number; color?: string; label?: string }) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const p = Math.max(0, Math.min(100, pct));
@@ -23,7 +23,7 @@ export function Ring({ pct, size = 56, stroke = 6, color = colors.accent }: { pc
         <Circle cx={size / 2} cy={size / 2} r={r} stroke={color} strokeWidth={stroke} fill="none" strokeLinecap="round" strokeDasharray={`${(c * p) / 100} ${c}`} transform={`rotate(-90 ${size / 2} ${size / 2})`} />
       </Svg>
       <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-        <AppText variant="caption" weight="bold" tabular>{`${Math.round(p)}%`}</AppText>
+        <AppText variant="caption" weight="bold" tabular>{label ?? `${Math.round(p)}%`}</AppText>
       </View>
     </View>
   );

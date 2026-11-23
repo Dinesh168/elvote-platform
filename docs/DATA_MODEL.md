@@ -257,6 +257,15 @@ PostgreSQL **16.15** (Ubuntu 24.04), database `elvote`, user `elvote`, **146 MB*
 
 Fix: a one-time Knex migration that brings every dynamic table up to the current `createTable` definition, using `ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS`. Better, consolidate the tables (PRODUCTION_READINESS B9).
 
+## backend-v2: past results and reminders (spec map-trend, 2026-11-23)
+- State DB `past_booth_results (ac_no, year, part_no PK, booth_name, district, tehsil, village, total_votes, electors, is_sample, loaded_by, loaded_at)`
+  and `past_party_votes (ac_no, year, part_no, party_code PK, votes)` (cascade on delete). Matched to `booths` by (ac_no, part_no) at read time.
+  Loaded only by the super-admin upload. Public aggregate data; no voter rows.
+- `past_booth_results.is_estimated` (state 006): votes estimated, not from Form 20. State **UP** (`elvote_up`, state no. 9) added to `LOCAL_STATES`.
+- Booth strength: `booth_party_info` row = set by the admin; no row = worked out from the last result for the team's party (S won by ≥ 100, W lost by > 100, else M).
+- Core DB `reminders_sent (party_constituency_id, user_id, sent_by, template, sent_at)` (12 h limit) and
+  `party_constituencies.daily_target smallint default 25` (volunteer daily target ring).
+
 ## Verifying against the live DB
 
 The DB runs on the DigitalOcean droplet (`ssh elvote-api` → `64.227.142.163`) and listens on `localhost:5432` only. Run `psql` on the droplet over SSH, or open a tunnel: `ssh -N -L 5433:localhost:5432 elvote-api`, then connect to `localhost:5433`. Always connect read-only (`PGOPTIONS='-c default_transaction_read_only=on'`). These checks don't touch voter PII:

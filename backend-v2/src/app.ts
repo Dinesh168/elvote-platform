@@ -1,3 +1,4 @@
+import { resultsRoutes } from './routes/results.js';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import multipart from '@fastify/multipart';
@@ -81,6 +82,7 @@ export async function buildApp() {
   await app.register(accessUserRoutes);
   await app.register(fieldRoutes);
   await app.register(adminRoutes);
+  await app.register(resultsRoutes);
   await app.register(pollingRoutes);
   await app.register(platformRoutes);
   return app;

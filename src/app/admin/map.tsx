@@ -6,7 +6,7 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Svg, { Circle, Rect, Text as SvgText } from 'react-native-svg';
 import { adminApi, type MapBooth } from '@/api/adminApi';
-import { AppText, Group, LargeTitle, Row, Screen } from '@/design/components';
+import { AppText, Group, IconSquare, LargeTitle, Row, Screen } from '@/design/components';
 import { chart, colors, fonts, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
 import { useActiveMembership } from '@/stores/session';
@@ -65,6 +65,9 @@ export default function MapScreen() {
                 </View>
               ))}
             </View>
+          </Group>
+          <Group>
+            <Row title={t('results.title')} subtitle={t('results.rowSub')} leading={<IconSquare name="trophy" bg={colors.warning} />} chevron onPress={() => router.push('/admin/results-map')} last />
           </Group>
           {data.length - located.length > 0 ? (
             <AppText variant="footnote" color={colors.textSecondary} style={s.note}>{t('admin.noLocation', { n: data.length - located.length })}</AppText>

@@ -13,6 +13,9 @@ interface PrefsState {
   langChosen: boolean;
   /** First launch (welcome + choose language) finished on this device (spec onboarding-branding OB1). */
   onboarded: boolean;
+  /** Picture tips on Home were shown (spec map-trend G3). */
+  tipsSeen: boolean;
+  seeTips: () => void;
   setLang: (l: Lang) => void;
   finishOnboarding: (l: Lang) => void;
   applyDefaultLang: (l: Lang) => void;
@@ -29,6 +32,8 @@ export const usePrefs = create<PrefsState>()(
       hydrated: false,
       langChosen: false,
       onboarded: false,
+      tipsSeen: false,
+      seeTips: () => set({ tipsSeen: true }),
       setLang: (lang) => set({ lang, langChosen: true }),
       finishOnboarding: (lang) => set({ lang, langChosen: true, onboarded: true }),
       applyDefaultLang: (lang) => set({ lang }),
@@ -38,7 +43,7 @@ export const usePrefs = create<PrefsState>()(
     {
       name: 'elvote.prefs.v1',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (s) => ({ lang: s.lang, langChosen: s.langChosen, onboarded: s.onboarded, booth: s.booth, pickedTaskId: s.pickedTaskId }),
+      partialize: (s) => ({ lang: s.lang, langChosen: s.langChosen, onboarded: s.onboarded, tipsSeen: s.tipsSeen, booth: s.booth, pickedTaskId: s.pickedTaskId }),
       onRehydrateStorage: () => () => usePrefs.setState({ hydrated: true }),
     },
   ),
