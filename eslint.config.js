@@ -6,6 +6,6 @@ module.exports = defineConfig([
   expoConfig,
   {
     // v2 app lives in src/. The old root app is linted when it is removed or ported.
-    ignores: ['dist/*', 'backend/*', 'web/*', '*.js', 'components/*', 'screens/*', 'services/*', 'storemanagement/*', 'hooks/*', 'libs/*', 'utils/*', 'public/*'],
+    ignores: ['dist/*', 'dist-demo/*', 'dist-v2/*', '*.js', 'public/*', 'backend-v2/*', 'docs/**'],
   },
 ]);

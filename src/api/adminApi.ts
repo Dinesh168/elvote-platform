@@ -72,6 +72,9 @@ export const adminApi = {
   trace: (mid: string, q: { epic?: string; booth?: number; sno?: number }) => http.get<Trace>(`${m(mid)}/trace${qs(q)}`),
   // Polling day (spec polling-day A1, A2, S2)
   polling: (mid: string) => http.get<PollingPage>(`${m(mid)}/polling`),
+  /** spec flow-fixes P1: polling day: any voter of the assembly by EPIC, or booth + S.No. */
+  pollFind: (mid: string, q: { epic: string } | { part: number; sno: number }) =>
+    http.get<{ items: PollFound[] }>(`${m(mid)}/polling/find?${'epic' in q ? `epic=${encodeURIComponent(q.epic)}` : `part=${q.part}&sno=${q.sno}`}`),
   pollingAlerts: (mid: string) => http.get<{ items: PdAlert[]; unseen: number }>(`${m(mid)}/polling/alerts`),
   pollingSeen: (mid: string) => http.post(`${m(mid)}/polling/alerts/seen`),
   setBoothLocation: (mid: string, no: number, lat: number, lng: number) => http.put(`${m(mid)}/booths/${no}/location`, { lat, lng }),
@@ -87,6 +90,8 @@ export const adminApi = {
 export type TrendLevel = 'assembly' | 'zone' | 'booth' | 'village';
 export type BoothGroup = 'safe' | 'swing' | 'tough';
 export type RemindTemplate = 'booth_needs_you' | 'days_left' | 'call_me';
+/** A voter found on polling day (spec flow-fixes P1). Other booths carry no group, phone or notes. */
+export interface PollFound { id: string; sno: number; part: number; boothName: string; name: string; nameLocal: string | null; relation: string | null; relative: string | null; age: number | null; gender: string | null; voted: boolean; own: boolean }
 export interface TrendYear { year: number; total: number; votes: Record<string, number>; shares: Record<string, number>; ours: number; winner: string | null; margin: number; estimated?: number }
 export interface TrendChild { key: string; name: string; ours: number | null; swing: number | null; winner: string | null; margin: number | null; group: BoothGroup | null }
 export interface Trend {

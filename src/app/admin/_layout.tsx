@@ -1,9 +1,9 @@
 import { Tabs } from 'expo-router';
 import { SuperAdminStrip } from '@/features/shell/SuperAdminStrip';
-import { Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { useTabBarStyle } from '@/features/shell/tabBar';
 import { Icon } from '@/design/components';
-import { colors, fonts, hairline } from '@/design/tokens';
+import { colors, fonts } from '@/design/tokens';
 import { useWide } from '@/design/layout';
 import { useGuard } from '@/features/session/Guard';
 import { useSyncEngine } from '@/features/sync/engine';
@@ -25,6 +25,8 @@ const ICONS: Record<string, [string, string]> = {
 /** Admin app (D18): 5 tabs; Polling day, Zones, Branding live under More. */
 export default function AdminLayout() {
   const { t, i18n } = useTranslation();
+  // spec flow-fixes O2: the bottom menu clears the phone's home bar / buttons / browser toolbar.
+  const bar = useTabBarStyle();
   const pa = i18n.language === 'pa';
   const hi = i18n.language === 'hi';
   const guard = useGuard('admin');
@@ -61,15 +63,7 @@ export default function AdminLayout() {
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelStyle: { fontFamily: pa ? fonts.paSemibold : hi ? fonts.hiSemibold : fonts.medium, fontSize: 12 },
-        tabBarStyle: {
-          backgroundColor: Platform.OS === 'web' ? colors.tabBar : colors.surface,
-          borderTopWidth: hairline,
-          borderTopColor: colors.separator,
-          elevation: 0,
-          height: Platform.OS === 'web' ? 64 : undefined,
-          paddingTop: 4,
-        },
-        tabBarItemStyle: { paddingBottom: Platform.OS === 'web' ? 6 : 0 },
+        ...bar,
         tabBarIcon: ({ focused, color }) => <Icon name={ICONS[route.name.replace(/[()]/g, '')]?.[focused ? 0 : 1] ?? 'ellipse'} size={26} color={color} />,
       })}
     >

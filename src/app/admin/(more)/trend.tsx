@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { adminApi, type BoothGroup, type Trend, type TrendChild, type TrendLevel, type TrendYear } from '@/api/adminApi';
-import { AppText, Button, Group, IconSquare, LargeTitle, ProgressBar, Row, Screen, SegmentedControl } from '@/design/components';
+import { AppText, Button, Group, IconSquare, LargeTitle, PartyShare, ProgressBar, Row, Screen, SegmentedControl, ShareTrend } from '@/design/components';
 import { themed } from '@/design/theme';
 import { chart, colors, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
@@ -67,6 +67,19 @@ export default function TrendScreen() {
           ) : null}
           <Hero d={d} />
           {d.toWin ? <ToWin d={d} /> : null}
+          {/* spec flow-fixes O3: vote share as charts; the year rows below stay as the table view. */}
+          <Group header={t('trend.shareChart', { year: d.years.at(-1)!.year })}>
+            <PartyShare shares={d.years.at(-1)!.shares} ours={d.party ?? ''} a11yLabel={t('trend.shareChart', { year: d.years.at(-1)!.year })} />
+          </Group>
+          {d.years.length > 1 ? (() => {
+            const rival = Object.entries(d.years.at(-1)!.shares).filter(([k]) => k !== d.party).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+            return (
+              <Group header={t('trend.overYears')}>
+                <ShareTrend ours={d.party ?? ''} rival={rival} a11yLabel={t('trend.overYears')}
+                  years={d.years.map((y) => ({ year: y.year, ours: y.ours, rival: y.shares[rival] ?? 0 }))} />
+              </Group>
+            );
+          })() : null}
           <Group header={t('trend.byYear')} footer={d.sample ? t('trend.sample') : t('trend.source')}>
             {[...d.years].reverse().map((y, i, arr) => <YearBar key={y.year} y={y} party={d.party ?? ''} last={i === arr.length - 1} />)}
           </Group>

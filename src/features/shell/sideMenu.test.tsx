@@ -49,13 +49,13 @@ describe('picture tips', () => {
   it('TC-MT-24 shows once; Skip hides it for good', async () => {
     await act(() => usePrefs.setState({ hydrated: true, tipsSeen: false }));
     const { unmount } = await render(wrap(<Tips />));
-    expect(screen.getByText('Tap Meet to start')).toBeTruthy();
+    expect(screen.getByText('Tap Start meeting')).toBeTruthy();
     await fireEvent.press(screen.getByText('Next'));
     expect(screen.getByText('Tap one colour')).toBeTruthy();
     await fireEvent.press(screen.getByText('Skip'));
     expect(usePrefs.getState().tipsSeen).toBe(true);
     await unmount();
     await render(wrap(<Tips />));
-    expect(screen.queryByText('Tap Meet to start')).toBeNull();
+    expect(screen.queryByText('Tap Start meeting')).toBeNull();
   });
 });

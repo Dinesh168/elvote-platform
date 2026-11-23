@@ -59,6 +59,55 @@ export default function HomeScreen() {
       <TeamBanner />
       <Tips />
       <LargeTitle title={t('home.hello', { name: firstName })} subtitle={date} />
+      {/* spec flow-fixes O1: the work comes first: next voter + search at the top, numbers below. */}
+      {!stats ? (
+        <QueryState loading={votersQ.isLoading} error={votersQ.isError} onRetry={() => void votersQ.refetch()} />
+      ) : (
+        <>
+          <Group
+            header={t('home.nextVoter')}
+            headerRight={
+              <Pressable accessibilityRole="button" accessibilityLabel={`${t('home.whichWork')} ${taskName}`} onPress={() => setSheet('task')} style={s.taskBtn} hitSlop={8}>
+                <AppText variant="callout" color={colors.accent} numberOfLines={1} style={{ maxWidth: 190 }}>
+                  {taskName}
+                </AppText>
+                <Icon name="chevron-down" size={16} color={colors.accent} />
+              </Pressable>
+            }
+            footer={next ? t(`home.why${next.why === 'all' ? 'All' : next.why === 'picked' ? 'Picked' : next.why === 'auto' ? 'Auto' : 'Due'}`) : undefined}
+          >
+            {next?.voter ? (
+              <View style={s.next}>
+                <View style={s.nextRow}>
+                  <SnoBadge sno={next.voter.sno} size={52} />
+                  <View style={{ flex: 1 }}>
+                    <AppText variant="headline" style={{ fontSize: 19, lineHeight: 24 }}>
+                      {next.voter.name}
+                    </AppText>
+                    <AppText variant="callout" color={colors.textSecondary}>
+                      {`${relText(t, next.voter.relation)} ${next.voter.relative} · ${next.voter.age} · ${t('voters.houseShort', { house: next.voter.house })}`}
+                    </AppText>
+                  </View>
+                </View>
+                <Button label={t('home.start')} onPress={() => openVoters({ open: next.voter!.id, ...(next.task ? { task: next.task.id } : {}) })} />
+              </View>
+            ) : (
+              <View style={s.next}>
+                <AppText variant="body">{t('home.allDone')}</AppText>
+              </View>
+            )}
+          </Group>
+
+          <Pressable accessibilityRole="search" accessibilityLabel={t('home.search')} onPress={() => openVoters({ focus: '1' })} style={[s.search, wide && s.searchWide]}>
+            <Icon name="search" size={20} color={colors.textSecondary} />
+            <AppText variant="body" color={colors.textSecondary}>
+              {t('home.search')}
+            </AppText>
+          </Pressable>
+
+        </>
+      )}
+
       {look?.candidateName && m ? (
         <View style={s.bannerWrap}>
           <CandidateBanner look={{ ...look, partyName: m.partyName }} />
@@ -101,54 +150,8 @@ export default function HomeScreen() {
 
       <ProgressCard booth={booth} />
 
-      {!stats ? (
-        <QueryState loading={votersQ.isLoading} error={votersQ.isError} onRetry={() => void votersQ.refetch()} />
-      ) : (
+      {stats ? (
         <Grid cols={2}>
-          <View>
-          <Group
-            header={t('home.nextVoter')}
-            headerRight={
-              <Pressable accessibilityRole="button" accessibilityLabel={`${t('home.whichWork')} ${taskName}`} onPress={() => setSheet('task')} style={s.taskBtn} hitSlop={8}>
-                <AppText variant="callout" color={colors.accent} numberOfLines={1} style={{ maxWidth: 190 }}>
-                  {taskName}
-                </AppText>
-                <Icon name="chevron-down" size={16} color={colors.accent} />
-              </Pressable>
-            }
-            footer={next ? t(`home.why${next.why === 'all' ? 'All' : next.why === 'picked' ? 'Picked' : next.why === 'auto' ? 'Auto' : 'Due'}`) : undefined}
-          >
-            {next?.voter ? (
-              <View style={s.next}>
-                <View style={s.nextRow}>
-                  <SnoBadge sno={next.voter.sno} size={52} />
-                  <View style={{ flex: 1 }}>
-                    <AppText variant="headline" style={{ fontSize: 19, lineHeight: 24 }}>
-                      {next.voter.name}
-                    </AppText>
-                    <AppText variant="callout" color={colors.textSecondary}>
-                      {`${relText(t, next.voter.relation)} ${next.voter.relative} · ${next.voter.age} · ${t('voters.houseShort', { house: next.voter.house })}`}
-                    </AppText>
-                  </View>
-                </View>
-                <Button label={t('home.start')} onPress={() => openVoters({ open: next.voter!.id, ...(next.task ? { task: next.task.id } : {}) })} />
-              </View>
-            ) : (
-              <View style={s.next}>
-                <AppText variant="body">{t('home.allDone')}</AppText>
-              </View>
-            )}
-          </Group>
-
-          <Pressable accessibilityRole="search" accessibilityLabel={t('home.search')} onPress={() => openVoters({ focus: '1' })} style={[s.search, wide && s.searchWide]}>
-            <Icon name="search" size={20} color={colors.textSecondary} />
-            <AppText variant="body" color={colors.textSecondary}>
-              {t('home.search')}
-            </AppText>
-          </Pressable>
-
-          </View>
-
           <View>
           <Group header={t('home.moreNumbers')}>
             <Row title={t('stats.mobile')} value={fmt(stats.withMobile)} leading={<IconSquare name="phone-portrait-outline" bg={colors.iconMobile} />} chevron onPress={() => router.push('/stats/mobile')} />
@@ -157,7 +160,9 @@ export default function HomeScreen() {
             <Row title={t('stats.gender')} leading={<IconSquare name="people" bg={colors.iconGender} />} chevron onPress={() => router.push('/stats/gender')} last={!surnamesOn} />
             {surnamesOn ? <Row title={t('home2.surnames')} leading={<IconSquare name="people-circle" bg={colors.accent} />} chevron onPress={() => router.push('/surnames')} last /> : null}
           </Group>
+          </View>
 
+          <View>
           {tasksOn ? (
           <Group header={t('home.tasks')}>
             {(next?.options ?? []).filter((o) => o.task).map((o, i, arr) => (
@@ -175,7 +180,7 @@ export default function HomeScreen() {
           ) : null}
           </View>
         </Grid>
-      )}
+      ) : null}
 
       <BoothSheet
         visible={sheet === 'booth'}

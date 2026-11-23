@@ -62,6 +62,9 @@ Last updated: 2026-11-23 (theelvote account session).
 
 - spec party-states: parties by state (core.party_states; demo SAD→PB, SP→UP, others national); Register as admin = State → Party → Assembly → Position; super-admin sets a party's states on Parties. Backup demo_elvote_core-20261123-1037. EAS a36821c4.
 
+- spec flow-fixes (2026-11-23): walk-through fixes (Home next voter first, Poll day keypad pinned, 6-digit auto sign-in, Team Review/Approve, team bar on all admin tabs), bottom menu safe-area, gifted charts, polling-day find across the assembly (EPIC / booth+S.No, mark Voted in window), old v1 client + backend/ removed. EAS 5f9e4fc6. Demo data reloaded 2026-11-23 (backup *-1122.dump); transliteration dropped (owner later).
+- NEXT: super-admin full control (add admin/volunteer directly, create state, edit/remove roles) — confirmed by owner, not built yet.
+
 ## Next
 1. Owner checks the demo on the phone; fix what they report. Then "commit and push" when asked.
 2. Screen checks still open: TC-MT-21, 22, 23, 25, 26, 27 (real phone, Hindi/Punjabi, 130 % font, speed on demo).

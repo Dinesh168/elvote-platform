@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { requireBooth, requireFeature, type Membership } from './access.js';
 import { notFound } from './errors.js';
 import { Mobile } from './http.js';
+import { electionFor } from './presence.js';
 
 export const Patch = z.object({
   group: z.enum(['our', 'target', 'opp']).nullable().optional(),
@@ -61,8 +62,12 @@ export async function applyChange(c: pg.PoolClient, m: Membership, electionId: s
     'SELECT part_no, booth_id, status, prev_part_no, moved_at, hidden_at FROM voters WHERE ac_no = $1 AND id = $2', [m.acNo, op.voterId]);
   if (!v.rowCount) throw notFound('voter_not_found');
   const { part_no: partNo, booth_id: boothId } = v.rows[0];
-  if (!movedFromMine(m, v.rows[0], op.clientAt)) requireBooth(m, partNo);
   const p = op.patch;
+  // spec flow-fixes P2: on polling day, inside the voting window, anyone in the team may mark (or undo) Voted for any
+  // voter of the assembly. Every other change stays limited to the volunteer's own booths.
+  const votedOnly = Object.keys(p).length === 1 && 'votedAt' in p;
+  const mine = m.role === 'admin' || m.booths.includes(partNo);
+  if (!mine && !movedFromMine(m, v.rows[0], op.clientAt) && !(votedOnly && (await electionFor(m.stateCode, m.acNo))?.inWindow)) requireBooth(m, partNo);
   if ('votedAt' in p) requireFeature(m, 'poll');
 
   const fresh = await c.query('INSERT INTO applied_ops (op_id, party_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [op.opId, m.partyId]);

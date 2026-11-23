@@ -9,6 +9,8 @@ import { useWide } from '@/design/layout';
 import { colors, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
 import { useActiveMembership } from '@/stores/session';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SyncBadge } from '@/features/sync/SyncBadge';
 
 type Tab = 'pending' | 'approved' | 'rejected';
 
@@ -53,7 +55,7 @@ export default function Team() {
   ];
 
   return (
-    <Screen>
+    <Screen header={<TeamBar trailing={<SyncBadge />} />}>
       <LargeTitle title={t('admin.tabs.team')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       <View style={s.pad}>
         <SegmentedControl<Tab>
@@ -61,7 +63,7 @@ export default function Team() {
           value={tab}
           onChange={setTab}
           options={[
-            { value: 'pending', label: `${t('admin.pending')}${pendingN ? ` (${pendingN})` : ''}` },
+            { value: 'pending', label: `${t('admin.pendingShort')}${pendingN ? ` (${pendingN})` : ''}` },
             { value: 'approved', label: t('admin.approved') },
             { value: 'rejected', label: t('admin.rejected') },
           ]}
@@ -85,8 +87,17 @@ export default function Team() {
               subtitle={tab === 'approved'
                 ? `${t('common.booth', { no: p.booths.join(', ') })} · ${t('admin.todayTotal', { today: p.contactedToday, total: p.contactedTotal })}\n${t('admin.col.syncLine', { time: p.lastSyncAt ? ago(p.lastSyncAt) : t('admin.col.neverSynced'), n: p.unsent ?? 0 })}`
                 : `+91 ${p.mobile} · ${t('common.booth', { no: p.booths.join(', ') })}${p.rejectReason ? ` · ${p.rejectReason}` : ''}`}
-              chevron={tab === 'pending'}
-              onPress={tab === 'pending' ? () => setOpen(p) : () => void Linking.openURL(`tel:${p.mobile}`)}
+              // spec flow-fixes O1: approve in one tap; Review opens the sheet to change booths or reject.
+              trailing={tab === 'pending' ? (
+                <View style={s.acts}>
+                  <Button kind="plain" compact label={t('admin.review')} onPress={() => setOpen(p)} a11yLabel={`${t('admin.review')} ${p.name}`} />
+                  {p.booths.length ? (
+                    <Button kind="success" compact label={t('admin.approve')} a11yLabel={`${t('admin.approve')} ${p.name}`}
+                      onPress={() => void adminApi.approve(mid, p.membershipId, p.booths).then(() => qc.invalidateQueries({ queryKey: ['team', mid] }))} />
+                  ) : null}
+                </View>
+              ) : undefined}
+              onPress={tab === 'pending' ? undefined : () => void Linking.openURL(`tel:${p.mobile}`)}
               last={i === q.data.length - 1}
             />
           ))}
@@ -143,6 +154,7 @@ function ApproveSheet({ mid, member, onDone }: { mid: string; member: TeamMember
 }
 
 const s = themed(() => StyleSheet.create({
+  acts: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tableGap: { marginTop: spacing.xl },
   pad: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg, gap: spacing.md },
   empty: { padding: spacing.xxl },

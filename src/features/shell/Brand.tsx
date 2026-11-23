@@ -13,13 +13,12 @@ import { colors, radius, spacing } from '@/design/tokens';
 import { fileUrl } from '@/features/session/customer';
 import { useActiveMembership, useSession } from '@/stores/session';
 
-const MARK = require('../../../assets/brand/mark.png');
 const WORDMARK = require('../../../assets/brand/logo-horizontal.png');
 
 export function BrandHeader() {
   return (
     <View style={s.header} accessible accessibilityRole="header" accessibilityLabel="ElVote">
-      <View style={s.markTile}><Image source={MARK} style={s.mark} /></View>
+      {/* spec flow-fixes O1: the wordmark already carries the mark, so it is shown once. */}
       <Image source={WORDMARK} style={s.wordmark} resizeMode="contain" />
     </View>
   );
@@ -69,10 +68,8 @@ export function ElVoteFooter() {
 }
 
 const s = themed(() => StyleSheet.create({
-  header: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xs },
-  markTile: { width: 64, height: 64, borderRadius: 16, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: StyleSheet.hairlineWidth, borderColor: colors.separator },
-  mark: { width: 50, height: 50 },
-  wordmark: { width: 112, height: 22 },
+  header: { alignItems: 'center', gap: spacing.md, paddingTop: spacing.lg, paddingBottom: spacing.sm },
+  wordmark: { width: 168, height: 34 },
   card: { marginHorizontal: spacing.lg, padding: spacing.lg, borderRadius: radius.lg, backgroundColor: colors.surface, gap: spacing.md },
   team: { alignItems: 'center', gap: spacing.xs },
   logo: { width: 64, height: 64, borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginBottom: spacing.xs },

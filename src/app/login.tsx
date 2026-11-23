@@ -191,11 +191,12 @@ function DevLogin() {
     }
   };
 
-  const verify = async () => {
+  const verify = async (c = code) => {
+    if (busy) return;
     setBusy(true);
     setError(null);
     try {
-      const r = await authApi.verifyOtp(mobile, code);
+      const r = await authApi.verifyOtp(mobile, c);
       await useSession.getState().setTokens(r.accessToken, r.refreshToken);
       if (r.deletionCancelled) useNotice.getState().show(t('del.cancelled'));
       await goLanding();
@@ -240,7 +241,12 @@ function DevLogin() {
             <Field
               label={t('auth.codeLabel')}
               value={code}
-              onChangeText={(x) => setCode(x.replace(/\D/g, '').slice(0, 6))}
+              onChangeText={(x) => {
+                const c = x.replace(/\D/g, '').slice(0, 6);
+                setCode(c);
+                // spec flow-fixes O1: the 6th digit signs in (no extra tap).
+                if (c.length === 6 && c !== code) void verify(c);
+              }}
               keyboardType="number-pad"
               {...doneProps('number-pad')}
               autoFocus

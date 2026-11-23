@@ -1,8 +1,9 @@
 /** Polling day (spec docs/specs/polling-day.md): volunteer reports, the admin page and alerts, super-admin elections and booth locations. */
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { allStateCodes, core, statePool } from '../db/pools.js';
-import { audit, requireMembership } from '../lib/access.js';
+import { allStateCodes, core, inParty, statePool } from '../db/pools.js';
+import { audit, requireFeature, requireMembership } from '../lib/access.js';
+import { currentElectionId } from '../lib/stats.js';
 import { conflict, invalid, notFound } from '../lib/errors.js';
 import { DateStr, parse, PartNo, Uuid } from '../lib/http.js';
 import { alerts, customerOf, ELECTION_COLS, markSeen, pollingView, report, toElection } from '../lib/presence.js';
@@ -27,6 +28,39 @@ export async function pollingRoutes(app: FastifyInstance) {
     // Phone clocks in the future count as now (same rule as sync-modes SD4).
     const at = new Date(Math.min(Date.parse(b.at), Date.now() + 5 * 60_000));
     return report(m, { permission: b.permission, lat: b.lat, lng: b.lng, accuracy: b.accuracy, at }, (e) => req.log.warn({ err: e.message }, 'push failed'));
+  });
+
+  /**
+   * spec flow-fixes P1: polling day: find any voter of the assembly by EPIC, or booth + S.No. Other booths show only what is
+   * needed to mark Voted (no group, phone or notes).
+   */
+  app.get('/v1/m/:mid/polling/find', async (req) => {
+    const { mid } = parse(Mid, req.params);
+    const q = parse(z.object({
+      epic: z.string().trim().toUpperCase().min(4).max(20).optional(),
+      part: PartNo.optional(),
+      sno: z.coerce.number().int().min(1).max(9999).optional(),
+    }).refine((x) => !!x.epic || (x.part != null && x.sno != null), { message: 'Type an EPIC number, or a booth and serial number.' }), req.query);
+    const m = await requireMembership(req.userId, mid);
+    requireFeature(m, 'poll');
+    const pool = await statePool(m.stateCode);
+    return inParty(pool, m.partyId, async (c) => {
+      const el = await currentElectionId(c);
+      const r = await c.query<{ id: string; sno: number; part_no: number; name: string; name_local: string | null; relation: string | null; relative_name: string | null; age: number | null; gender: string | null; booth_name: string; voted: boolean }>(
+        `SELECT v.id::text, v.sno, v.part_no, v.name, v.name_local, v.relation, v.relative_name, v.age, v.gender, b.name AS booth_name,
+                EXISTS (SELECT 1 FROM poll_marks pm WHERE pm.election_id = $2 AND pm.ac_no = v.ac_no AND pm.voter_id = v.id AND pm.undone_at IS NULL) AS voted
+           FROM voters v JOIN booths b ON b.id = v.booth_id
+          WHERE v.ac_no = $1 AND v.status IN ('active','added')
+            AND (($3::text IS NOT NULL AND v.epic = $3) OR ($3::text IS NULL AND v.part_no = $4 AND v.sno = $5))
+          ORDER BY v.part_no, v.sno LIMIT 5`,
+        [m.acNo, el ?? '00000000-0000-0000-0000-000000000000', q.epic ?? null, q.part ?? null, q.sno ?? null]);
+      return {
+        items: r.rows.map((v) => ({
+          id: v.id, sno: v.sno, part: v.part_no, boothName: v.booth_name, name: v.name, nameLocal: v.name_local, relation: v.relation,
+          relative: v.relative_name, age: v.age, gender: v.gender, voted: v.voted, own: m.role === 'admin' || m.booths.includes(v.part_no),
+        })),
+      };
+    });
   });
 
   /** A2: the admin's polling-day page. */

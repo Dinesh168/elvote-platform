@@ -10,7 +10,7 @@ export { Select } from './Select';
 export type { SelectOption } from './Select';
 export { ChoiceRow, Sheet } from './Sheet';
 export { Toast } from './Toast';
-export { BarList, Columns, StackedBar, groupParts } from './Charts';
+export { BarList, Columns, PartyShare, ShareTrend, StackedBar, groupParts } from './Charts';
 export type { BarItem, Part } from './Charts';
 export { Field } from './Field';
 export { DataTable, Grid, TileRow } from './Desktop';

@@ -1,6 +1,6 @@
 /** TC-PD polling day: elections, booth locations, distance, presence, alerts (docs/test-cases/polling-day.md). */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { closeAll, core } from '../src/db/pools.js';
+import { closeAll, core, statePool } from '../src/db/pools.js';
 import { runPresenceJobs } from '../src/lib/presence.js';
 import { setPushSender, type PushMessage } from '../src/lib/push.js';
 import { app, call, login, membership, start } from './helpers.js';
@@ -73,6 +73,44 @@ describe('PD polling day', () => {
     expect(clash.json().error).toBe('election_clash');
     const list = (await sup.get('/v1/admin/elections')).json();
     expect(list.find((x: { id: string }) => x.id === e1)).toMatchObject({ stateCode: 'PB', acNos: null, status: 'upcoming' });
+  });
+
+  // spec flow-fixes P1/P2: polling day: find any voter of the assembly (EPIC, or booth + S.No) and mark Voted.
+  it('TC-PF-1/2 a volunteer finds a voter of another booth by booth + S.No or EPIC; no group or phone', async () => {
+    const r = await vol.get(`/v1/m/${vmid}/polling/find?part=101&sno=1`);
+    expect(r.statusCode).toBe(200);
+    const [x] = r.json().items;
+    expect(x).toMatchObject({ part: 101, sno: 1, own: false });
+    expect(x).not.toHaveProperty('group');
+    expect(x).not.toHaveProperty('mobile');
+    const epic = (await (await statePool('PB')).query<{ epic: string }>('SELECT epic FROM voters WHERE ac_no = 66 AND id = $1', [x.id])).rows[0].epic;
+    const byEpic = (await vol.get(`/v1/m/${vmid}/polling/find?epic=${epic.toLowerCase()}`)).json().items;
+    expect(byEpic.map((v: { id: string }) => v.id)).toEqual([x.id]);
+    expect((await vol.get(`/v1/m/${vmid}/polling/find?part=112&sno=1`)).json().items[0]).toMatchObject({ own: true });
+  });
+
+  it('TC-PF-3 during the window: Voted for another booth is allowed, other changes are not', async () => {
+    const [x] = (await vol.get(`/v1/m/${vmid}/polling/find?part=101&sno=2`)).json().items;
+    const op = (patch: object) => vol.post(`/v1/m/${vmid}/voters/${x.id}/changes`, { opId: crypto.randomUUID(), patch });
+    expect((await op({ votedAt: new Date().toISOString() })).statusCode).toBe(200);
+    expect((await vol.get(`/v1/m/${vmid}/polling/find?part=101&sno=2`)).json().items[0]).toMatchObject({ voted: true });
+    expect((await op({ group: 'our' })).statusCode).toBe(403);
+    expect((await op({ votedAt: null })).statusCode).toBe(200);
+  });
+
+  it('TC-PF-4 outside the window other booths cannot be marked', async () => {
+    const [x] = (await vol.get(`/v1/m/${vmid}/polling/find?part=101&sno=3`)).json().items;
+    await sup.patch(`/v1/admin/elections/PB/${e1}`, { opensAt: '00:00', closesAt: '00:01' });
+    const now = new Date().toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false });
+    if (now >= '00:01') {
+      expect((await vol.post(`/v1/m/${vmid}/voters/${x.id}/changes`, { opId: crypto.randomUUID(), patch: { votedAt: new Date().toISOString() } })).statusCode).toBe(403);
+    }
+    await sup.patch(`/v1/admin/elections/PB/${e1}`, { opensAt: '00:00', closesAt: '23:59' });
+  });
+
+  it('TC-PF-5 a search needs an EPIC or booth + S.No', async () => {
+    expect((await vol.get(`/v1/m/${vmid}/polling/find`)).statusCode).toBe(422);
+    expect((await vol.get(`/v1/m/${vmid}/polling/find?part=101`)).statusCode).toBe(422);
   });
 
   it('TC-PD-S3-1 booth distance per customer (50–2,000 m)', async () => {

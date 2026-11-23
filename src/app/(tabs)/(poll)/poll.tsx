@@ -1,8 +1,8 @@
 import * as Haptics from 'expo-haptics';
 import { useFeature } from '@/features/session/customer';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { useTranslation } from 'react-i18next';
 import type { Voter } from '@/api/types';
@@ -16,6 +16,7 @@ import { evaluateEntry, pressKey, type Key } from '@/features/poll/keypad';
 import { notVotedByGroup } from '@/features/stats/selectors';
 import { usePrefs } from '@/stores/prefs';
 import { relText } from '@/features/voters/rel';
+import { FindVoter } from '@/features/poll/FindVoter';
 
 const KEYS: (Key | 'ok')[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', 'ok'];
 const R = 19;
@@ -28,9 +29,13 @@ export default function PollScreen() {
   const boothInfo = useBooths().data?.find((b) => b.no === booth);
   const q = useVoters(booth);
   const [num, setNum] = useState('');
+  // spec flow-fixes O1: while typing a serial, keep the entry panel (name found / not found) in view above the keypad.
+  const scroller = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  useEffect(() => { if (num) scroller.current?.scrollToEnd({ animated: true }); }, [num]);
   const [flash, setFlash] = useState<string | null>(null);
   const [recent, setRecent] = useState<{ voter: Voter; handle: SaveHandle }[]>([]);
   const [sheet, setSheet] = useState(false);
+  const [finder, setFinder] = useState(false);
 
   const bySno = useMemo(() => new Map((q.data ?? []).map((v) => [v.sno, v])), [q.data]);
   const left = useMemo(() => (q.data ? notVotedByGroup(q.data, booth) : null), [q.data, booth]);
@@ -93,8 +98,6 @@ export default function PollScreen() {
   return (
     <Screen width="medium"
       scroll={false}
-      back={t('tabs.home')}
-      onBack={() => router.navigate('/home')}
       inlineTitle={t('poll.title')}
       trailing={
         <View style={s.live}>
@@ -103,6 +106,8 @@ export default function PollScreen() {
         </View>
       }
     >
+      {/* spec flow-fixes O1: the keypad stays fully visible on small phones; the part above it scrolls. */}
+      <ScrollView ref={scroller} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
       {wide ? <LargeTitle title={t('poll.title')} subtitle={t('poll.keyboardHint')} /> : null}
       {!left ? (
         <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
@@ -163,9 +168,9 @@ export default function PollScreen() {
                   <AppText variant="callout" weight="semibold" color={colors.textSecondary}>{t('poll.clear')}</AppText>
                 </Pressable>
               ) : (
-                <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/voters', params: { focus: '1' } })} style={[s.smallBtn, { backgroundColor: colors.accentTint, flexDirection: 'row', gap: 6 }]}>
+                <Pressable accessibilityRole="button" onPress={() => setFinder(true)} style={[s.smallBtn, { backgroundColor: colors.accentTint, flexDirection: 'row', gap: 6 }]}>
                   <Icon name="search" size={16} color={colors.accent} />
-                  <AppText variant="callout" weight="semibold" color={colors.accent}>{t('poll.findByName')}</AppText>
+                  <AppText variant="callout" weight="semibold" color={colors.accent}>{t('poll.find.button')}</AppText>
                 </Pressable>
               )}
             </View>
@@ -213,8 +218,7 @@ export default function PollScreen() {
           </View>
         </View>
       )}
-
-      <View style={{ flex: 1 }} />
+      </ScrollView>
       {wide ? null : (
       <View style={s.pad}>
         {KEYS.map((k) => {
@@ -247,6 +251,7 @@ export default function PollScreen() {
       </View>
       )}
       <BoothSheet visible={sheet} onClose={() => setSheet(false)} />
+      <FindVoter visible={finder} booth={booth} onClose={() => setFinder(false)} onSearchName={() => router.push({ pathname: '/voters', params: { focus: '1' } })} />
     </Screen>
   );
 }

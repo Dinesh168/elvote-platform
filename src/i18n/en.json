@@ -180,7 +180,22 @@
     "last": "Last",
     "lastEmpty": "Marked voters show here, with Undo.",
     "keyboardHint": "Type the serial number on your keyboard. Enter marks Voted, Backspace deletes, Esc clears.",
-    "holdToClear": "Hold to clear the number"
+    "holdToClear": "Hold to clear the number",
+    "find": {
+      "button": "Find voter",
+      "title": "Find a voter",
+      "foot": "Search the whole assembly. You can mark Voted for any booth while voting is open.",
+      "by": "Find by",
+      "epic": "EPIC",
+      "boothSno": "Booth + S.No",
+      "epicLabel": "EPIC number",
+      "booth": "Booth no.",
+      "go": "Find",
+      "none": "No voter found. Check the number.",
+      "otherBooth": "other booth",
+      "already": "Already marked voted",
+      "byName": "Search by name in my booths"
+    }
   },
   "me": {
     "language": "Language / ਭਾਸ਼ਾ"
@@ -412,7 +427,8 @@
       "syncLine": "Last sync {{time}} · {{n}} unsent"
     },
     "review": "Review",
-    "visitsToday": "{{n}} visits today"
+    "visitsToday": "{{n}} visits today",
+    "pendingShort": "Requests"
   },
   "platform": {
     "title": "All states",
@@ -1262,7 +1278,9 @@
     "found": "{{n}} ours found so far",
     "toGo": "{{n}} to go",
     "estimated_one": "estimated",
-    "estimated_other": "{{count}} booths estimated"
+    "estimated_other": "{{count}} booths estimated",
+    "shareChart": "Vote share by party, {{year}}",
+    "overYears": "Our share vs main rival over the years"
   },
   "results": {
     "title": "Past results",
@@ -1409,7 +1427,7 @@
     "next": "Next",
     "start": "Start",
     "meet": {
-      "title": "Tap Meet to start",
+      "title": "Tap Start meeting",
       "text": "The app shows the next voter. Meet them at their house."
     },
     "colour": {

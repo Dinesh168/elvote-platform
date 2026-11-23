@@ -10,6 +10,8 @@ import { AppText, Group, IconSquare, LargeTitle, Row, Screen } from '@/design/co
 import { chart, colors, fonts, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
 import { useActiveMembership } from '@/stores/session';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SyncBadge } from '@/features/sync/SyncBadge';
 
 // magnitude = % contacted; read at render so the customer colour applies
 const steps = () => chart.seq;
@@ -37,7 +39,7 @@ export default function MapScreen() {
   const y = (lat: number) => PAD + (1 - (lat - minLat) / (maxLat - minLat || 1)) * (H - PAD * 2);
 
   return (
-    <Screen>
+    <Screen header={<TeamBar trailing={<SyncBadge />} />}>
       <LargeTitle title={t('admin.tabs.map')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       {!q.data ? (
         <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />

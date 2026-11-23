@@ -14,8 +14,9 @@ import { saveResults, type ParsedRow } from '../src/lib/pastResults.js';
 import { dbNames } from './migrate.js';
 import { seedAllowed } from './seed-guard.js';
 
-type Booth = { part: number; name: string; address: string | null; village: string | null; lat: number | null; lng: number | null };
-type VoterRow = [number, number, string, string, string, string, string, string, string, number | null, string | null, number | null, string | null];
+// spec flow-fixes O4: English + regional (…Local) booth texts.
+type Booth = { part: number; name: string; nameLocal: string | null; address: string | null; addressLocal: string | null; village: string | null; villageLocal: string | null; lat: number | null; lng: number | null };
+type VoterRow = [number, number, string, string, string, string, string, string, string, number | null, string | null, number | null, string | null, (string | null)?];
 type Ac = { state: string; ac: number; name: string; nameLocal: string; district: [string, string]; booths: Booth[]; voters: VoterRow[]; results: ParsedRow[]; rollSource: string };
 
 const PARTIES = [
@@ -79,12 +80,13 @@ export async function loadRealDemo(file: string) {
       const boothId = new Map<number, string>();
       for (const b of a.booths) {
         const r = await c.query<{ id: string }>(
-          `INSERT INTO booths (ac_no, part_no, name, locality, address, lat, lng, location_source, voters_count) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,
-          [a.ac, b.part, b.name.slice(0, 200), b.village, b.address, b.lat, b.lng, b.lat ? 'upload' : null, perPart.get(b.part) ?? 0]);
+          `INSERT INTO booths (ac_no, part_no, name, name_local, locality, locality_local, address, address_local, lat, lng, location_source, voters_count)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+          [a.ac, b.part, b.name.slice(0, 200), b.nameLocal?.slice(0, 200) ?? null, b.village, b.villageLocal, b.address, b.addressLocal, b.lat, b.lng, b.lat ? 'upload' : null, perPart.get(b.part) ?? 0]);
         boothId.set(b.part, r.rows[0].id);
       }
-      const rows = a.voters.filter((v) => boothId.has(v[0])).map((v) => [a.ac, v[0], boothId.get(v[0]), v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], roll]);
-      await insertMany(c, 'voters', ['ac_no', 'part_no', 'booth_id', 'sno', 'epic', 'name', 'name_local', 'relation', 'relative_name', 'relative_name_local', 'gender', 'age', 'house_no', 'section_no', 'section', 'roll_version_id'], rows);
+      const rows = a.voters.filter((v) => boothId.has(v[0])).map((v) => [a.ac, v[0], boothId.get(v[0]), v[1], v[2], v[3], v[4], v[5], v[6], v[7], v[8], v[9], v[10], v[11], v[12], v[13] ?? null, roll]);
+      await insertMany(c, 'voters', ['ac_no', 'part_no', 'booth_id', 'sno', 'epic', 'name', 'name_local', 'relation', 'relative_name', 'relative_name_local', 'gender', 'age', 'house_no', 'section_no', 'section', 'section_local', 'roll_version_id'], rows);
       await c.query(`INSERT INTO elections (kind, name, poll_date, status) VALUES ('assembly', $1, $2, 'upcoming')`, [...team.election]);
       await saveResults(await statePool(a.state), a.results, sup ?? '00000000-0000-0000-0000-000000000000', false);
 

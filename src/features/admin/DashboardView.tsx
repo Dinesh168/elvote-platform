@@ -108,6 +108,12 @@ export function DashboardView({ booth }: { booth?: number }) {
           ) : null}
           {!booth ? (
             <Group header={t('yday.needsYou')}>
+              {/* spec flow-fixes O1: waiting volunteer requests first: the admin acts on them from here. */}
+              {pendingN ? (
+                <Row title={t('asur.requests')} subtitle={t('asur.waiting', { count: pendingN })} leading={<IconSquare name="person-add" bg={colors.danger} />}
+                  trailing={<View style={s.badge}><AppText variant="footnote" weight="bold" color={colors.textOnAccent}>{String(pendingN)}</AppText></View>}
+                  chevron onPress={() => router.push('/admin/team')} />
+              ) : null}
               <Row title={t('remind.row', { count: d.quiet?.length ?? 0 })} subtitle={t('remind.rowSub')} leading={<IconSquare name="notifications" bg={colors.iconTask} />}
                 chevron onPress={() => router.push('/admin/remind')} />
               <Row title={t('trend.title')} subtitle={t('trend.menuSub')} leading={<IconSquare name="trending-up" bg={colors.warning} />} chevron onPress={() => router.push('/admin/trend')} />
@@ -117,10 +123,7 @@ export function DashboardView({ booth }: { booth?: number }) {
           {!booth ? (
             <Group>
               {surnamesOn ? <Row title={t('asur.title')} subtitle={t('asur.rowSub')} leading={<IconSquare name="people-circle" bg={colors.iconGender} />} chevron onPress={() => router.push('/admin/surnames')} /> : null}
-              <Row title={t('admin.housesVisited')} value={`${pct(d.totals.housesVisited, d.totals.houses)}%`} leading={<IconSquare name="home" bg={colors.iconHouse} />} />
-              <Row title={t('asur.requests')} subtitle={pendingN ? t('asur.waiting', { count: pendingN }) : t('asur.none')} leading={<IconSquare name="person-add" bg={colors.iconTask} />}
-                trailing={pendingN ? <View style={s.badge}><AppText variant="footnote" weight="bold" color={colors.textOnAccent}>{String(pendingN)}</AppText></View> : undefined}
-                chevron onPress={() => router.push('/admin/team')} last />
+              <Row title={t('admin.housesVisited')} value={`${pct(d.totals.housesVisited, d.totals.houses)}%`} leading={<IconSquare name="home" bg={colors.iconHouse} />} last />
             </Group>
           ) : null}
 

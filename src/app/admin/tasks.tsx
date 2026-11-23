@@ -9,6 +9,8 @@ import { useWide } from '@/design/layout';
 import { colors, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
 import { useActiveMembership } from '@/stores/session';
+import { TeamBar } from '@/features/shell/TeamBar';
+import { SyncBadge } from '@/features/sync/SyncBadge';
 
 const KINDS = ['women', 'first_time', 'young', 'senior', 'target', 'our', 'migrated', 'other'] as const;
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -27,7 +29,7 @@ export default function Tasks() {
   const name = (d: Drive) => (d.kind === 'other' ? d.name : t(`admin.kinds.${d.kind}`));
 
   return (
-    <Screen width="medium" trailing={<Button kind={wide ? 'filled' : 'plain'} compact label={`+ ${t('admin.newDrive')}`} onPress={() => setCreating(true)} />}>
+    <Screen width="medium" header={<TeamBar trailing={<Button kind="plain" compact label={`+ ${t('admin.newDrive')}`} onPress={() => setCreating(true)} />} />} trailing={<Button kind={wide ? 'filled' : 'plain'} compact label={`+ ${t('admin.newDrive')}`} onPress={() => setCreating(true)} />}>
       <LargeTitle title={t('admin.drives')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       {!q.data ? (
         <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />

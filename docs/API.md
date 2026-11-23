@@ -173,3 +173,7 @@ The server enforces super-admin with `validatePrivateUser(userId)` in `private.j
 - `GET /v1/catalog/parties?state=XX` → national parties (no states set) + parties of XX; no `state` → all.
 - `GET /v1/admin/parties` → adds `states: string[]` ([] = national).
 - `PUT /v1/admin/parties/:id/states { states: string[] }` (super-admin; [] = national; unknown state 422 `state_unknown`). Approving a request with `newPartyName` links the new party to the request state.
+
+### Polling day: find any voter of the assembly (spec flow-fixes P1/P2)
+- `GET /v1/m/:mid/polling/find?epic=XXX` or `?part=101&sno=5` → `{ items: [{ id, sno, part, boothName, name, nameLocal, relation, relative, age, gender, voted, own }] }` (no group/phone). 422 without EPIC or booth + S.No.
+- `POST /v1/m/:mid/voters/:id/changes` with only `votedAt` is accepted for any booth of the assembly while the election window is open; other changes stay limited to own booths (403 `booth_forbidden`).
