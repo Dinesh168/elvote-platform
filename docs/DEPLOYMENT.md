@@ -129,3 +129,5 @@ Separate from the live app on the same droplet (spec `docs/specs/live-demo.md` D
 Update the API: `pg_dump -Fc demo_elvote_core` to `/root/backups/` first; upload `backend-v2` (no `node_modules`, `test`, `.env`, `uploads`) to `/opt/elvote-v2-demo/api`, `npm ci` (only if the lock file changed), `npm run db:migrate`, `pm2 restart elvote-v2-demo`. Uploaded images live in `/opt/elvote-v2-demo/api/uploads`; never delete it.
 Update the website: `bash scripts/build-demo-web.sh`, copy `dist-demo/` to `/var/www/elvote-v2-demo` (no nginx reload needed).
 Remove the demo: `pm2 delete elvote-v2-demo && pm2 save`; remove the nginx site link + `systemctl reload nginx`; `certbot delete --cert-name demo.champn.in`; drop the `demo_elvote_*` databases and the `elvote_v2_*` roles; delete `/opt/elvote-v2-demo` and `/var/www/elvote-v2-demo`.
+
+- `STATES` (backend-v2 .env, spec states-keyboard O1): comma list of states this server uses; empty = PB, HR, UP. Demo: `STATES=PB,UP` (Haryana removed from demo_elvote_core 2026-11-23; empty demo_elvote_hr kept, not connected).

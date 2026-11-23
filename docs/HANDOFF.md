@@ -55,6 +55,9 @@ Last updated: 2026-11-23 (theelvote account session).
   names; booth strength worked out per party (admin can override + Reset). State UP added. Backups /root/backups/demo_elvote_*-20261123-0608.dump.
   EAS update `f049c217-42bb-41df-8834-8fe7197ccea8`. The ECI captcha scraper (ElvoteDataScraping) must not be used.
 
+## Built and deployed to demo 2026-11-23 (not committed yet)
+- spec states-keyboard: state dropdown (`Select`, remembers last state), `STATES` setting (demo PB,UP; Haryana row removed from demo core, backup /root/backups/demo_elvote_core-20261123-0731.dump), keyboard no longer hides boxes (Screen/Sheet). EAS update f3438cef. Owner to check TC-SK-6..8 on a phone.
+
 ## Next
 1. Owner checks the demo on the phone; fix what they report. Then "commit and push" when asked.
 2. Screen checks still open: TC-MT-21, 22, 23, 25, 26, 27 (real phone, Hindi/Punjabi, 130 % font, speed on demo).

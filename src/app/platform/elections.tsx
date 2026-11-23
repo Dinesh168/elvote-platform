@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { platformApi, type Election, type ElectionInput } from '@/api/adminApi';
-import { AppText, Button, DataTable, Field, Group, LargeTitle, Row, Screen, SegmentedControl, Sheet, type Column } from '@/design/components';
+import { AppText, Button, DataTable, Field, Group, LargeTitle, Row, Screen, SegmentedControl, Select, Sheet, type Column } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
+import { useStateChoice } from '@/features/common/useStateChoice';
 import { localeOf } from '@/i18n';
 
 const todayIst = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });
@@ -71,7 +72,8 @@ export default function Elections() {
 function ElectionSheet({ election, onClose, onSaved }: { election: Election | null; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation();
   const states = useQuery({ queryKey: ['overview'], queryFn: platformApi.overview }).data?.states ?? [];
-  const [state, setState] = useState(election?.stateCode ?? 'PB');
+  const [picked, pick] = useStateChoice(states.map((x) => x.code));
+  const [state, setState] = useState(election?.stateCode ?? picked);
   const acsQ = useQuery({ queryKey: ['acs', state], queryFn: () => platformApi.acs(state) });
   const [kind, setKind] = useState<ElectionInput['kind']>((election?.kind as ElectionInput['kind']) ?? 'assembly');
   const [name, setName] = useState(election?.name ?? '');
@@ -106,7 +108,7 @@ function ElectionSheet({ election, onClose, onSaved }: { election: Election | nu
     <Sheet visible title={election ? t('pd.el.edit') : t('pd.el.add')} onClose={onClose}>
       <View style={s.sheet}>
         {!election && states.length > 1 ? (
-          <SegmentedControl<string> label={t('platform.state')} value={state} onChange={(v) => { setState(v); setSome(null); }}
+          <Select label={t('platform.state')} value={state} onChange={(v) => { setState(v); pick(v); setSome(null); }}
             options={states.map((x) => ({ value: x.code, label: x.name }))} />
         ) : (
           <AppText variant="callout" color={colors.textSecondary}>{states.find((x) => x.code === state)?.name ?? state}</AppText>

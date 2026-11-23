@@ -1,6 +1,6 @@
 import { router, useFocusEffect, usePathname } from 'expo-router';
 import { Children, Fragment, isValidElement, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { useWide } from '../layout';
@@ -39,8 +39,12 @@ export function Screen({
   const wide = useWide();
   if (wide) return <DesktopScreen {...{ children, scroll, back, inlineTitle, trailing, onBack, scrollProps, width }} />;
   const hasBar = !!(back || inlineTitle || trailing);
+  // spec states-keyboard V1: iOS scroll screens move their content with automaticallyAdjustKeyboardInsets (keeps the
+  // focused box in view); everything else (Android, fixed screens) shrinks above the keyboard.
+  const ios = Platform.OS === 'ios';
+  const avoid = Platform.OS !== 'web' && !(ios && scroll);
   return (
-    <View style={[s.root, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView behavior="padding" enabled={avoid} style={[s.root, { paddingTop: insets.top }]}>
       {header ?? (hasBar && (
         <View style={s.bar}>
           {back ? <BackLink label={back} onPress={onBack} /> : <View />}
@@ -53,13 +57,14 @@ export function Screen({
         </View>
       ))}
       {scroll ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxxl }} keyboardShouldPersistTaps="handled" {...scrollProps}>
+        <ScrollView contentContainerStyle={{ paddingBottom: spacing.xxxl }} keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={ios ? 'interactive' : 'on-drag'} automaticallyAdjustKeyboardInsets={ios} {...scrollProps}>
           {children}
         </ScrollView>
       ) : (
         <View style={s.fill}>{children}</View>
       )}
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

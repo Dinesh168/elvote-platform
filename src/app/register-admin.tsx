@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '@/api/adminApi';
 import { ApiError } from '@/api/http';
-import { AppText, Button, Field, Group, IconSquare, LargeTitle, Row } from '@/design/components';
+import { AppText, Button, Field, Group, IconSquare, LargeTitle, Row, Select } from '@/design/components';
 import { AssemblyPicker } from '@/features/register/AssemblyPicker';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing } from '@/design/tokens';
@@ -16,7 +16,7 @@ export default function RegisterAdmin() {
   const { t } = useTranslation();
   const [partyName, setPartyName] = useState('');
   const [partyId, setPartyId] = useState<string | undefined>();
-  const [state, setState] = useState<string | null>(null);
+  const [picked, setState] = useState<string | null>(null);
   const [whole, setWhole] = useState<boolean | null>(null);
   const [acs, setAcs] = useState<number[]>([]);
   const [designation, setDesignation] = useState('');
@@ -26,6 +26,8 @@ export default function RegisterAdmin() {
   const [picker, setPicker] = useState(false);
 
   const states = useQuery({ queryKey: ['catalog', 'states'], queryFn: authApi.states });
+  // A single state needs no choice (spec states-keyboard A1).
+  const state = picked ?? (states.data?.length === 1 ? states.data[0].code : null);
   const parties = useQuery({ queryKey: ['catalog', 'parties'], queryFn: authApi.parties });
   const acList = useQuery({ queryKey: ['catalog', 'acs', state], queryFn: () => authApi.acs(state!), enabled: !!state });
 
@@ -61,10 +63,9 @@ export default function RegisterAdmin() {
           </View>
         ) : null}
 
-        <AppText variant="footnote" color={colors.textSecondary}>{t('registerAdmin.state').toLocaleUpperCase()}</AppText>
-        <View style={s.chips}>
-          {(states.data ?? []).map((st) => <Radio key={st.code} label={st.name} on={state === st.code} onPress={() => { setState(st.code); setAcs([]); setWhole(null); }} />)}
-        </View>
+        <Select label={t('registerAdmin.state')} value={state} placeholder={t('registerAdmin.pickState')}
+          options={(states.data ?? []).map((st) => ({ value: st.code, label: st.name }))}
+          onChange={(v) => { setState(v); setAcs([]); setWhole(null); }} />
 
         {state ? (
           // spec usability-r2 A1: one row opens the full-screen assembly list (search, districts, whole state).

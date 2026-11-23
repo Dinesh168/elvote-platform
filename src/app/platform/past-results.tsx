@@ -5,11 +5,12 @@ import { StyleSheet, Switch, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { platformApi } from '@/api/adminApi';
 import { readText, type PickedFile } from '@/api/upload';
-import { AppText, Button, Group, LargeTitle, Row, Screen, SegmentedControl } from '@/design/components';
+import { AppText, Button, Group, LargeTitle, Row, Screen, SegmentedControl, Select } from '@/design/components';
 import { ConfirmDialog } from '@/design/components/ConfirmDialog';
 import { themed } from '@/design/theme';
 import { colors, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
+import { useStateChoice } from '@/features/common/useStateChoice';
 
 /**
  * Super-admin → Past results (spec map-trend T2): upload an election-trend CSV for a state (each AC × year in the file
@@ -19,7 +20,7 @@ export default function PastResultsScreen() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const states = useQuery({ queryKey: ['overview'], queryFn: platformApi.overview }).data?.states ?? [];
-  const [state, setState] = useState('PB');
+  const [state, setState] = useStateChoice(states.map((x) => x.code));
   const [file, setFile] = useState<PickedFile | null>(null);
   const [sample, setSample] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -58,8 +59,7 @@ export default function PastResultsScreen() {
       <LargeTitle title={t('past.title')} subtitle={t('past.sub')} />
       <Group header={t('past.upload')} footer={t('past.format')}>
         <View style={s.pad}>
-          <SegmentedControl label={t('platform.state')} value={state} onChange={setState}
-            options={(states.length ? states : [{ code: 'PB', name: 'Punjab' }, { code: 'HR', name: 'Haryana' }]).map((x) => ({ value: x.code, label: x.name }))} />
+          <Select label={t('platform.state')} value={state} onChange={setState} options={states.map((x) => ({ value: x.code, label: x.name }))} />
         </View>
         <Row title={file ? file.name : t('past.choose')} onPress={() => void pick()} chevron />
         <Row title={t('past.sample')} subtitle={t('past.sampleSub')} trailing={<Switch value={sample} onValueChange={setSample} accessibilityLabel={t('past.sample')} />} last />

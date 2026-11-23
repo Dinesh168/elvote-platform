@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { platformApi, type AdminBooth } from '@/api/adminApi';
-import { AppText, Button, DataTable, Field, Group, LargeTitle, Row, Screen, SegmentedControl, Sheet, type Column } from '@/design/components';
+import { AppText, Button, DataTable, Field, Group, LargeTitle, Row, Screen, SegmentedControl, Select, Sheet, type Column } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing, web } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
+import { useStateChoice } from '@/features/common/useStateChoice';
 import { parseCsv } from '@/features/pollingDay/csv';
 
 /** S2: booth locations per assembly: list, missing only, edit one, bulk from CSV. */
@@ -17,7 +18,7 @@ export default function BoothLocations() {
   const wide = useWide();
   const qc = useQueryClient();
   const states = useQuery({ queryKey: ['overview'], queryFn: platformApi.overview }).data?.states ?? [];
-  const [state, setState] = useState('PB');
+  const [state, setState] = useStateChoice(states.map((x) => x.code));
   const acs = useQuery({ queryKey: ['acs', state], queryFn: () => platformApi.acs(state) });
   const [ac, setAc] = useState<number | null>(null);
   const acNo = ac ?? acs.data?.[0]?.acNo ?? null;
@@ -40,7 +41,7 @@ export default function BoothLocations() {
       <LargeTitle title={t('pd.boothsTitle')} subtitle={t('pd.boothsSub')} />
       <View style={s.form}>
         {states.length > 1 ? (
-          <SegmentedControl<string> label={t('platform.state')} value={state} onChange={(v) => { setState(v); setAc(null); }} options={states.map((x) => ({ value: x.code, label: x.name }))} />
+          <Select label={t('platform.state')} value={state} onChange={(v) => { setState(v); setAc(null); }} options={states.map((x) => ({ value: x.code, label: x.name }))} />
         ) : null}
         <SegmentedControl<string> label={t('platform.acNo')} value={String(acNo ?? '')} onChange={(v) => setAc(Number(v))}
           options={(acs.data ?? []).map((a) => ({ value: String(a.acNo), label: `${a.acNo} · ${a.name}` }))} />

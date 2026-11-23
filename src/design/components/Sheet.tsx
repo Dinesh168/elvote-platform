@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useWide } from '../layout';
 import { web } from '../tokens';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { colors, radius, spacing } from '../tokens';
@@ -49,7 +49,8 @@ export function Sheet({ visible, title, onClose, children, footer }: { visible: 
     );
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <View style={s.overlay}>
+      {/* spec states-keyboard V1: a sheet with a text box moves up with the keyboard. */}
+      <KeyboardAvoidingView behavior="padding" enabled={Platform.OS !== 'web'} style={s.overlay}>
         <Pressable style={s.flex} accessibilityRole="button" accessibilityLabel={t('common.done')} onPress={onClose} />
         <View style={[s.sheet, { paddingBottom: insets.bottom + spacing.xxl }]} accessibilityViewIsModal>
           <View style={s.grabber} />
@@ -67,7 +68,7 @@ export function Sheet({ visible, title, onClose, children, footer }: { visible: 
             {children}
           </Group>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

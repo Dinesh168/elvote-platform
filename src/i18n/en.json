@@ -1018,7 +1018,8 @@
     "designation": "Your position in the party",
     "designationHint": "For example: District president, Halqa incharge",
     "note": "Note for the ElVote team (optional)",
-    "back": "Back"
+    "back": "Back",
+    "pickState": "Choose your state"
   },
   "waiting": {
     "notApproved": "Not approved",

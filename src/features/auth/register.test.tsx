@@ -83,7 +83,9 @@ describe('admin request (AC6)', () => {
     const send = await screen.findByRole('button', { name: 'Send request' });
     expect(send).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText('Party name'), 'Jan Vikas Party');
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Punjab' }));
+    // spec states-keyboard A1: the state is a dropdown.
+    await fireEvent.press(await screen.findByRole('button', { name: /registerAdmin.state|State/ }));
+    await fireEvent.press(await screen.findByLabelText('Punjab'));
     // spec usability-r2 A1: assemblies are chosen on their own page (whole state or a list).
     await fireEvent.press(await screen.findByText('Your assemblies'));
     await fireEvent.press(await screen.findByText('Whole state (2)'));
@@ -97,7 +99,9 @@ describe('admin request (AC6)', () => {
   it('assemblies mode needs at least one assembly', async () => {
     await render(withQuery(<RegisterAdmin />));
     await fireEvent.changeText(screen.getByLabelText('Party name'), 'Jan Vikas Party');
-    await fireEvent.press(await screen.findByRole('radio', { name: 'Punjab' }));
+    // spec states-keyboard A1: the state is a dropdown.
+    await fireEvent.press(await screen.findByRole('button', { name: /registerAdmin.state|State/ }));
+    await fireEvent.press(await screen.findByLabelText('Punjab'));
     await fireEvent.changeText(screen.getByLabelText('Your position in the party'), 'Halqa incharge');
     expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
     await fireEvent.press(await screen.findByText('Your assemblies'));

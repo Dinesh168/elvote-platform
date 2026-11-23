@@ -6,6 +6,8 @@ export { Icon } from './Icon';
 export { GroupTag, LangPill, ProgressBar, SnoBadge, SyncPill } from './Pills';
 export { BackLink, LargeTitle, Screen } from './Screen';
 export { SegmentedControl } from './SegmentedControl';
+export { Select } from './Select';
+export type { SelectOption } from './Select';
 export { ChoiceRow, Sheet } from './Sheet';
 export { Toast } from './Toast';
 export { BarList, Columns, StackedBar, groupParts } from './Charts';

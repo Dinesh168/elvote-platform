@@ -15,6 +15,9 @@ interface PrefsState {
   onboarded: boolean;
   /** Picture tips on Home were shown (spec map-trend G3). */
   tipsSeen: boolean;
+  /** spec states-keyboard A2: last state picked in a state dropdown. */
+  lastState: string | null;
+  pickState: (code: string) => void;
   seeTips: () => void;
   setLang: (l: Lang) => void;
   finishOnboarding: (l: Lang) => void;
@@ -33,6 +36,8 @@ export const usePrefs = create<PrefsState>()(
       langChosen: false,
       onboarded: false,
       tipsSeen: false,
+      lastState: null,
+      pickState: (lastState) => set({ lastState }),
       seeTips: () => set({ tipsSeen: true }),
       setLang: (lang) => set({ lang, langChosen: true }),
       finishOnboarding: (lang) => set({ lang, langChosen: true, onboarded: true }),
@@ -43,7 +48,7 @@ export const usePrefs = create<PrefsState>()(
     {
       name: 'elvote.prefs.v1',
       storage: createJSONStorage(() => AsyncStorage),
-      partialize: (s) => ({ lang: s.lang, langChosen: s.langChosen, onboarded: s.onboarded, tipsSeen: s.tipsSeen, booth: s.booth, pickedTaskId: s.pickedTaskId }),
+      partialize: (s) => ({ lang: s.lang, langChosen: s.langChosen, onboarded: s.onboarded, tipsSeen: s.tipsSeen, lastState: s.lastState, booth: s.booth, pickedTaskId: s.pickedTaskId }),
       onRehydrateStorage: () => () => usePrefs.setState({ hydrated: true }),
     },
   ),

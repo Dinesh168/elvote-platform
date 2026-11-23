@@ -5,9 +5,10 @@ import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { platformApi, type HeldRow, type ImportJob, type RollKind } from '@/api/adminApi';
 import { appendFile } from '@/api/upload';
-import { AppText, Button, Field, Group, LargeTitle, Row, Screen, SegmentedControl } from '@/design/components';
+import { AppText, Button, Field, Group, LargeTitle, Row, Screen, SegmentedControl, Select } from '@/design/components';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing, web } from '@/design/tokens';
+import { useStateChoice } from '@/features/common/useStateChoice';
 
 type Picked = { name: string; uri: string; mimeType?: string; file?: File };
 const LIST_SHOWN = 20;
@@ -20,7 +21,7 @@ export default function Upload() {
   const { t } = useTranslation();
   const qc = useQueryClient();
   const states = useQuery({ queryKey: ['overview'], queryFn: platformApi.overview }).data?.states ?? [];
-  const [state, setState] = useState('PB');
+  const [state, setState] = useStateChoice(states.map((x) => x.code));
   const [acNo, setAcNo] = useState('');
   const [acName, setAcName] = useState('');
   const [acNameLocal, setAcNameLocal] = useState('');
@@ -110,8 +111,7 @@ export default function Upload() {
       <LargeTitle title={t('platform.upload')} />
       <Group footer={t('platform.uploadHint')}>
         <View style={s.form}>
-          <SegmentedControl label={t('platform.state')} value={state} onChange={setState}
-            options={(states.length ? states : [{ code: 'PB', name: 'Punjab' }, { code: 'HR', name: 'Haryana' }]).map((x) => ({ value: x.code, label: x.name }))} />
+          <Select label={t('platform.state')} value={state} onChange={setState} options={states.map((x) => ({ value: x.code, label: x.name }))} />
           <Field label={t('platform.acNo')} value={acNo} keyboardType="number-pad" onChangeText={(x) => setAcNo(x.replace(/\D/g, '').slice(0, 3))}
             hint={ac ? `${ac.name}${ac.nameLocal ? ` · ${ac.nameLocal}` : ''}` : undefined} />
           {!ac ? <Field label={t('platform.acName')} value={acName} onChangeText={setAcName} /> : null}
