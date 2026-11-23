@@ -12,7 +12,8 @@
     "loading": "Loading…",
     "loadError": "Could not load. Check the internet and try again.",
     "switchLangA11y": "Language — tap to change",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "search": "Search"
   },
   "tabs": {
     "home": "Home",
@@ -1019,7 +1020,37 @@
     "designationHint": "For example: District president, Halqa incharge",
     "note": "Note for the ElVote team (optional)",
     "back": "Back",
-    "pickState": "Choose your state"
+    "pickState": "Choose your state",
+    "partyPick": "Party",
+    "pickParty": "Choose your party",
+    "notListed": "My party is not listed",
+    "pickPosition": "Choose your position",
+    "posOther": "Your position",
+    "pos": {
+      "candidate": "Candidate",
+      "aspirant": "Possible candidate",
+      "mla": "Sitting MLA",
+      "exMla": "Former MLA / past candidate",
+      "mp": "MP",
+      "stateOb": "State office-bearer",
+      "districtOb": "District president / office-bearer",
+      "acIncharge": "Assembly in-charge",
+      "manager": "Election / campaign manager",
+      "coordinator": "Booth / sector coordinator",
+      "other": "Other"
+    },
+    "who": {
+      "candidate": "Standing in this election",
+      "aspirant": "Hoping for the ticket",
+      "mla": "Current MLA of the assembly",
+      "exMla": "Stood before",
+      "mp": "Member of Parliament for the area",
+      "stateOb": "President, general secretary, …",
+      "districtOb": "Party's district unit",
+      "acIncharge": "Party's in-charge for the assembly",
+      "manager": "Runs the campaign for a candidate",
+      "coordinator": "Manages several booths"
+    }
   },
   "waiting": {
     "notApproved": "Not approved",

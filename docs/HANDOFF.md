@@ -58,6 +58,8 @@ Last updated: 2026-11-23 (theelvote account session).
 ## Built and deployed to demo 2026-11-23 (not committed yet)
 - spec states-keyboard: state dropdown (`Select`, remembers last state), `STATES` setting (demo PB,UP; Haryana row removed from demo core, backup /root/backups/demo_elvote_core-20261123-0731.dump), keyboard no longer hides boxes (Screen/Sheet). EAS update f3438cef. Owner to check TC-SK-6..8 on a phone.
 
+- spec admin-request-form: Register as admin = Party dropdown (search, not listed → type) → State → Assembly → Position dropdown (10 + Other; sent in English). EAS 0a6c8d2a.
+
 ## Next
 1. Owner checks the demo on the phone; fix what they report. Then "commit and push" when asked.
 2. Screen checks still open: TC-MT-21, 22, 23, 25, 26, 27 (real phone, Hindi/Punjabi, 130 % font, speed on demo).

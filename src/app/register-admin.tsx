@@ -1,25 +1,34 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { authApi } from '@/api/adminApi';
 import { ApiError } from '@/api/http';
 import { AppText, Button, Field, Group, IconSquare, LargeTitle, Row, Select } from '@/design/components';
 import { AssemblyPicker } from '@/features/register/AssemblyPicker';
 import { themed } from '@/design/theme';
-import { colors, radius, spacing } from '@/design/tokens';
+import { colors, spacing } from '@/design/tokens';
+import { i18n } from '@/i18n';
 import { goLanding } from '@/features/session/session';
 import { AuthScreen } from '@/features/shell/AuthScreen';
 
-/** Admin request (spec accounts-access AC6): party, state, whole state or assemblies, position. The super-admin decides. */
+/** spec admin-request-form A3: positions; the English name is what the super-admin reads. */
+const POSITIONS = ['candidate', 'aspirant', 'mla', 'exMla', 'mp', 'stateOb', 'districtOb', 'acIncharge', 'manager', 'coordinator'] as const;
+const OTHER = '__other__';
+
+/**
+ * Admin request (spec accounts-access AC6, admin-request-form): party (dropdown or typed), state, whole state or assemblies,
+ * position (dropdown or typed). The super-admin decides.
+ */
 export default function RegisterAdmin() {
   const { t } = useTranslation();
-  const [partyName, setPartyName] = useState('');
-  const [partyId, setPartyId] = useState<string | undefined>();
+  const [party, setParty] = useState<string | null>(null);
+  const [typedParty, setTypedParty] = useState('');
+  const [position, setPosition] = useState<string | null>(null);
+  const [typedPosition, setTypedPosition] = useState('');
   const [picked, setState] = useState<string | null>(null);
   const [whole, setWhole] = useState<boolean | null>(null);
   const [acs, setAcs] = useState<number[]>([]);
-  const [designation, setDesignation] = useState('');
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,18 +40,19 @@ export default function RegisterAdmin() {
   const parties = useQuery({ queryKey: ['catalog', 'parties'], queryFn: authApi.parties });
   const acList = useQuery({ queryKey: ['catalog', 'acs', state], queryFn: () => authApi.acs(state!), enabled: !!state });
 
-  const suggestions = partyName.trim().length >= 2 && !partyId
-    ? (parties.data ?? []).filter((p) => p.name.toLowerCase().includes(partyName.trim().toLowerCase())).slice(0, 5)
-    : [];
-  const ok = partyName.trim().length >= 2 && !!state && (whole === true || (whole === false && acs.length > 0)) && designation.trim().length >= 2;
+  const listed = (parties.data ?? []).find((p) => p.id === party);
+  const partyId = listed?.id;
+  const partyName = party === OTHER ? typedParty.trim() : listed?.name ?? '';
+  const designation = position === OTHER ? typedPosition.trim() : position ? i18n.getFixedT('en')(`registerAdmin.pos.${position}`) : '';
+  const ok = partyName.length >= 2 && !!state && (whole === true || (whole === false && acs.length > 0)) && designation.length >= 2;
 
   const send = async () => {
     setBusy(true);
     setError(null);
     try {
       await authApi.accessRequest({
-        partyId, partyName: partyName.trim(), stateCode: state!, wholeState: whole === true,
-        acNos: whole ? undefined : acs, designation: designation.trim(), note: note.trim() || undefined,
+        partyId, partyName, stateCode: state!, wholeState: whole === true,
+        acNos: whole ? undefined : acs, designation, note: note.trim() || undefined,
       });
       await goLanding();
     } catch (e) {
@@ -56,12 +66,9 @@ export default function RegisterAdmin() {
     <AuthScreen back={t('common.back')}>
       <LargeTitle title={t('registerAdmin.title')} subtitle={t('registerAdmin.subtitle')} />
       <View style={s.body}>
-        <Field label={t('registerAdmin.party')} value={partyName} onChangeText={(x) => { setPartyName(x); setPartyId(undefined); }} maxLength={100} />
-        {suggestions.length ? (
-          <View style={s.chips}>
-            {suggestions.map((p) => <Radio key={p.id} label={p.name} on={false} onPress={() => { setPartyName(p.name); setPartyId(p.id); }} />)}
-          </View>
-        ) : null}
+        <Select label={t('registerAdmin.partyPick')} value={party} placeholder={t('registerAdmin.pickParty')} searchable onChange={setParty}
+          options={[...(parties.data ?? []).map((p) => ({ value: p.id, label: p.name })), { value: OTHER, label: t('registerAdmin.notListed') }]} />
+        {party === OTHER ? <Field label={t('registerAdmin.party')} value={typedParty} onChangeText={setTypedParty} maxLength={100} autoFocus /> : null}
 
         <Select label={t('registerAdmin.state')} value={state} placeholder={t('registerAdmin.pickState')}
           options={(states.data ?? []).map((st) => ({ value: st.code, label: st.name }))}
@@ -93,7 +100,10 @@ export default function RegisterAdmin() {
           />
         ) : null}
 
-        <Field label={t('registerAdmin.designation')} value={designation} onChangeText={setDesignation} maxLength={80} hint={t('registerAdmin.designationHint')} />
+        <Select label={t('registerAdmin.designation')} value={position} placeholder={t('registerAdmin.pickPosition')} onChange={setPosition}
+          options={[...POSITIONS.map((k) => ({ value: k, label: t(`registerAdmin.pos.${k}`), subtitle: t(`registerAdmin.who.${k}`) })),
+            { value: OTHER, label: t('registerAdmin.pos.other') }]} />
+        {position === OTHER ? <Field label={t('registerAdmin.posOther')} value={typedPosition} onChangeText={setTypedPosition} maxLength={80} hint={t('registerAdmin.designationHint')} autoFocus /> : null}
         <Field label={t('registerAdmin.note')} value={note} onChangeText={setNote} maxLength={300} multiline />
         {error ? <AppText variant="footnote" color={colors.danger}>{error}</AppText> : null}
         <Button block label={t('auth.sendRequest')} disabled={!ok || busy} onPress={() => void send()} />
@@ -102,17 +112,6 @@ export default function RegisterAdmin() {
   );
 }
 
-function Radio({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
-  return (
-    <Pressable accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: on }} aria-checked={on} onPress={onPress} style={[s.chip, on && s.chipOn]}>
-      <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{`${on ? '✓ ' : ''}${label}`}</AppText>
-    </Pressable>
-  );
-}
-
 const s = themed(() => StyleSheet.create({
   body: { padding: spacing.lg, gap: spacing.lg, marginTop: spacing.md },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { minHeight: 44, paddingHorizontal: spacing.md, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.separator },
-  chipOn: { backgroundColor: colors.accent, borderColor: colors.accent },
 }));

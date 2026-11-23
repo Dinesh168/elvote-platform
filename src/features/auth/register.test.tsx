@@ -19,7 +19,7 @@ jest.mock('@/api/adminApi', () => ({
     accessRequest: (p: unknown) => mockRequest(p),
     states: async () => [{ code: 'PB', name: 'Punjab' }, { code: 'HR', name: 'Haryana' }],
     acs: async () => [{ acNo: 66, name: 'Rampur' }, { acNo: 50, name: 'Nawanpind' }],
-    parties: async () => [{ id: 'p1', name: 'Jan Vikas Party' }],
+    parties: async () => [{ id: 'p1', name: 'Jan Vikas Party' }, { id: 'p2', name: 'Lok Sewa Dal' }],
   },
 }));
 const mockGoLanding = jest.fn(async () => undefined);
@@ -77,32 +77,39 @@ describe('choose role (AC5)', () => {
   });
 });
 
-describe('admin request (AC6)', () => {
-  it('needs party, state, area and designation; sends whole state', async () => {
+/** spec admin-request-form TC-AR-1..4. */
+async function pick(label: RegExp, option: string) {
+  await fireEvent.press(await screen.findByRole('button', { name: label }));
+  // Options with a subtitle read "label, subtitle".
+  await fireEvent.press(await screen.findByLabelText(new RegExp(`^${option}(,|$)`)));
+}
+
+describe('admin request (AC6, admin-request-form)', () => {
+  it('party, state, whole state, position dropdowns; position sent in English', async () => {
     await render(withQuery(<RegisterAdmin />));
     const send = await screen.findByRole('button', { name: 'Send request' });
     expect(send).toBeDisabled();
-    await fireEvent.changeText(screen.getByLabelText('Party name'), 'Jan Vikas Party');
-    // spec states-keyboard A1: the state is a dropdown.
-    await fireEvent.press(await screen.findByRole('button', { name: /registerAdmin.state|State/ }));
-    await fireEvent.press(await screen.findByLabelText('Punjab'));
-    // spec usability-r2 A1: assemblies are chosen on their own page (whole state or a list).
+    await pick(/^Party,/, 'Jan Vikas Party');
+    await pick(/^State,/, 'Punjab');
     await fireEvent.press(await screen.findByText('Your assemblies'));
     await fireEvent.press(await screen.findByText('Whole state (2)'));
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
-    await fireEvent.changeText(screen.getByLabelText('Your position in the party'), 'State secretary');
+    expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
+    await pick(/^Your position in the party,/, 'Candidate');
     await fireEvent.press(screen.getByRole('button', { name: 'Send request' }));
-    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({ partyName: 'Jan Vikas Party', stateCode: 'PB', wholeState: true, designation: 'State secretary' })));
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({ partyId: 'p1', partyName: 'Jan Vikas Party', stateCode: 'PB', wholeState: true, designation: 'Candidate' })));
     expect(mockGoLanding).toHaveBeenCalled();
   });
 
-  it('assemblies mode needs at least one assembly', async () => {
+  it('party not listed and position Other are typed; assemblies mode needs one', async () => {
     await render(withQuery(<RegisterAdmin />));
-    await fireEvent.changeText(screen.getByLabelText('Party name'), 'Jan Vikas Party');
-    // spec states-keyboard A1: the state is a dropdown.
-    await fireEvent.press(await screen.findByRole('button', { name: /registerAdmin.state|State/ }));
-    await fireEvent.press(await screen.findByLabelText('Punjab'));
-    await fireEvent.changeText(screen.getByLabelText('Your position in the party'), 'Halqa incharge');
+    await pick(/^Party,/, 'My party is not listed');
+    await fireEvent.changeText(screen.getByLabelText('Party name'), 'Lok Morcha');
+    await pick(/^State,/, 'Punjab');
+    await pick(/^Your position in the party,/, 'Other');
+    await fireEvent.changeText(screen.getByLabelText('Your position'), 'H');
+    expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText('Your position'), 'Halqa incharge');
     expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
     await fireEvent.press(await screen.findByText('Your assemblies'));
     expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
@@ -112,6 +119,14 @@ describe('admin request (AC6)', () => {
     expect(screen.getByText('1 of 2 assemblies selected')).toBeTruthy();
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     await fireEvent.press(screen.getByRole('button', { name: 'Send request' }));
-    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({ wholeState: false, acNos: [66] })));
+    await waitFor(() => expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({ partyId: undefined, partyName: 'Lok Morcha', wholeState: false, acNos: [66], designation: 'Halqa incharge' })));
+  });
+
+  it('party search filters the list', async () => {
+    await render(withQuery(<RegisterAdmin />));
+    await fireEvent.press(await screen.findByRole('button', { name: /^Party,/ }));
+    await fireEvent.changeText(await screen.findByLabelText('Search'), 'vik');
+    expect(screen.getByLabelText('Jan Vikas Party')).toBeTruthy();
+    expect(screen.queryByLabelText('Lok Sewa Dal')).toBeNull();
   });
 });
