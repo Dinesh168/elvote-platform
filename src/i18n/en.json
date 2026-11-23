@@ -462,7 +462,10 @@
     "cleared": "Deleted {{n}} contacts.",
     "stateRow_one": "{{acs}} AC · {{booths}} booths · {{voters}} voters",
     "stateRow_other": "{{acs}} ACs · {{booths}} booths · {{voters}} voters",
-    "emailHint": "The Google or sign-in email they will use."
+    "emailHint": "The Google or sign-in email they will use.",
+    "national": "National (all states)",
+    "nationalSub": "Shown to people in every state",
+    "statesHint": "Pick the states this party works in. With none picked it is shown in every state."
   },
   "me2": {
     "switchRole": "Switch role",
@@ -1050,7 +1053,8 @@
       "acIncharge": "Party's in-charge for the assembly",
       "manager": "Runs the campaign for a candidate",
       "coordinator": "Manages several booths"
-    }
+    },
+    "stateFirst": "Choose your state first"
   },
   "waiting": {
     "notApproved": "Not approved",

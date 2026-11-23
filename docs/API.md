@@ -168,3 +168,8 @@ The server enforces super-admin with `validatePrivateUser(userId)` in `private.j
 | — | `POST /v1/join`, `/v1/join/check`, `/v1/access-requests`, approvals, admin-access grants | — | `409 role_conflict` when the account already is / asked to be the other role (one account = one role) |
 | GET | `/v1/catalog/acs` | signed in | now also `district` |
 | POST | `/v1/join/check` | signed in | now also `stateCode` |
+
+### Parties by state (spec party-states)
+- `GET /v1/catalog/parties?state=XX` → national parties (no states set) + parties of XX; no `state` → all.
+- `GET /v1/admin/parties` → adds `states: string[]` ([] = national).
+- `PUT /v1/admin/parties/:id/states { states: string[] }` (super-admin; [] = national; unknown state 422 `state_unknown`). Approving a request with `newPartyName` links the new party to the request state.

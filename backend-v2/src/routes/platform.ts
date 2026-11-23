@@ -105,11 +105,38 @@ export async function platformRoutes(app: FastifyInstance) {
 
   // ---------- Parties ----------
   app.get('/v1/admin/parties', async () => {
-    const r = await core.query<{ id: string; name: string; short_name: string | null; acs: number }>(
-      `SELECT p.id, p.name, p.short_name, count(pc.id)::int AS acs FROM parties p
+    const r = await core.query<{ id: string; name: string; short_name: string | null; acs: number; states: string[] }>(
+      `SELECT p.id, p.name, p.short_name, count(pc.id)::int AS acs,
+              COALESCE((SELECT array_agg(trim(s.state_code) ORDER BY s.state_code) FROM party_states s WHERE s.party_id = p.id), '{}') AS states
+         FROM parties p
          LEFT JOIN party_constituencies pc ON pc.party_id = p.id AND pc.deleted_at IS NULL
         WHERE p.deleted_at IS NULL GROUP BY p.id ORDER BY p.name`);
-    return r.rows.map((p) => ({ id: p.id, name: p.name, shortName: p.short_name, acs: p.acs }));
+    return r.rows.map((p) => ({ id: p.id, name: p.name, shortName: p.short_name, acs: p.acs, states: p.states }));
+  });
+
+  // spec party-states A3: the states a party works in; [] = national (every state).
+  app.put('/v1/admin/parties/:id/states', async (req) => {
+    const { id } = parse(z.object({ id: Uuid }), req.params);
+    const b = parse(z.object({ states: z.array(z.string().trim().toUpperCase().length(2)).max(40) }), req.body);
+    const want = [...new Set(b.states)];
+    const known = await core.query<{ code: string }>('SELECT trim(code) AS code FROM states WHERE code = ANY($1)', [want]);
+    if (known.rowCount !== want.length) throw invalid('state_unknown', 'Pick states from the list.');
+    const p = await core.query('SELECT 1 FROM parties WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (!p.rowCount) throw notFound();
+    const c = await core.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('DELETE FROM party_states WHERE party_id = $1', [id]);
+      if (want.length) await c.query('INSERT INTO party_states (party_id, state_code) SELECT $1, unnest($2::text[])', [id, want]);
+      await c.query('COMMIT');
+    } catch (e) {
+      await c.query('ROLLBACK');
+      throw e;
+    } finally {
+      c.release();
+    }
+    await audit({ actor: req.userId, role: 'super_admin', action: 'party.states', partyId: id, entity: 'party', entityId: id, details: { states: want } });
+    return { ok: true, states: want };
   });
 
   app.post('/v1/admin/parties', async (req) => {

@@ -37,7 +37,8 @@ export default function RegisterAdmin() {
   const states = useQuery({ queryKey: ['catalog', 'states'], queryFn: authApi.states });
   // A single state needs no choice (spec states-keyboard A1).
   const state = picked ?? (states.data?.length === 1 ? states.data[0].code : null);
-  const parties = useQuery({ queryKey: ['catalog', 'parties'], queryFn: authApi.parties });
+  // spec party-states A1/A2: parties of the chosen state (national + state parties).
+  const parties = useQuery({ queryKey: ['catalog', 'parties', state], queryFn: () => authApi.parties(state!), enabled: !!state });
   const acList = useQuery({ queryKey: ['catalog', 'acs', state], queryFn: () => authApi.acs(state!), enabled: !!state });
 
   const listed = (parties.data ?? []).find((p) => p.id === party);
@@ -66,13 +67,13 @@ export default function RegisterAdmin() {
     <AuthScreen back={t('common.back')}>
       <LargeTitle title={t('registerAdmin.title')} subtitle={t('registerAdmin.subtitle')} />
       <View style={s.body}>
-        <Select label={t('registerAdmin.partyPick')} value={party} placeholder={t('registerAdmin.pickParty')} searchable onChange={setParty}
-          options={[...(parties.data ?? []).map((p) => ({ value: p.id, label: p.name })), { value: OTHER, label: t('registerAdmin.notListed') }]} />
-        {party === OTHER ? <Field label={t('registerAdmin.party')} value={typedParty} onChangeText={setTypedParty} maxLength={100} autoFocus /> : null}
-
         <Select label={t('registerAdmin.state')} value={state} placeholder={t('registerAdmin.pickState')}
           options={(states.data ?? []).map((st) => ({ value: st.code, label: st.name }))}
-          onChange={(v) => { setState(v); setAcs([]); setWhole(null); }} />
+          onChange={(v) => { setState(v); setParty(null); setAcs([]); setWhole(null); }} />
+
+        <Select label={t('registerAdmin.partyPick')} value={party} placeholder={state ? t('registerAdmin.pickParty') : t('registerAdmin.stateFirst')} searchable onChange={setParty}
+          options={!state ? [] : [...(parties.data ?? []).map((p) => ({ value: p.id, label: p.name })), { value: OTHER, label: t('registerAdmin.notListed') }]} />
+        {party === OTHER ? <Field label={t('registerAdmin.party')} value={typedParty} onChangeText={setTypedParty} maxLength={100} autoFocus /> : null}
 
         {state ? (
           // spec usability-r2 A1: one row opens the full-screen assembly list (search, districts, whole state).

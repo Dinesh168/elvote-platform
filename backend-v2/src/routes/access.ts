@@ -148,8 +148,14 @@ export async function accessUserRoutes(app: FastifyInstance) {
       'SELECT a.ac_no, a.name, a.name_local, d.name AS district FROM assembly_constituencies a LEFT JOIN districts d ON d.code = a.district_code ORDER BY a.ac_no');
     return r.rows.map((x) => ({ acNo: x.ac_no, name: x.name, nameLocal: x.name_local, district: x.district }));
   });
-  app.get('/v1/catalog/parties', async () => {
-    const r = await core.query<{ id: string; name: string }>('SELECT id, name FROM parties WHERE deleted_at IS NULL ORDER BY name');
+  // spec party-states A2: with ?state, national parties (no states set) + the parties of that state.
+  app.get('/v1/catalog/parties', async (req) => {
+    const q = parse(z.object({ state: z.string().trim().toUpperCase().length(2).optional() }), req.query);
+    const r = await core.query<{ id: string; name: string }>(
+      `SELECT p.id, p.name FROM parties p WHERE p.deleted_at IS NULL
+          AND ($1::text IS NULL OR NOT EXISTS (SELECT 1 FROM party_states s WHERE s.party_id = p.id)
+               OR EXISTS (SELECT 1 FROM party_states s WHERE s.party_id = p.id AND s.state_code = $1))
+        ORDER BY p.name`, [q.state ?? null]);
     return r.rows;
   });
 
@@ -189,6 +195,8 @@ export async function accessAdminRoutes(app: FastifyInstance) {
     if (!partyId) {
       if (!b.newPartyName) throw invalid('party_required', 'Pick a party or create one.');
       partyId = (await core.query<{ id: string }>('INSERT INTO parties (name, created_by) VALUES ($1,$2) RETURNING id', [b.newPartyName, req.userId])).rows[0].id;
+      // spec party-states A3: a party added from a request belongs to the request's state.
+      await core.query('INSERT INTO party_states (party_id, state_code) VALUES ($1,$2) ON CONFLICT DO NOTHING', [partyId, b.stateCode]);
       await audit({ actor: req.userId, role: 'super_admin', action: 'party.create', partyId, entity: 'party', entityId: partyId });
     }
     if (b.wholeState) await grantState(req.userId, row.user_id, partyId, b.stateCode);

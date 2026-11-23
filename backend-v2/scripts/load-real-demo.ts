@@ -22,6 +22,7 @@ const PARTIES = [
   ['Aam Aadmi Party', 'AAP'], ['Indian National Congress', 'INC'], ['Shiromani Akali Dal', 'SAD'],
   ['Bharatiya Janata Party', 'BJP'], ['Samajwadi Party', 'SP'], ['Bahujan Samaj Party', 'BSP'],
 ] as const;
+const STATE_PARTIES = [['SAD', 'PB'], ['SP', 'UP']] as const;
 const TEAMS = [
   { key: 'pb50', party: 'AAP', app: 'AAP Rupnagar', colour: '#0E7490', lang: 'pa', languages: ['pa', 'en'], election: ['Punjab Assembly 2027', '2027-02-14'] },
   { key: 'up361', party: 'BJP', app: 'BJP Ballia Nagar', colour: '#C2410C', lang: 'hi', languages: ['hi', 'en'], election: ['Uttar Pradesh Assembly 2027', '2027-03-01'] },
@@ -63,6 +64,8 @@ export async function loadRealDemo(file: string) {
     for (const [name, short] of PARTIES) {
       party.set(short, (await core.query<{ id: string }>('INSERT INTO parties (name, short_name, created_by) VALUES ($1,$2,$3) RETURNING id', [name, short, sup])).rows[0].id);
     }
+    // spec party-states: AAP, INC, BJP, BSP are national (no rows); state parties belong to their state.
+    for (const [short, st] of STATE_PARTIES) await core.query('INSERT INTO party_states (party_id, state_code) VALUES ($1,$2)', [party.get(short), st]);
 
     for (const team of TEAMS) {
       const a = data[team.key];

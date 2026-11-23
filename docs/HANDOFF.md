@@ -60,6 +60,8 @@ Last updated: 2026-11-23 (theelvote account session).
 
 - spec admin-request-form: Register as admin = Party dropdown (search, not listed → type) → State → Assembly → Position dropdown (10 + Other; sent in English). EAS 0a6c8d2a.
 
+- spec party-states: parties by state (core.party_states; demo SAD→PB, SP→UP, others national); Register as admin = State → Party → Assembly → Position; super-admin sets a party's states on Parties. Backup demo_elvote_core-20261123-1037. EAS a36821c4.
+
 ## Next
 1. Owner checks the demo on the phone; fix what they report. Then "commit and push" when asked.
 2. Screen checks still open: TC-MT-21, 22, 23, 25, 26, 27 (real phone, Hindi/Punjabi, 130 % font, speed on demo).

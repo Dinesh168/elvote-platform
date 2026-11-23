@@ -19,7 +19,7 @@ jest.mock('@/api/adminApi', () => ({
     accessRequest: (p: unknown) => mockRequest(p),
     states: async () => [{ code: 'PB', name: 'Punjab' }, { code: 'HR', name: 'Haryana' }],
     acs: async () => [{ acNo: 66, name: 'Rampur' }, { acNo: 50, name: 'Nawanpind' }],
-    parties: async () => [{ id: 'p1', name: 'Jan Vikas Party' }, { id: 'p2', name: 'Lok Sewa Dal' }],
+    parties: async (_state: string) => [{ id: 'p1', name: 'Jan Vikas Party' }, { id: 'p2', name: 'Lok Sewa Dal' }],
   },
 }));
 const mockGoLanding = jest.fn(async () => undefined);
@@ -89,8 +89,11 @@ describe('admin request (AC6, admin-request-form)', () => {
     await render(withQuery(<RegisterAdmin />));
     const send = await screen.findByRole('button', { name: 'Send request' });
     expect(send).toBeDisabled();
-    await pick(/^Party,/, 'Jan Vikas Party');
+    // spec party-states A1: state first; the party list waits for it.
+    expect(screen.queryByRole('button', { name: /^Party,/ })).toBeNull();
+    expect(screen.getByText('Choose your state first')).toBeTruthy();
     await pick(/^State,/, 'Punjab');
+    await pick(/^Party,/, 'Jan Vikas Party');
     await fireEvent.press(await screen.findByText('Your assemblies'));
     await fireEvent.press(await screen.findByText('Whole state (2)'));
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
@@ -103,9 +106,9 @@ describe('admin request (AC6, admin-request-form)', () => {
 
   it('party not listed and position Other are typed; assemblies mode needs one', async () => {
     await render(withQuery(<RegisterAdmin />));
+    await pick(/^State,/, 'Punjab');
     await pick(/^Party,/, 'My party is not listed');
     await fireEvent.changeText(screen.getByLabelText('Party name'), 'Lok Morcha');
-    await pick(/^State,/, 'Punjab');
     await pick(/^Your position in the party,/, 'Other');
     await fireEvent.changeText(screen.getByLabelText('Your position'), 'H');
     expect(screen.getByRole('button', { name: 'Send request' })).toBeDisabled();
@@ -124,6 +127,7 @@ describe('admin request (AC6, admin-request-form)', () => {
 
   it('party search filters the list', async () => {
     await render(withQuery(<RegisterAdmin />));
+    await pick(/^State,/, 'Punjab');
     await fireEvent.press(await screen.findByRole('button', { name: /^Party,/ }));
     await fireEvent.changeText(await screen.findByLabelText('Search'), 'vik');
     expect(screen.getByLabelText('Jan Vikas Party')).toBeTruthy();

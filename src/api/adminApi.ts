@@ -167,7 +167,9 @@ export const platformApi = {
   overview: () => http.get<Overview>('/v1/admin/overview'),
   acs: (state: string) => http.get<{ acNo: number; name: string; nameLocal: string | null; regionalLang: 'hi' | 'pa'; booths: number; voters: number }[]>(`/v1/admin/acs?state=${state}`),
   setAc: (state: string, ac: number, p: { regionalLang?: 'hi' | 'pa'; nameLocal?: string }) => http.patch(`/v1/admin/acs/${state}/${ac}`, p),
-  parties: () => http.get<{ id: string; name: string; shortName: string | null; acs: number }[]>('/v1/admin/parties'),
+  parties: () => http.get<{ id: string; name: string; shortName: string | null; acs: number; states: string[] }[]>('/v1/admin/parties'),
+  /** spec party-states A3: [] = national (every state). */
+  setPartyStates: (id: string, states: string[]) => http.put<{ ok: true; states: string[] }>(`/v1/admin/parties/${id}/states`, { states }),
   addParty: (name: string, shortName?: string) => http.post<{ id: string }>('/v1/admin/parties', { name, shortName: shortName || undefined }),
   addPartyAc: (partyId: string, stateCode: string, acNo: number, maxZones: number) => http.post<{ id: string }>('/v1/admin/party-acs', { partyId, stateCode, acNo, maxZones }),
   updatePartyAc: (id: string, p: { maxZones?: number; status?: string }) => http.patch(`/v1/admin/party-acs/${id}`, p),
@@ -243,7 +245,8 @@ export const authApi = {
   withdrawRequest: (id: string) => http.del(`/v1/access-requests/${id}`),
   states: () => http.get<{ code: string; name: string; nameLocal?: string | null }[]>('/v1/catalog/states'),
   acs: (state: string) => http.get<{ acNo: number; name: string; nameLocal?: string | null }[]>(`/v1/catalog/acs${qs({ state })}`),
-  parties: () => http.get<{ id: string; name: string }[]>('/v1/catalog/parties'),
+  /** spec party-states A2: national parties + the parties of the state. */
+  parties: (state: string) => http.get<{ id: string; name: string }[]>(`/v1/catalog/parties?state=${encodeURIComponent(state)}`),
   overview: () => http.get<{ rows: OverviewRow[] }>('/v1/me/overview'),
   deleteWithToken: (idToken: string) => http.post<{ ok: boolean; dueAt: string }>('/v1/me/delete', { confirm: 'DELETE', idToken }),
 };

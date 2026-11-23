@@ -280,3 +280,10 @@ SELECT name, migration_time FROM knex_migrations ORDER BY id;
 -- distinct caste values actually stored (aggregate only)
 SELECT caste, count(*) FROM voters_<C> GROUP BY 1;
 ```
+
+### core.party_states (spec party-states, migration core/009)
+| column | type | note |
+|---|---|---|
+| party_id | uuid | FK parties, cascade |
+| state_code | char(2) | FK states, cascade |
+PK (party_id, state_code). A party with no rows is national (shown in every state).

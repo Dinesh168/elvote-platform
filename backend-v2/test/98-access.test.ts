@@ -300,3 +300,41 @@ describe('account deletion re-check (AC13)', () => {
     expect(ok.statusCode).toBe(200);
   });
 });
+
+/** spec party-states TC-PS-1..6: parties shown per state; national = no states set. */
+describe('parties by state (party-states)', () => {
+  const catalog = async (state?: string) =>
+    ((await sup.get(`/v1/catalog/parties${state ? `?state=${state}` : ''}`)).json() as { name: string }[]).map((p) => p.name);
+
+  it('TC-PS-1 a party with no states is national (every state)', async () => {
+    expect(await catalog('PB')).toEqual(expect.arrayContaining(['Jan Vikas Party', 'Lok Sewa Dal']));
+    expect(await catalog('HR')).toEqual(expect.arrayContaining(['Jan Vikas Party', 'Lok Sewa Dal']));
+  });
+
+  it('TC-PS-2 a state party shows only in its states; [] makes it national again', async () => {
+    const lsd = await partyId('Lok Sewa Dal');
+    expect((await sup.put(`/v1/admin/parties/${lsd}/states`, { states: ['HR'] })).statusCode).toBe(200);
+    expect(await catalog('PB')).not.toContain('Lok Sewa Dal');
+    expect(await catalog('HR')).toContain('Lok Sewa Dal');
+    expect(await catalog()).toContain('Lok Sewa Dal');
+    const list = (await sup.get('/v1/admin/parties')).json() as { name: string; states: string[] }[];
+    expect(list.find((p) => p.name === 'Lok Sewa Dal')!.states).toEqual(['HR']);
+    expect((await sup.put(`/v1/admin/parties/${lsd}/states`, { states: [] })).statusCode).toBe(200);
+    expect(await catalog('PB')).toContain('Lok Sewa Dal');
+  });
+
+  it('TC-PS-3 unknown state 422, not super-admin 403', async () => {
+    const lsd = await partyId('Lok Sewa Dal');
+    expect((await sup.put(`/v1/admin/parties/${lsd}/states`, { states: ['XX'] })).statusCode).toBe(422);
+    const adm = call((await login('9000000002')).token);
+    expect((await adm.put(`/v1/admin/parties/${lsd}/states`, { states: ['PB'] })).statusCode).toBe(403);
+  });
+
+  it('TC-PS-4 a party created on approval belongs to the request state', async () => {
+    const u = await signUp('uid-newparty', 'np@gmail.com', '9811100099', 'New Party Person');
+    const id = (await u.post('/v1/access-requests', { partyName: 'Kisan Morcha', stateCode: 'PB', wholeState: true, designation: 'Candidate' })).json().id;
+    expect((await sup.post(`/v1/admin/access-requests/${id}/approve`, { newPartyName: 'Kisan Morcha', stateCode: 'PB', wholeState: true })).statusCode).toBe(200);
+    expect(await catalog('PB')).toContain('Kisan Morcha');
+    expect(await catalog('HR')).not.toContain('Kisan Morcha');
+  });
+});
