@@ -163,7 +163,21 @@
       "moved": "चले गए",
       "died": "मृत",
       "not_found": "नहीं मिले"
-    }
+    },
+    "ageN": "उम्र {{n}}",
+    "g": {
+      "M": "पुरुष",
+      "F": "महिला",
+      "T": "तृतीय लिंग"
+    },
+    "slipShort": "पर्ची",
+    "wardN": "वार्ड {{n}}",
+    "houseCount_one": "{{count}} मतदाता · {{met}} मिले",
+    "houseCount_other": "{{count}} मतदाता · {{met}} मिले",
+    "markHouse": "पूरा घर",
+    "markHouseTitle": "मकान {{house}}: सभी {{count}} मतदाता",
+    "markHouseHint": "इस घर के सभी लोगों का समूह एक साथ लगेगा। आप पूर्ववत कर सकते हैं।",
+    "houseSaved": "मकान {{house}}: {{count}} मतदाता {{group}}"
   },
   "poll": {
     "title": "मतदान दिवस",

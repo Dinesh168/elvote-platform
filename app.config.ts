@@ -21,6 +21,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       package: 'in.champn.elvote.demo',
       googleServicesFile: process.env.GOOGLE_SERVICES_JSON ?? './google-services.json',
     },
+    // iPhone (App Store / TestFlight): own bundle id; Firebase iOS config from the EAS file variable GOOGLE_SERVICE_INFO_PLIST
+    // (GoogleService-Info.plist of the iOS app registered in Firebase project elvote-max; not in git).
+    ios: {
+      ...base.ios,
+      bundleIdentifier: 'in.champn.elvote.demo',
+      googleServicesFile: process.env.GOOGLE_SERVICE_INFO_PLIST ?? './GoogleService-Info.plist',
+      infoPlist: { ...(base.ios?.infoPlist ?? {}), ITSAppUsesNonExemptEncryption: false },
+    },
     plugins: [...(base.plugins ?? []), '@react-native-firebase/app', '@react-native-firebase/auth', '@react-native-google-signin/google-signin'],
     // Expo Go can open an update only when its runtime is the SDK version.
     runtimeVersion: { policy: 'sdkVersion' },

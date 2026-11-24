@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { GroupCode, Task, Voter } from '@/api/types';
-import { AppText, Icon, LargeTitle, Screen, SegmentedControl, Toast } from '@/design/components';
+import { AppText, ChoiceRow, Icon, LargeTitle, Screen, SegmentedControl, Sheet, Toast } from '@/design/components';
 import { TeamBar } from '@/features/shell/TeamBar';
 import { SyncBadge } from '@/features/sync/SyncBadge';
 import { colors, fonts, radius, spacing } from '@/design/tokens';
@@ -18,7 +18,7 @@ import { VoterRow } from '@/features/voters/VoterRow';
 import { usePrefs } from '@/stores/prefs';
 
 type Item =
-  | { kind: 'head'; key: string; title: string; badge: string }
+  | { kind: 'head'; key: string; title: string; badge: string; house: string; voters: Voter[]; place: string }
   | { kind: 'gap'; key: string }
   | { kind: 'voter'; key: string; voter: Voter; first: boolean; last: boolean };
 
@@ -71,7 +71,9 @@ export default function VotersScreen() {
     for (const sec of sections) {
       if (sec.house) {
         const met = sec.voters.filter((v) => v.group).length;
-        out.push({ kind: 'head', key: `h-${sec.house}`, title: t('voters.house', { no: sec.house }), badge: t('voters.houseMet', { met, total: sec.voters.length }) });
+        const v0 = sec.voters[0];
+        out.push({ kind: 'head', key: `h-${sec.house}`, house: sec.house, voters: sec.voters, title: t('voters.house', { no: sec.house }),
+          badge: t('voters.houseCount', { count: sec.voters.length, met }), place: [v0?.ward ? t('voters.wardN', { n: v0.ward }) : null, v0?.village].filter(Boolean).join(', ') });
       } else out.push({ kind: 'gap', key: 'gap' });
       sec.voters.forEach((v, i) => out.push({ kind: 'voter', key: v.id, voter: v, first: i === 0, last: i === sec.voters.length - 1 }));
     }
@@ -148,6 +150,16 @@ export default function VotersScreen() {
   }, []);
 
   const onToggle = useCallback((id: string) => setOpenId((cur) => (cur === id ? null : id)), []);
+  // spec voter-card C2: one tap sets the group for everyone in the house (families usually vote together); Undo reverses all.
+  const [markHouse, setMarkHouse] = useState<{ house: string; voters: Voter[] } | null>(null);
+  const markWholeHouse = (g: GroupCode) => {
+    if (!markHouse) return;
+    const handles = markHouse.voters.map((v) => saveVoter(v, { group: g }));
+    markTaskWorked();
+    const h = markHouse.house;
+    setMarkHouse(null);
+    setToast({ msg: t('voters.houseSaved', { house: h, count: handles.length, group: t(`groups.${g}`) }), undo: () => { handles.forEach((x) => x.undo()); setToast(null); } });
+  };
   const onSameAddress = useCallback((h: string) => {
     setHouse(h);
     setOpenId(null);
@@ -243,9 +255,15 @@ export default function VotersScreen() {
           contentContainerStyle={{ paddingBottom: 96 }}
           renderItem={({ item }) =>
             item.kind === 'head' ? (
-              <View style={s.head}>
-                <AppText variant="footnote" color={colors.textSecondary}>{item.title.toLocaleUpperCase()}</AppText>
-                <AppText variant="footnote" color={colors.textSecondary}>{item.badge}</AppText>
+              <View style={s.houseBand}>
+                <Pressable accessibilityRole="button" accessibilityLabel={`${item.title}. ${item.badge}`} onPress={() => onSameAddress(item.house)} style={s.houseText}>
+                  <AppText variant="title2" weight="bold">{item.title}</AppText>
+                  <AppText variant="footnote" color={colors.textSecondary} numberOfLines={1}>{[item.badge, item.place].filter(Boolean).join(' · ')}</AppText>
+                </Pressable>
+                <Pressable accessibilityRole="button" accessibilityLabel={`${t('voters.markHouse')} ${item.title}`} onPress={() => setMarkHouse(item)} style={s.markBtn} hitSlop={6}>
+                  <AppText variant="footnote" weight="semibold" color={colors.accent}>{t('voters.markHouse')}</AppText>
+                  <Icon name="chevron-down" size={14} color={colors.accent} />
+                </Pressable>
               </View>
             ) : item.kind === 'gap' ? (
               <View style={{ height: spacing.md }} />
@@ -258,13 +276,18 @@ export default function VotersScreen() {
                 onToggle={onToggle}
                 onGroup={onGroup}
                 onPatch={onPatch}
-                onSameAddress={onSameAddress}
+                showAddress={!(view === 'house' || house)}
               />
             )
           }
         />
       )}
 
+      <Sheet visible={!!markHouse} title={markHouse ? t('voters.markHouseTitle', { house: markHouse.house, count: markHouse.voters.length }) : ''} onClose={() => setMarkHouse(null)} footer={t('voters.markHouseHint')}>
+        {(['our', 'target', 'opp'] as GroupCode[]).map((g, i) => (
+          <ChoiceRow key={g} title={t(`groups.${g}`)} selected={false} last={i === 2} onPress={() => markWholeHouse(g)} />
+        ))}
+      </Sheet>
       <Toast message={toast?.msg ?? null} onUndo={toast?.undo} onHide={() => setToast(null)} />
       <BoothSheet visible={boothSheet} onClose={() => setBoothSheet(false)} />
     </Screen>
@@ -288,6 +311,9 @@ const s = themed(() => StyleSheet.create({
   chips: { gap: spacing.sm, paddingRight: spacing.lg },
   chip: { height: 36, paddingHorizontal: 14, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   chipOn: { backgroundColor: colors.accent },
-  head: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.xxxl, paddingTop: spacing.xl, paddingBottom: 7 },
+  // spec voter-card C2: a strong band per house: number big, count + place, Mark house.
+  houseBand: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginHorizontal: spacing.lg, marginTop: spacing.xl, marginBottom: 6, paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: radius.md, backgroundColor: colors.accentTint },
+  houseText: { flex: 1, minWidth: 0 },
+  markBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, minHeight: 36, paddingHorizontal: 10, borderRadius: radius.full, backgroundColor: colors.surface },
   empty: { padding: 48, gap: 4 },
 }));

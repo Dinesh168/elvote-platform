@@ -85,12 +85,17 @@ export default function PartyAc() {
           <Group key={r} header={`${t(r === 'admin' ? 'platform.admins' : 'steam.volunteers')} (${list.length})`}>
             {list.length === 0 ? <Row title={t('steam.none')} last /> : list.map((p, i) => (
               <Row key={p.membershipId} title={p.name} last={i === list.length - 1}
-                subtitle={[p.mobile ? `+91 ${p.mobile}` : p.email, r === 'volunteer' ? t('common.booth', { no: p.booths.join(', ') }) : null].filter(Boolean).join(' · ')}
-                onPress={r === 'volunteer' ? () => { setEditing(p); setBoothsText(p.booths.join(', ')); } : undefined}
+                subtitle={[p.mobile ? `+91 ${p.mobile}` : p.email?.endsWith('.invalid') ? null : p.email, r === 'volunteer' ? t('common.booth', { no: p.booths.join(', ') }) : null].filter(Boolean).join(' · ')}
                 trailing={
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${t('steam.remove')} ${p.name}`} hitSlop={8} onPress={() => setRemoving(p)}>
-                    <Icon name="close-circle" size={22} color={colors.textSecondary} />
-                  </Pressable>
+                  <View style={s.acts}>
+                    {r === 'volunteer' ? (
+                      <Button kind="plain" compact label={t('steam.booths')} a11yLabel={`${t('steam.booths')} ${p.name}`}
+                        onPress={() => { setEditing(p); setBoothsText(p.booths.join(', ')); }} />
+                    ) : null}
+                    <Pressable accessibilityRole="button" accessibilityLabel={`${t('steam.remove')} ${p.name}`} hitSlop={8} onPress={() => setRemoving(p)}>
+                      <Icon name="close-circle" size={22} color={colors.textSecondary} />
+                    </Pressable>
+                  </View>
                 } />
             ))}
           </Group>
@@ -163,4 +168,5 @@ const s = themed(() => StyleSheet.create({
   step: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' },
   count: { minWidth: 60, textAlign: 'center' },
   form: { padding: spacing.lg, gap: spacing.md },
+  acts: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
 }));

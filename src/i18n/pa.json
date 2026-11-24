@@ -163,7 +163,21 @@
       "moved": "ਚਲੇ ਗਏ",
       "died": "ਮੌਤ ਹੋ ਗਈ",
       "not_found": "ਨਹੀਂ ਮਿਲੇ"
-    }
+    },
+    "ageN": "ਉਮਰ {{n}}",
+    "g": {
+      "M": "ਮਰਦ",
+      "F": "ਔਰਤ",
+      "T": "ਤੀਜਾ ਲਿੰਗ"
+    },
+    "slipShort": "ਪਰਚੀ",
+    "wardN": "ਵਾਰਡ {{n}}",
+    "houseCount_one": "{{count}} ਵੋਟਰ · {{met}} ਮਿਲੇ",
+    "houseCount_other": "{{count}} ਵੋਟਰ · {{met}} ਮਿਲੇ",
+    "markHouse": "ਪੂਰਾ ਘਰ",
+    "markHouseTitle": "ਮਕਾਨ {{house}}: ਸਾਰੇ {{count}} ਵੋਟਰ",
+    "markHouseHint": "ਇਸ ਘਰ ਦੇ ਸਾਰੇ ਲੋਕਾਂ ਦਾ ਸਮੂਹ ਇਕੱਠਾ ਲੱਗੇਗਾ। ਤੁਸੀਂ ਵਾਪਸ ਕਰ ਸਕਦੇ ਹੋ।",
+    "houseSaved": "ਮਕਾਨ {{house}}: {{count}} ਵੋਟਰ {{group}}"
   },
   "poll": {
     "title": "ਵੋਟ ਵਾਲਾ ਦਿਨ",

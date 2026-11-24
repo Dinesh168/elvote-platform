@@ -28,9 +28,20 @@
       },
       "channel": "demo",
       "node": "24.13.1"
+    },
+    "demo-store": {
+      "extends": "demo",
+      "distribution": "store",
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "demo-store": {
+      "ios": {}
+    }
   }
 }

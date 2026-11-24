@@ -163,7 +163,21 @@
       "moved": "Moved",
       "died": "Died",
       "not_found": "Not found"
-    }
+    },
+    "ageN": "Age {{n}}",
+    "g": {
+      "M": "Male",
+      "F": "Female",
+      "T": "Third gender"
+    },
+    "slipShort": "Slip",
+    "wardN": "Ward {{n}}",
+    "houseCount_one": "{{count}} voter · {{met}} met",
+    "houseCount_other": "{{count}} voters · {{met}} met",
+    "markHouse": "Mark house",
+    "markHouseTitle": "House {{house}}: all {{count}} voters",
+    "markHouseHint": "Sets the group for everyone in this house. You can undo it.",
+    "houseSaved": "House {{house}}: {{count}} voters marked {{group}}"
   },
   "poll": {
     "title": "Polling day",

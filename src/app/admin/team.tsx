@@ -36,10 +36,10 @@ export default function Team() {
   const pendingQ = useQuery({ queryKey: ['team', mid, 'pending', ''], queryFn: () => adminApi.team(mid, 'pending'), enabled: !!mid });
   const pendingN = pendingQ.data?.length ?? 0;
   const wide = useWide();
-  const press = (p: TeamMember) => (tab === 'pending' ? setOpen(p) : void Linking.openURL(`tel:${p.mobile}`));
+  const press = (p: TeamMember) => (tab === 'pending' ? setOpen(p) : p.mobile ? void Linking.openURL(`tel:${p.mobile}`) : undefined);
   const cols: Column<TeamMember>[] = [
     { key: 'name', label: t('admin.col.name'), value: (p) => p.name, flex: 2 },
-    { key: 'mobile', label: t('admin.col.mobile'), value: (p) => `+91 ${p.mobile}`, flex: 1.4 },
+    { key: 'mobile', label: t('admin.col.mobile'), value: (p) => (p.mobile ? `+91 ${p.mobile}` : '—'), flex: 1.4 },
     { key: 'booths', label: t('admin.col.booth'), value: (p) => p.booths.join(', '), flex: 1.2 },
     ...(tab === 'approved'
       ? [
@@ -76,7 +76,7 @@ export default function Team() {
         <AppText variant="callout" color={colors.textSecondary} align="center" style={s.empty}>{tab === 'pending' ? t('admin.noPending') : '—'}</AppText>
       ) : wide ? (
         <View style={s.tableGap}>
-          <DataTable columns={cols} rows={q.data} rowKey={(p) => p.membershipId} onRowPress={press} rowA11y={(p) => `${p.name}, +91 ${p.mobile}`} />
+          <DataTable columns={cols} rows={q.data} rowKey={(p) => p.membershipId} onRowPress={press} rowA11y={(p) => [p.name, p.mobile ? `+91 ${p.mobile}` : null].filter(Boolean).join(', ')} />
         </View>
       ) : (
         <Group>
@@ -86,7 +86,7 @@ export default function Team() {
               title={p.name}
               subtitle={tab === 'approved'
                 ? `${t('common.booth', { no: p.booths.join(', ') })} · ${t('admin.todayTotal', { today: p.contactedToday, total: p.contactedTotal })}\n${t('admin.col.syncLine', { time: p.lastSyncAt ? ago(p.lastSyncAt) : t('admin.col.neverSynced'), n: p.unsent ?? 0 })}`
-                : `+91 ${p.mobile} · ${t('common.booth', { no: p.booths.join(', ') })}${p.rejectReason ? ` · ${p.rejectReason}` : ''}`}
+                : [p.mobile ? `+91 ${p.mobile}` : null, t('common.booth', { no: p.booths.join(', ') }), p.rejectReason].filter(Boolean).join(' · ')}
               // spec flow-fixes O1: approve in one tap; Review opens the sheet to change booths or reject.
               trailing={tab === 'pending' ? (
                 <View style={s.acts}>
@@ -97,7 +97,7 @@ export default function Team() {
                   ) : null}
                 </View>
               ) : undefined}
-              onPress={tab === 'pending' ? undefined : () => void Linking.openURL(`tel:${p.mobile}`)}
+              onPress={tab === 'pending' || !p.mobile ? undefined : () => void Linking.openURL(`tel:${p.mobile}`)}
               last={i === q.data.length - 1}
             />
           ))}
@@ -128,7 +128,7 @@ function ApproveSheet({ mid, member, onDone }: { mid: string; member: TeamMember
   const toggle = (no: number) => setBooths((b) => (b.includes(no) ? b.filter((x) => x !== no) : [...b, no].sort((a, c) => a - c)));
   const run = (fn: () => Promise<unknown>) => fn().then(onDone, (e: Error) => setError(e.message));
   return (
-    <Sheet visible title={member.name} onClose={onDone} footer={`+91 ${member.mobile}${member.epic ? ` · EPIC ${member.epic}` : ''}`}>
+    <Sheet visible title={member.name} onClose={onDone} footer={[member.mobile ? `+91 ${member.mobile}` : null, member.epic ? `EPIC ${member.epic}` : null].filter(Boolean).join(' · ')}>
       <View style={s.sheet}>
         <AppText variant="footnote" color={colors.textSecondary}>{t('admin.boothsTap').toLocaleUpperCase()}</AppText>
         <View style={s.chips}>

@@ -19,11 +19,13 @@ export interface VoterRowProps {
   onToggle: (id: string) => void;
   onGroup: (v: Voter, g: GroupCode) => void;
   onPatch: (v: Voter, patch: Partial<Voter>) => void;
-  onSameAddress: (house: string) => void;
+  onSameAddress?: (house: string) => void;
+  /** Serial-no. view: the address is shown on the row (house-wise shows it once on the house header). */
+  showAddress?: boolean;
 }
 
 /** One voter in the grouped list. Tapping opens it in place (accordion). */
-export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, onToggle, onGroup, onPatch, onSameAddress }: VoterRowProps) {
+export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, onToggle, onGroup, onPatch, showAddress }: VoterRowProps) {
   const { t } = useTranslation();
   const slipOn = useFeature('slip');
   const [mobile, setMobile] = useState(v.mobile ?? '');
@@ -45,9 +47,15 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, on
       >
         <SnoBadge sno={v.sno} />
         <View style={s.texts}>
-          <AppText variant="headline">{v.name}</AppText>
-          <AppText variant="callout" color={colors.textSecondary}>{`${relText(t, v.relation)} ${v.relative} · ${v.age}`}</AppText>
-          <AppText variant="callout" color={colors.textSecondary}>{t('voters.addrLine', { house: v.house, ward: v.ward, village: v.village })}</AppText>
+          {/* spec voter-card C1: name, relative, then age · gender · EPIC as chips; the address only in serial-no. view. */}
+          <AppText variant="headline" numberOfLines={2}>{v.name}</AppText>
+          <AppText variant="callout" color={colors.textSecondary} numberOfLines={1}>{`${relText(t, v.relation)} ${v.relative}`}</AppText>
+          <View style={s.chips}>
+            <View style={s.chip}><AppText variant="footnote" weight="semibold" tabular>{t('voters.ageN', { n: v.age })}</AppText></View>
+            {v.gender ? <View style={s.chip}><AppText variant="footnote" weight="semibold">{t(`voters.g.${v.gender}`)}</AppText></View> : null}
+            {v.epic ? <View style={s.chip}><AppText variant="footnote" weight="semibold" tabular>{v.epic}</AppText></View> : null}
+          </View>
+          {showAddress ? <AppText variant="footnote" color={colors.textSecondary} numberOfLines={1}>{t('voters.addrLine', { house: v.house, ward: v.ward, village: v.village })}</AppText> : null}
           {v.isNew ? (
             <View style={s.newTag}><AppText variant="caption" weight="semibold" color={colors.accent}>{t('voters.newTag')}</AppText></View>
           ) : null}
@@ -57,40 +65,39 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, on
 
       {open && (
         <View style={s.body}>
-          <AppText variant="callout" color={colors.textSecondary}>
-            {t('voters.tapGroup')}
-          </AppText>
           <GroupPicker
+            compact
             value={v.group}
             voterName={v.name}
             labels={{ our: t('groups.our'), target: t('groups.target'), opp: t('groups.opp') }}
             onPick={(g) => onGroup(v, g)}
           />
-          {/* spec admin-views V1: one dropdown with every answer, on the same card (no other page). */}
-          <Select<Residence>
-            label={t('voters.livesHere')}
-            value={v.residence}
-            options={[
-              { value: 'here', label: t('voters.res.here') },
-              { value: 'moved', label: t('voters.res.moved') },
-              { value: 'died', label: t('voters.res.died') },
-              { value: 'not_found', label: t('voters.res.not_found') },
-            ]}
-            onChange={(residence) => onPatch(v, { residence })}
-          />
-          <View style={s.qa}>
-            <AppText variant="callout" style={s.flex}>{t('voters.needsHelp')}</AppText>
-            <SegmentedControl
-              variant="answer"
-              label={t('voters.needsHelp')}
-              style={s.seg}
-              value={v.needsHelp ? 'yes' : 'no'}
-              options={[{ value: 'no', label: t('voters.no') }, { value: 'yes', label: t('voters.yes') }]}
-              onChange={(x) => onPatch(v, { needsHelp: x === 'yes' })}
-            />
+          {/* spec voter-card C3: Lives here and Needs help side by side. */}
+          <View style={s.two}>
+            <View style={s.flex}>
+              <Select<Residence>
+                label={t('voters.livesHere')}
+                value={v.residence}
+                options={[
+                  { value: 'here', label: t('voters.res.here') },
+                  { value: 'moved', label: t('voters.res.moved') },
+                  { value: 'died', label: t('voters.res.died') },
+                  { value: 'not_found', label: t('voters.res.not_found') },
+                ]}
+                onChange={(residence) => onPatch(v, { residence })}
+              />
+            </View>
+            <View style={s.flex}>
+              <Select<'no' | 'yes'>
+                label={t('voters.needsHelp')}
+                value={v.needsHelp ? 'yes' : 'no'}
+                options={[{ value: 'no', label: t('voters.no') }, { value: 'yes', label: t('voters.yes') }]}
+                onChange={(x) => onPatch(v, { needsHelp: x === 'yes' })}
+              />
+            </View>
           </View>
-          <View>
-            <View style={[s.field, mobileBad && { borderColor: colors.danger, borderWidth: 1 }]}>
+          <View style={s.mobileRow}>
+            <View style={[s.field, s.flex, mobileBad && { borderColor: colors.danger, borderWidth: 1 }]}>
               <AppText variant="body" color={colors.textSecondary}>+91</AppText>
               <TextInput
                 value={mobile}
@@ -98,7 +105,7 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, on
                 onBlur={saveMobile}
                 onSubmitEditing={saveMobile}
                 keyboardType="number-pad"
-              {...doneProps('number-pad')}
+                {...doneProps('number-pad')}
                 returnKeyType="done"
                 placeholder={t('voters.mobilePh')}
                 placeholderTextColor={colors.textTertiary}
@@ -106,25 +113,12 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, on
                 style={s.input}
               />
             </View>
-            {mobileBad ? (
-              <AppText variant="footnote" color={colors.danger} style={{ marginTop: 4 }}>
-                {t('voters.mobileInvalid')}
-              </AppText>
-            ) : null}
-          </View>
-          <View style={s.actions}>
-            <Button kind="tinted" compact style={s.flex} label={t('voters.sameAddress')} onPress={() => onSameAddress(v.house)} />
+            <Button kind="tinted" compact label={t('voters.call')} disabled={!v.mobile} onPress={() => void Linking.openURL(`tel:${v.mobile}`)} />
             {slipOn ? (
-              <Button
-                kind="tinted"
-                compact
-                style={s.flex}
-                label={t('voters.sendSlip')}
-                onPress={() => router.push({ pathname: '/slip', params: { id: v.id, booth: String(v.booth) } })}
-              />
+              <Button kind="tinted" compact label={t('voters.slipShort')} onPress={() => router.push({ pathname: '/slip', params: { id: v.id, booth: String(v.booth) } })} />
             ) : null}
-            <Button kind="tinted" compact style={s.flex} label={t('voters.call')} disabled={!v.mobile} onPress={() => void Linking.openURL(`tel:${v.mobile}`)} />
           </View>
+          {mobileBad ? <AppText variant="footnote" color={colors.danger}>{t('voters.mobileInvalid')}</AppText> : null}
         </View>
       )}
     </View>
@@ -138,12 +132,15 @@ const s = themed(() => StyleSheet.create({
   open: { borderLeftWidth: 3, borderLeftColor: colors.accent },
   head: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: 10, paddingHorizontal: spacing.lg },
   texts: { flex: 1, minWidth: 0 },
-  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.lg, gap: 14 },
+  body: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md, gap: 10 },
   qa: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   seg: { width: 176 },
   flex: { flex: 1 },
   field: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, height: 44, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.fill },
   input: { flex: 1, fontSize: 17, fontFamily: fonts.regular, color: colors.text },
-  actions: { flexDirection: 'row', gap: spacing.sm },
+  two: { flexDirection: 'row', gap: spacing.sm },
+  mobileRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  chip: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.sm, backgroundColor: colors.fill },
   newTag: { alignSelf: 'flex-start', marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.full, backgroundColor: colors.accentTint },
 }));
