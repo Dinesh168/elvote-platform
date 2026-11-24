@@ -1,4 +1,4 @@
-/** TC-OB-1 … TC-OB-5, TC-OB-10 (docs/test-cases/onboarding-branding.md). */
+/** TC-OB-1 … TC-OB-5, TC-OB-10, TC-OB-11 (docs/test-cases/onboarding-branding.md). */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { Text } from 'react-native';
@@ -19,9 +19,12 @@ jest.mock('expo-router', () => ({
   },
   useLocalSearchParams: () => ({}),
 }));
-let mockMembership: { look?: { bannerUrl?: string | null; appName?: string }; partyName: string } | null = null;
+const mockGoBack = jest.fn();
+jest.mock('@/features/shell/navHistory', () => ({ goBack: () => mockGoBack() }));
+let mockMembership: { look?: { bannerUrl?: string | null; appName?: string; languages?: string[] }; partyName: string } | null = null;
+const mockSession: { refreshToken: string | null } = { refreshToken: null };
 jest.mock('@/stores/session', () => {
-  const state = { loaded: true, refreshToken: null, load: jest.fn(), me: { user: { name: 'Suresh Kumar', mobile: '9000000003' } } };
+  const state = { loaded: true, get refreshToken() { return mockSession.refreshToken; }, load: jest.fn(), me: { user: { name: 'Suresh Kumar', mobile: '9000000003' } } };
   const useSession = Object.assign((sel: (s: typeof state) => unknown) => sel(state), { getState: () => state });
   return { useSession, useActiveMembership: () => mockMembership };
 });
@@ -47,6 +50,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   usePrefs.setState({ onboarded: false, langChosen: false, lang: 'en' });
   mockMembership = null;
+  mockSession.refreshToken = null;
 });
 
 describe('first launch (OB1)', () => {
@@ -78,6 +82,20 @@ describe('first launch (OB1)', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Continue · जारी रखें' }));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/login'));
     expect(usePrefs.getState()).toMatchObject({ lang: 'hi', langChosen: true, onboarded: true });
+    await i18n.changeLanguage('en');
+  });
+
+  it('TC-OB-11 signed in (side menu): only team languages, Continue goes back, never to sign in', async () => {
+    mockSession.refreshToken = 'rt';
+    mockMembership = { partyName: 'Jan Vikas Party', look: { languages: ['pa', 'en'] } };
+    usePrefs.setState({ onboarded: true, langChosen: true, lang: 'en' });
+    await render(wrap(<Language />));
+    expect(screen.queryByText('हिन्दी')).toBeNull();
+    await fireEvent.press(screen.getByText('ਪੰਜਾਬੀ'));
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue · जारी रखें' }));
+    await waitFor(() => expect(mockGoBack).toHaveBeenCalled());
+    expect(mockReplace).not.toHaveBeenCalledWith('/login');
+    expect(usePrefs.getState().lang).toBe('pa');
     await i18n.changeLanguage('en');
   });
 });

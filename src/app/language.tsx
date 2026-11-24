@@ -8,6 +8,8 @@ import { themed } from '@/design/theme';
 import { colors, spacing } from '@/design/tokens';
 import { i18n, initI18n, isLang, LANG_LABEL, LANGS, type Lang } from '@/i18n';
 import { usePrefs } from '@/stores/prefs';
+import { useActiveMembership, useSession } from '@/stores/session';
+import { goBack } from '@/features/shell/navHistory';
 import { AuthScreen } from '@/features/shell/AuthScreen';
 import { Bi } from '@/features/shell/Bi';
 
@@ -19,17 +21,22 @@ const SUB: Record<Lang, string> = { pa: 'Punjabi · पंजाबी', hi: 'Hi
 /**
  * First launch, step 2 (spec onboarding-branding OB3): choose the app language. Continue saves it on the device as
  * the default and opens Sign in in that language. Website (tablet/desktop): the sign-in frame.
+ * Opened from the side menu while signed in: only the team's languages, and Continue goes back to the page you came from.
  */
 export default function Language() {
   const insets = useSafeAreaInsets();
   const layout = useLayout();
   const wide = layout !== 'phone';
   const start = usePrefs((st) => st.lang);
-  const [lang, setLang] = useState<Lang>(isLang(start) && usePrefs.getState().langChosen ? start : 'en');
+  const signedIn = useSession((st) => !!st.refreshToken);
+  const allowed = useActiveMembership()?.look?.languages;
+  const langs = signedIn && allowed?.length ? LANGS.filter((l) => allowed.includes(l)) : LANGS;
+  const [lang, setLang] = useState<Lang>(isLang(start) && (signedIn || usePrefs.getState().langChosen) ? start : 'en');
   const done = async () => {
     usePrefs.getState().finishOnboarding(lang);
     await initI18n(lang);
-    router.replace('/login');
+    if (signedIn) goBack();
+    else router.replace('/login');
   };
   const head = (
     <View style={s.head}>
@@ -39,8 +46,8 @@ export default function Language() {
   );
   const list = (
     <Group style={wide ? s.groupWide : undefined}>
-      {LANGS.map((l, i) => (
-        <ChoiceRow key={l} title={LANG_LABEL[l]} subtitle={SUB[l]} selected={lang === l} onPress={() => setLang(l)} last={i === LANGS.length - 1} />
+      {langs.map((l, i) => (
+        <ChoiceRow key={l} title={LANG_LABEL[l]} subtitle={SUB[l]} selected={lang === l} onPress={() => setLang(l)} last={i === langs.length - 1} />
       ))}
     </Group>
   );
