@@ -1,38 +1,50 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { themed } from '@/design/theme';
-import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { adminApi } from '@/api/adminApi';
-import { AppText, ChoiceRow, Group, Icon, LargeTitle, Row, Screen, Sheet } from '@/design/components';
-import { colors, radius, spacing } from '@/design/tokens';
+import { adminApi, type Zones as ZonesData } from '@/api/adminApi';
+import { AppText, Button, Field, Group, Icon, LargeTitle, Row, Screen, SegmentedControl, Select, Sheet } from '@/design/components';
+import { themed } from '@/design/theme';
+import { colors, fonts, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
 import { loadMe } from '@/features/session/session';
 import { useActiveMembership } from '@/stores/session';
 
-/** A-ZONE-1 + owner request: admin picks the number of zones (1…max set by super-admin) and moves booths. */
+type Zone = ZonesData['zones'][number];
+
+/**
+ * spec zones-easy Z1–Z4: make zones in one tap (equal split in booth-number order), rename / add / delete zones, and
+ * open a zone to tick its booths (number, name, village; search). Replaces the count stepper + one-booth-at-a-time moves.
+ */
 export default function Zones() {
   const { t } = useTranslation();
   const m = useActiveMembership();
   const mid = m?.id ?? '';
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['zones', mid], queryFn: () => adminApi.zones(mid), enabled: !!mid });
-  const [count, setCount] = useState<number | null>(null);
-  const [move, setMove] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const z = q.data;
-  const shown = count ?? z?.zoneCount ?? 0;
+  const [split, setSplit] = useState<string>('5');
+  const [confirm, setConfirm] = useState(false);
+  const [editing, setEditing] = useState<Zone | 'unassigned' | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ['zones', mid] });
     await qc.invalidateQueries({ queryKey: ['dash', mid] });
+    await qc.invalidateQueries({ queryKey: ['boothTable', mid] });
+    await qc.invalidateQueries({ queryKey: ['map', mid] });
     await loadMe();
   };
-  const apply = (n: number) => {
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
     setError(null);
-    setCount(n);
-    adminApi.setZoneCount(mid, n).then(refresh, (e: Error) => { setError(e.message); setCount(null); });
+    try { await fn(); await refresh(); } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   };
-  const zoneOf = (no: number) => z?.zones.find((x) => x.booths.includes(no));
+
+  if (editing && z) {
+    return <ZoneEditor data={z} zone={editing === 'unassigned' ? null : editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); void refresh(); }} />;
+  }
 
   return (
     <Screen width="narrow" back={t('admin.tabs.more')}>
@@ -41,72 +53,157 @@ export default function Zones() {
         <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
       ) : (
         <>
-          <Group header={t('admin.zoneCount')} footer={`${t('admin.zoneMax', { max: z.maxZones })} ${t('admin.reduceWarn')}`}>
-            <View style={s.stepper}>
-              <StepBtn icon="remove" label="−" disabled={shown <= 1} onPress={() => apply(shown - 1)} />
-              <AppText variant="largeTitle" tabular style={s.count}>{String(shown)}</AppText>
-              <StepBtn icon="add" label="+" disabled={shown >= z.maxZones} onPress={() => apply(shown + 1)} />
-            </View>
-            {error ? <AppText variant="footnote" color={colors.danger} style={s.err}>{error}</AppText> : null}
-          </Group>
-          {z.unassigned.length ? (
-            <Group header={t('admin.unassigned')}>
-              <View style={s.chips}>
-                {z.unassigned.map((no) => (
-                  <Pressable key={no} accessibilityRole="button" accessibilityLabel={t('admin.moveTo', { no })} onPress={() => setMove(no)} style={[s.chip, s.warn]}>
-                    <AppText variant="callout" weight="semibold">{String(no)}</AppText>
-                  </Pressable>
-                ))}
+          <Group header={t('zez.auto')} footer={t('zez.autoHint', { n: z.allBooths.length })}>
+            <View style={s.splitRow}>
+              <View style={s.flex}>
+                <Select label={t('zez.howMany')} value={split} onChange={setSplit}
+                  options={Array.from({ length: z.maxZones }, (_, i) => ({ value: String(i + 1), label: t('zez.nZones', { count: i + 1 }) }))} />
               </View>
+              <Button kind="filled" label={t('zez.split')} disabled={busy} onPress={() => setConfirm(true)} />
+            </View>
+          </Group>
+
+          {z.unassigned.length ? (
+            <Group>
+              <Row title={t('zez.without', { count: z.unassigned.length })} subtitle={t('zez.withoutSub')}
+                leading={<Icon name="alert-circle" size={22} color={colors.warning} />} chevron onPress={() => setEditing('unassigned')} last />
             </Group>
           ) : null}
-          <Group header={t('admin.zones')}>
+
+          <Group header={t('zez.list', { count: z.zones.length })} footer={t('zez.listHint')}>
             {z.zones.map((zone, i) => (
-              <View key={zone.id} style={[s.zone, i < z.zones.length - 1 && s.divider]}>
-                <AppText variant="headline">{`${zone.name} · ${t('admin.zoneBooths', { n: zone.booths.length })}`}</AppText>
-                <View style={s.chips0}>
-                  {zone.booths.map((no) => (
-                    <Pressable key={no} accessibilityRole="button" accessibilityLabel={t('admin.moveTo', { no })} onPress={() => setMove(no)} style={s.chip}>
-                      <AppText variant="callout">{String(no)}</AppText>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
+              <Row key={zone.id} title={zone.name} last={i === z.zones.length - 1}
+                subtitle={`${t('admin.zoneBooths', { n: zone.booths.length })} · ${zone.total ? Math.round((zone.met / zone.total) * 100) : 0}% ${t('allb.met')}`}
+                chevron onPress={() => setEditing(zone)} />
             ))}
           </Group>
-          {move != null ? (
-            <Sheet visible title={t('admin.moveTo', { no: move })} onClose={() => setMove(null)}>
-              {z.zones.map((zone) => (
-                <ChoiceRow key={zone.id} title={zone.name} selected={zoneOf(move)?.id === zone.id}
-                  onPress={() => { const no = move; setMove(null); void adminApi.moveBooths(mid, [no], zone.id).then(refresh); }} />
-              ))}
-              <Row title={t('admin.noZone')} last onPress={() => { const no = move; setMove(null); void adminApi.moveBooths(mid, [no], null).then(refresh); }} />
-            </Sheet>
-          ) : null}
+          <View style={s.pad}>
+            <Button kind="tinted" label={`+ ${t('zez.add')}`} disabled={busy || z.zones.length >= z.maxZones}
+              onPress={() => void run(() => adminApi.setZoneCount(mid, z.zones.length + 1))} />
+            {z.zones.length >= z.maxZones ? <AppText variant="footnote" color={colors.textSecondary}>{t('admin.zoneMax', { max: z.maxZones })}</AppText> : null}
+            {error ? <AppText variant="footnote" color={colors.danger}>{error}</AppText> : null}
+          </View>
+
+          <Sheet visible={confirm} title={t('zez.confirmTitle', { count: Number(split) })} onClose={() => setConfirm(false)} footer={t('zez.confirmHint')}>
+            <View style={s.form}>
+              <Button kind="filled" label={t('zez.split')} disabled={busy} onPress={() => { setConfirm(false); void run(() => adminApi.splitZones(mid, Number(split))); }} />
+              <Button kind="plain" label={t('common.cancel')} onPress={() => setConfirm(false)} />
+            </View>
+          </Sheet>
         </>
       )}
     </Screen>
   );
 }
 
-function StepBtn({ icon, label, disabled, onPress }: { icon: string; label: string; disabled: boolean; onPress: () => void }) {
+type Filter = 'all' | 'here' | 'none';
+
+/** Z3: one zone (or "without a zone"): rename, search, tick booths, Save; Delete zone. */
+function ZoneEditor({ data, zone, onClose, onSaved }: { data: ZonesData; zone: Zone | null; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation();
+  const mid = useActiveMembership()?.id ?? '';
+  const [target, setTarget] = useState<string | null>(zone?.id ?? data.zones[0]?.id ?? null);
+  const [name, setName] = useState(zone?.name ?? '');
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<Filter>(zone ? 'all' : 'none');
+  const start = useMemo(() => new Set(zone ? zone.booths : []), [zone]);
+  const [ticked, setTicked] = useState<Set<number>>(() => new Set(zone ? zone.booths : []));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [del, setDel] = useState(false);
+  const zoneName = useMemo(() => new Map(data.zones.map((x) => [x.id, x.name])), [data.zones]);
+
+  const rows = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return data.allBooths.filter((b) =>
+      (filter === 'all' || (filter === 'here' ? ticked.has(b.no) : !b.zoneId)) &&
+      (!s || String(b.no).startsWith(s) || b.name.toLowerCase().includes(s) || (b.village ?? '').toLowerCase().includes(s)));
+  }, [data.allBooths, q, filter, ticked]);
+  const toggle = (no: number) => setTicked((x) => { const n = new Set(x); if (n.has(no)) n.delete(no); else n.add(no); return n; });
+  const added = [...ticked].filter((no) => !start.has(no));
+  const removed = [...start].filter((no) => !ticked.has(no));
+  const changed = added.length + removed.length > 0 || (zone && name.trim() && name.trim() !== zone.name);
+
+  const save = async () => {
+    if (!target) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      if (zone && name.trim() && name.trim() !== zone.name) await adminApi.renameZone(mid, zone.id, name.trim());
+      if (added.length) await adminApi.moveBooths(mid, added, target);
+      if (removed.length) await adminApi.moveBooths(mid, removed, null);
+      onSaved();
+    } catch (e) { setErr((e as Error).message); setBusy(false); }
+  };
+
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress}
-      style={({ pressed }) => [s.step, disabled && { opacity: 0.35 }, pressed && { opacity: 0.6 }]}>
-      <Icon name={icon} size={28} color={colors.accent} />
-    </Pressable>
+    <Screen scroll={false} back={t('admin.zones')} onBack={onClose} width="narrow">
+      <View style={s.edTop}>
+        {zone ? (
+          <Field label={t('zez.name')} value={name} onChangeText={setName} maxLength={40} />
+        ) : (
+          <Select label={t('zez.putIn')} value={target} onChange={setTarget} options={data.zones.map((x) => ({ value: x.id, label: x.name }))} />
+        )}
+        <View style={s.search}>
+          <Icon name="search" size={18} color={colors.textSecondary} />
+          <TextInput value={q} onChangeText={setQ} placeholder={t('zez.search')} placeholderTextColor={colors.textTertiary} style={s.input} autoCorrect={false} accessibilityLabel={t('zez.search')} />
+        </View>
+        <SegmentedControl<Filter> label={t('zez.show')} value={filter} onChange={setFilter}
+          options={[{ value: 'all', label: t('zez.fAll') }, { value: 'here', label: t('zez.fHere', { count: ticked.size }) }, { value: 'none', label: t('zez.fNone') }]} />
+      </View>
+      <FlatList
+        data={rows}
+        keyExtractor={(b) => String(b.no)}
+        initialNumToRender={30}
+        windowSize={8}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ paddingBottom: 120 }}
+        renderItem={({ item: b }) => {
+          const on = ticked.has(b.no);
+          const other = b.zoneId && b.zoneId !== zone?.id ? zoneName.get(b.zoneId) : null;
+          return (
+            <Pressable accessibilityRole="checkbox" accessibilityState={{ checked: on }} accessibilityLabel={`${b.no} ${b.name}${other ? `, ${t('zez.inZone', { zone: other })}` : ''}`}
+              onPress={() => toggle(b.no)} style={({ pressed }) => [s.row, pressed && { backgroundColor: colors.pressed }]}>
+              <Icon name={on ? 'checkbox' : 'square-outline'} size={24} color={on ? colors.accent : colors.textTertiary} />
+              <View style={s.flex}>
+                <AppText variant="callout" numberOfLines={1}>{`${b.no} · ${b.name}`}</AppText>
+                <AppText variant="footnote" color={other && on ? colors.warning : colors.textSecondary} numberOfLines={1}>
+                  {[b.village, other ? (on ? t('zez.moveFrom', { zone: other }) : t('zez.inZone', { zone: other })) : null].filter(Boolean).join(' · ')}
+                </AppText>
+              </View>
+            </Pressable>
+          );
+        }}
+      />
+      <View style={s.bar}>
+        {err ? <AppText variant="footnote" color={colors.danger}>{err}</AppText> : null}
+        <View style={s.barRow}>
+          {zone ? <Button kind="plain" label={t('zez.delete')} onPress={() => setDel(true)} /> : null}
+          <Button kind="filled" style={s.flex} label={changed ? t('zez.save', { added: added.length, removed: removed.length }) : t('zez.nothing')} disabled={!changed || busy || !target} onPress={() => void save()} />
+        </View>
+      </View>
+      {zone ? (
+        <Sheet visible={del} title={t('zez.deleteTitle', { zone: zone.name })} onClose={() => setDel(false)} footer={t('zez.deleteHint')}>
+          <View style={s.form}>
+            <Button kind="danger" label={t('zez.delete')} disabled={busy}
+              onPress={() => { setBusy(true); void adminApi.deleteZone(mid, zone.id).then(onSaved, (e: Error) => { setErr(e.message); setBusy(false); setDel(false); }); }} />
+            <Button kind="plain" label={t('common.cancel')} onPress={() => setDel(false)} />
+          </View>
+        </Sheet>
+      ) : null}
+    </Screen>
   );
 }
 
 const s = themed(() => StyleSheet.create({
-  stepper: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xxl, padding: spacing.lg },
-  step: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accentTint, alignItems: 'center', justifyContent: 'center' },
-  count: { minWidth: 60, textAlign: 'center' },
-  err: { paddingHorizontal: spacing.lg, paddingBottom: spacing.md },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, padding: spacing.lg },
-  chips0: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  chip: { minWidth: 52, height: 40, paddingHorizontal: spacing.md, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill },
-  warn: { backgroundColor: colors.accentTint },
-  zone: { padding: spacing.lg, gap: spacing.sm },
-  divider: { borderBottomWidth: 0.5, borderBottomColor: colors.separator },
+  flex: { flex: 1, minWidth: 0 },
+  pad: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.sm },
+  form: { padding: spacing.lg, gap: spacing.md },
+  splitRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, padding: spacing.lg },
+  edTop: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.md, gap: spacing.md },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 42, paddingHorizontal: spacing.md, borderRadius: radius.md, backgroundColor: colors.fill },
+  input: { flex: 1, fontSize: 16, fontFamily: fonts.regular, color: colors.text, paddingVertical: 0 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: 56, paddingHorizontal: spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.separator, backgroundColor: colors.surface },
+  bar: { position: 'absolute', left: 0, right: 0, bottom: 0, padding: spacing.lg, gap: spacing.sm, backgroundColor: colors.bg, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.separator },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
 }));

@@ -43,7 +43,7 @@ export default function TabsLayout() {
     <Tabs
       key={m?.id ?? 'none'}
       tabBar={wide ? () => null : undefined}
-      backBehavior={wide ? 'history' : undefined}
+      backBehavior="history"
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.accent,

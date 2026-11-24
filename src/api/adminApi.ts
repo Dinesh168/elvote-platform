@@ -31,7 +31,11 @@ export interface Dashboard {
 
 export interface BoothRow { no: number; name: string; zone: string | null; area?: string | null; village?: string | null; strength: 'S' | 'M' | 'W'; strengthSource?: 'admin' | 'auto'; workers: number; total: number; met: number; houses: number; housesVisited: number; withMobile: number; our: number; target: number; opp: number }
 export interface Surnames { voters: number; surnames: { surname: string; total: number; met: number; our: number; target: number; opp: number }[] }
-export interface Zones { maxZones: number; zoneCount: number; zones: { id: string; number: number; name: string; booths: number[] }[]; unassigned: number[] }
+export interface Zones {
+  maxZones: number; zoneCount: number; zones: { id: string; number: number; name: string; booths: number[]; total: number; met: number }[]; unassigned: number[];
+  /** spec zones-easy Z3: every booth for the tick list. */
+  allBooths: { no: number; name: string; village: string | null; zoneId: string | null }[];
+}
 export interface TeamMember { membershipId: string; userId: string; name: string; mobile: string; epic: string | null; role: 'admin' | 'volunteer'; status: string; requestedAt: string; rejectReason: string | null; booths: number[]; contactedToday: number; contactedTotal: number; lastSyncAt?: string | null; unsent?: number }
 export interface Drive { id: string; kind: string; name: string; startsOn: string; endsOn: string; scope: string; status: 'not_started' | 'ongoing' | 'completed'; daysLeft: number; targeted: number; completed: number; pct: number; byZone: { zone: string; targeted: number; completed: number; pct: number }[] }
 export interface Poll { total: number; voted: number; pct: number; notVoted: { our: number; target: number; opp: number }; helpPending: number; zones: { name: string; total: number; voted: number; pct: number }[]; booths: { no: number; name: string; total: number; voted: number; pct: number; ourNotVoted: number; helpPending: number }[] }
@@ -64,6 +68,9 @@ export const adminApi = {
   setZoneCount: (mid: string, count: number) => http.put<{ zoneCount: number }>(`${m(mid)}/zones/count`, { count }),
   renameZone: (mid: string, id: string, name: string) => http.patch(`${m(mid)}/zones/${id}`, { name }),
   moveBooths: (mid: string, booths: number[], zoneId: string | null) => http.put(`${m(mid)}/zones/booths`, { booths, zoneId }),
+  /** spec zones-easy Z1/Z2. */
+  splitZones: (mid: string, count: number) => http.post<{ zoneCount: number }>(`${m(mid)}/zones/split`, { count }),
+  deleteZone: (mid: string, id: string) => http.del<{ zoneCount: number }>(`${m(mid)}/zones/${id}`),
   team: (mid: string, status: 'pending' | 'approved' | 'rejected', q?: string) => http.get<TeamMember[]>(`${m(mid)}/team${qs({ status, q })}`),
   approve: (mid: string, membershipId: string, booths: number[]) => http.post(`${m(mid)}/team/${membershipId}/approve`, { booths }),
   reject: (mid: string, membershipId: string, reason: string) => http.post(`${m(mid)}/team/${membershipId}/reject`, { reason }),

@@ -20,6 +20,7 @@ import { usePrefs } from '@/stores/prefs';
 import '@/features/pollingDay/tracker';
 import { listenPushTaps } from '@/features/pollingDay/push';
 import { goLanding } from '@/features/session/session';
+import { useTrackHistory } from '@/features/shell/navHistory';
 import { NotoSansDevanagari_400Regular, NotoSansDevanagari_600SemiBold, NotoSansDevanagari_700Bold } from '@expo-google-fonts/noto-sans-devanagari';
 
 void SplashScreen.preventAutoHideAsync();
@@ -54,6 +55,8 @@ export default function RootLayout() {
     NotoSansGurmukhi_400Regular, NotoSansGurmukhi_600SemiBold, NotoSansGurmukhi_700Bold,
     NotoSansDevanagari_400Regular, NotoSansDevanagari_600SemiBold, NotoSansDevanagari_700Bold,
   });
+  // spec nav-back B1–B3: Back (on screen and Android) returns to the screen you came from, across tabs too.
+  useTrackHistory();
   const hydrated = usePrefs((s) => s.hydrated);
   const lang = usePrefs((s) => s.lang);
   const [i18nReady, setI18nReady] = useState(false);

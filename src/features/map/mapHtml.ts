@@ -38,9 +38,10 @@ html,body,#m{margin:0;height:100%;background:${C.bg};font-family:-apple-system,S
 <script src="${LEAFLET}/leaflet.js"></script><script src="${CLUSTER}/leaflet.markercluster.js"></script>
 <script>
 ${send}
-var map=L.map('m',{zoomControl:false,attributionControl:true,preferCanvas:true,tap:true}).setView([22.5,79],5);
-var street=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri, HERE, Garmin, © OpenStreetMap',keepBuffer:1,updateWhenIdle:true}).addTo(map);
-var sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,attribution:'© Esri',keepBuffer:1,updateWhenIdle:true});
+var map=L.map('m',{zoomControl:false,maxZoom:19,attributionControl:true,preferCanvas:true,tap:true}).setView([22.5,79],5);
+// spec booth-map M1: rural India has no tiles past ~z16/17 ("Map data not yet available"); stretch the last real level instead.
+var street=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,maxNativeZoom:16,attribution:'© Esri, HERE, Garmin, © OpenStreetMap',keepBuffer:1,updateWhenIdle:true}).addTo(map);
+var sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,maxNativeZoom:17,attribution:'© Esri',keepBuffer:1,updateWhenIdle:true});
 var group=L.markerClusterGroup({showCoverageOnHover:false,spiderfyOnMaxZoom:true,disableClusteringAtZoom:16,maxClusterRadius:45,chunkedLoading:true,removeOutsideVisibleBounds:true,animate:false,
   iconCreateFunction:function(c){var bg='',fg='';if(rule){var o=0,r=0,n=0;c.getAllChildMarkers().forEach(function(mk){if(mk.__p&&mk.__p.o!=null){o+=mk.__p.o;r+=mk.__p.r;n++}});if(n){var d=o-r;bg=d>=rule.margin?rule.won:d<-rule.margin?rule.lost:rule.close;fg=d>=rule.margin||d<-rule.margin?'${C.pinTextDark}':'${C.pinTextLight}'}}
     return L.divIcon({html:'<div class="cl"'+(bg?' style="background:'+bg+';color:'+fg+'"':'')+'>'+c.getChildCount()+'</div>',className:'',iconSize:[38,38]})}});

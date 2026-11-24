@@ -9,6 +9,7 @@ import { colors, spacing, touch, web } from '../tokens';
 import { AppText } from './AppText';
 import { Icon } from './Icon';
 import { LangPill } from './Pills';
+import { backLeavesTab, goBack } from '@/features/shell/navHistory';
 
 /** Screen frame: grouped background, safe area, iOS navigation bar row. */
 export function Screen({
@@ -142,12 +143,13 @@ export function BackLink({ label, onPress }: { label: string; onPress?: () => vo
       accessibilityRole="button"
       accessibilityLabel={t('common.back')}
       hitSlop={8}
-      onPress={onPress ?? (() => (router.canGoBack() ? router.back() : router.replace('/')))}
+      onPress={onPress ?? goBack}
       style={({ pressed }) => [s.back, pressed && { opacity: 0.5 }]}
     >
       <Icon name="chevron-back" size={28} color={colors.accent} />
       <AppText variant="body" color={colors.accent}>
-        {label}
+        {/* Back to another tab: the fixed label would name the wrong place, so it just says Back. */}
+        {!onPress && backLeavesTab() ? t('common.back') : label}
       </AppText>
     </Pressable>
   );

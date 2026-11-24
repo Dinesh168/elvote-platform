@@ -222,7 +222,20 @@ export async function adminRoutes(app: FastifyInstance) {
       const un = await c.query<{ part_no: number }>(
         `SELECT b.part_no FROM booths b WHERE b.ac_no = $2 AND b.deleted_at IS NULL
             AND NOT EXISTS (SELECT 1 FROM zone_booths zb WHERE zb.party_id = $1 AND zb.booth_id = b.id) ORDER BY b.part_no`, [m.partyId, m.acNo]);
-      return { maxZones: m.maxZones, zoneCount: m.zoneCount, zones: z.rows.map((x) => ({ ...x, booths: x.booths ?? [] })), unassigned: un.rows.map((x) => x.part_no) };
+      // spec zones-easy Z2/Z3: every booth with name, village and zone (the tick list), and met / total per zone.
+      const all = await c.query<{ part_no: number; name: string; village: string | null; zone_id: string | null; total: number; met: number }>(
+        `SELECT b.part_no, b.name, b.locality AS village, zb.zone_id, COALESCE(s.total, 0) AS total, COALESCE(s.met, 0) AS met
+           FROM booths b LEFT JOIN zone_booths zb ON zb.party_id = $1 AND zb.booth_id = b.id
+           LEFT JOIN stats_booth s ON s.party_id = $1 AND s.booth_id = b.id
+          WHERE b.ac_no = $2 AND b.deleted_at IS NULL ORDER BY b.part_no`, [m.partyId, m.acNo]);
+      const sums = new Map<string, { total: number; met: number }>();
+      for (const b of all.rows) if (b.zone_id) { const x = sums.get(b.zone_id) ?? { total: 0, met: 0 }; x.total += b.total; x.met += b.met; sums.set(b.zone_id, x); }
+      return {
+        maxZones: m.maxZones, zoneCount: m.zoneCount,
+        zones: z.rows.map((x) => ({ ...x, booths: x.booths ?? [], total: sums.get(x.id)?.total ?? 0, met: sums.get(x.id)?.met ?? 0 })),
+        unassigned: un.rows.map((x) => x.part_no),
+        allBooths: all.rows.map((b) => ({ no: b.part_no, name: b.name, village: b.village, zoneId: b.zone_id })),
+      };
     });
   });
 
@@ -238,6 +251,54 @@ export async function adminRoutes(app: FastifyInstance) {
     });
     await core.query('UPDATE party_constituencies SET zone_count = $2, updated_at = now() WHERE id = $1', [m.partyAcId, count]);
     await audit({ actor: m.userId, role: actorRole(m), action: 'zones.count', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, details: { from: m.zoneCount, to: count } });
+    return { ok: true, zoneCount: count };
+  });
+
+  /** spec zones-easy Z1: split all booths into `count` zones of equal size, in booth-number order (replaces the zones). */
+  app.post('/v1/m/:mid/zones/split', async (req) => {
+    const { m, pool } = await admin(req, 'zones');
+    const { count } = parse(z.object({ count: z.number().int().min(1).max(50) }), req.body);
+    if (count > m.maxZones) throw invalid('zones_over_max', `You can use at most ${m.maxZones} zones.`);
+    await inParty(pool, m.partyId, async (c) => {
+      const old = await c.query<{ number: number; name: string }>('SELECT number, name FROM zones WHERE party_id = $1 AND ac_no = $2', [m.partyId, m.acNo]);
+      const names = new Map(old.rows.map((x) => [x.number, x.name]));
+      await c.query('DELETE FROM zone_booths WHERE party_id = $1 AND booth_id IN (SELECT id FROM booths WHERE ac_no = $2)', [m.partyId, m.acNo]);
+      await c.query('DELETE FROM zones WHERE party_id = $1 AND ac_no = $2 AND number > $3', [m.partyId, m.acNo, count]);
+      const ids: string[] = [];
+      for (let n = 1; n <= count; n++) {
+        const r = await c.query<{ id: string }>(
+          `INSERT INTO zones (party_id, ac_no, number, name) VALUES ($1,$2,$3,$4)
+           ON CONFLICT (party_id, ac_no, number) DO UPDATE SET name = zones.name RETURNING id`, [m.partyId, m.acNo, n, names.get(n) ?? `Z${n}`]);
+        ids.push(r.rows[0].id);
+      }
+      const booths = await c.query<{ id: string }>('SELECT id FROM booths WHERE ac_no = $1 AND deleted_at IS NULL ORDER BY part_no', [m.acNo]);
+      const per = Math.ceil(booths.rows.length / count) || 1;
+      for (let i = 0; i < booths.rows.length; i++) {
+        await c.query('INSERT INTO zone_booths (party_id, booth_id, zone_id) VALUES ($1,$2,$3)', [m.partyId, booths.rows[i].id, ids[Math.min(count - 1, Math.floor(i / per))]]);
+      }
+    });
+    await core.query('UPDATE party_constituencies SET zone_count = $2, updated_at = now() WHERE id = $1', [m.partyAcId, count]);
+    await audit({ actor: m.userId, role: actorRole(m), action: 'zones.split', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, details: { count } });
+    return { ok: true, zoneCount: count };
+  });
+
+  /** spec zones-easy Z2: delete one zone; its booths become "without a zone"; later zones move up one number (names kept). */
+  app.delete('/v1/m/:mid/zones/:zoneId', async (req) => {
+    const { m, pool } = await admin(req, 'zones');
+    const { zoneId } = parse(z.object({ mid: Uuid, zoneId: Uuid }), req.params);
+    let count = 0;
+    await inParty(pool, m.partyId, async (c) => {
+      const d = await c.query<{ number: number }>('DELETE FROM zones WHERE id = $1 AND party_id = $2 AND ac_no = $3 RETURNING number', [zoneId, m.partyId, m.acNo]);
+      if (!d.rowCount) throw notFound('zone_not_found');
+      await c.query('DELETE FROM zone_booths WHERE party_id = $1 AND zone_id = $2', [m.partyId, zoneId]);
+      const rest = await c.query<{ id: string }>('SELECT id FROM zones WHERE party_id = $1 AND ac_no = $2 ORDER BY number', [m.partyId, m.acNo]);
+      // renumber in two steps so the UNIQUE (party, ac, number) never clashes
+      await c.query('UPDATE zones SET number = number + 1000 WHERE party_id = $1 AND ac_no = $2', [m.partyId, m.acNo]);
+      for (let i = 0; i < rest.rows.length; i++) await c.query('UPDATE zones SET number = $2 WHERE id = $1', [rest.rows[i].id, i + 1]);
+      count = rest.rows.length;
+    });
+    await core.query('UPDATE party_constituencies SET zone_count = $2, updated_at = now() WHERE id = $1', [m.partyAcId, count]);
+    await audit({ actor: m.userId, role: actorRole(m), action: 'zones.delete', partyId: m.partyId, stateCode: m.stateCode, acNo: m.acNo, details: { zoneId } });
     return { ok: true, zoneCount: count };
   });
 
