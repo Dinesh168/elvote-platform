@@ -18,6 +18,13 @@ export interface ClusterRule { margin: number; won: string; close: string; lost:
 
 const LEAFLET = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist';
 const CLUSTER = 'https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist';
+/** spec security-fixes SF3: the browser runs these files only if they are byte-for-byte the versions we checked. */
+const SRI = {
+  leafletJs: 'sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH',
+  leafletCss: 'sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H',
+  clusterJs: 'sha384-eXVCORTRlv4FUUgS/xmOyr66XBVraen8ATNLMESp92FKXLAMiKkerixTiBvXriZr',
+  clusterCss: 'sha384-pmjIAcz2bAn0xukfxADbZIb3t8oRT9Sv0rvO+BR5Csr6Dhqq+nZs59P0pPKQJkEV',
+};
 
 import { mapColors as C } from '@/design/tokens';
 
@@ -26,7 +33,7 @@ export function mapHtml(o: { bridge: 'rn' | 'parent'; accent: string; fitLabel: 
     ? 'function send(m){window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify(m))}'
     : 'function send(m){parent.postMessage(JSON.stringify(Object.assign({__elvoteMap:1},m)),"*")}';
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<link rel="stylesheet" href="${LEAFLET}/leaflet.css"><link rel="stylesheet" href="${CLUSTER}/MarkerCluster.css">
+<link rel="stylesheet" href="${LEAFLET}/leaflet.css" integrity="${SRI.leafletCss}" crossorigin="anonymous"><link rel="stylesheet" href="${CLUSTER}/MarkerCluster.css" integrity="${SRI.clusterCss}" crossorigin="anonymous">
 <style>
 html,body,#m{margin:0;height:100%;background:${C.bg};font-family:-apple-system,Segoe UI,Roboto,sans-serif}
 .pin{display:flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 4px;box-sizing:border-box;border-radius:13px;border:2px solid ${C.pinBorder};font:600 11px/1 sans-serif;box-shadow:0 1px 3px rgba(0,0,0,.35)}
@@ -35,7 +42,7 @@ html,body,#m{margin:0;height:100%;background:${C.bg};font-family:-apple-system,S
 .me{width:14px;height:14px;border-radius:7px;background:${C.me};border:3px solid ${C.pinBorder};box-shadow:0 0 0 6px rgba(26,115,232,.25)}
 .pick .leaflet-container{cursor:crosshair}
 </style></head><body><div id="m"></div>
-<script src="${LEAFLET}/leaflet.js"></script><script src="${CLUSTER}/leaflet.markercluster.js"></script>
+<script src="${LEAFLET}/leaflet.js" integrity="${SRI.leafletJs}" crossorigin="anonymous"></script><script src="${CLUSTER}/leaflet.markercluster.js" integrity="${SRI.clusterJs}" crossorigin="anonymous"></script>
 <script>
 ${send}
 var map=L.map('m',{zoomControl:false,maxZoom:19,attributionControl:true,preferCanvas:true,tap:true}).setView([22.5,79],5);

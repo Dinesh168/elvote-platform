@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { allStateCodes, core, inParty, statePool } from '../db/pools.js';
 import { audit, requireFeature, requireMembership } from '../lib/access.js';
 import { currentElectionId } from '../lib/stats.js';
-import { conflict, invalid, notFound } from '../lib/errors.js';
+import { conflict, invalid, notFound, tooMany } from '../lib/errors.js';
 import { DateStr, parse, PartNo, Uuid } from '../lib/http.js';
 import { alerts, customerOf, ELECTION_COLS, markSeen, pollingView, report, toElection } from '../lib/presence.js';
 
@@ -15,6 +15,23 @@ const Lat = z.number().min(6).max(38);
 const Lng = z.number().min(68).max(98);
 
 /** Volunteer and admin routes (scoped by membership). */
+/**
+ * spec security-fixes SF2: polling-day find shows the whole assembly, so one person may look up at most
+ * FIND_PER_MIN times a minute (enough to serve a queue, too slow to copy the roll). Per API process.
+ */
+const FIND_PER_MIN = 30;
+const finds = new Map<string, { n: number; at: number }>();
+export function limitFind(userId: string) {
+  const now = Date.now();
+  const h = finds.get(userId);
+  if (!h || now - h.at > 60_000) {
+    if (finds.size > 50_000) finds.clear();
+    finds.set(userId, { n: 1, at: now });
+    return;
+  }
+  if (++h.n > FIND_PER_MIN) throw tooMany('find_rate', 'Too many searches. Wait a minute and try again.');
+}
+
 export async function pollingRoutes(app: FastifyInstance) {
   /** V2: the phone reports permission and, when allowed, its position. */
   app.post('/v1/m/:mid/presence', async (req) => {
@@ -54,6 +71,7 @@ export async function pollingRoutes(app: FastifyInstance) {
     }
     const m = await requireMembership(req.userId, mid);
     requireFeature(m, 'poll');
+    limitFind(req.userId);
     const pool = await statePool(m.stateCode);
     return inParty(pool, m.partyId, async (c) => {
       const el = await currentElectionId(c);

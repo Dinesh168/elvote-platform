@@ -1599,5 +1599,8 @@
     "deleteHint": "Its booths become “without a zone”. Nothing else changes.",
     "save": "Save (+{{added}} / −{{removed}})",
     "nothing": "Tick booths to change"
+  },
+  "find": {
+    "tooMany": "Too many searches. Wait a minute and try again."
   }
 }

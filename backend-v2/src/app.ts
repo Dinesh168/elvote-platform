@@ -7,7 +7,7 @@ import path from 'node:path';
 import Fastify from 'fastify';
 import { env } from './config.js';
 import { core } from './db/pools.js';
-import { assertUserActive } from './lib/access.js';
+import { assertUserActive, requireSuperAdmin } from './lib/access.js';
 import { verifyAccess } from './lib/auth.js';
 import { ApiError } from './lib/errors.js';
 import { accessUserRoutes } from './routes/access.js';
@@ -39,12 +39,14 @@ export async function buildApp() {
 
   app.decorateRequest('userId', '');
   app.addHook('onRequest', async (req) => {
-    const path = req.url.split('?')[0];
-    if (req.method === 'OPTIONS' || PUBLIC.some((p) => path === p || (p.endsWith('/') && path.startsWith(p)))) return;
+    // spec security-fixes SF1: the matched route decides (an encoded URL cannot look like a different path).
+    const path = req.routeOptions.url;
+    if (req.method === 'OPTIONS' || (path && PUBLIC.some((p) => path === p || (p.endsWith('/') && path.startsWith(p))))) return;
     const h = req.headers.authorization;
     if (!h?.startsWith('Bearer ')) throw new ApiError(401, 'unauthorized', 'Sign in again.');
     req.userId = await verifyAccess(h.slice(7));
     await assertUserActive(req.userId);
+    if (path?.startsWith('/v1/admin/')) await requireSuperAdmin(req.userId);
   });
 
   app.setErrorHandler((e, req, reply) => {

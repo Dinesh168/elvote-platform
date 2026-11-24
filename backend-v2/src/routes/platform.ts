@@ -42,8 +42,9 @@ async function personFor(b: { email?: string; mobile?: string; name: string }): 
 }
 
 export async function platformRoutes(app: FastifyInstance) {
+  // spec security-fixes SF1: decide by the matched route, never the raw URL (`/v1/%61dmin/...` matches /v1/admin/...).
   app.addHook('preHandler', async (req) => {
-    if (req.url.startsWith('/v1/admin/')) await requireSuperAdmin(req.userId);
+    if ((req.routeOptions.url ?? '').startsWith('/v1/admin/')) await requireSuperAdmin(req.userId);
   });
   await customerRoutes(app);
   await accessAdminRoutes(app);

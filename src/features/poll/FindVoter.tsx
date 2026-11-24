@@ -31,7 +31,7 @@ export function FindVoter({ visible, onClose, onSearchName }: { visible: boolean
     try {
       setItems((await adminApi.pollFind(mid, q.trim())).items);
     } catch (e) {
-      setErr(e instanceof ApiError && e.code === 'network' ? t('auth.network') : (e as Error).message);
+      setErr(e instanceof ApiError && e.code === 'network' ? t('auth.network') : e instanceof ApiError && e.code === 'find_rate' ? t('find.tooMany') : (e as Error).message);
     } finally {
       setBusy(false);
     }
