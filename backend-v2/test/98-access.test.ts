@@ -338,3 +338,59 @@ describe('parties by state (party-states)', () => {
     expect(await catalog('HR')).not.toContain('Kisan Morcha');
   });
 });
+
+/** spec admin-views TC-SA-1..6: the super-admin manages a team's people and views directly. */
+describe('super-admin team management (admin-views)', () => {
+  const team = async () => ((await sup.get('/v1/admin/customers')).json() as { id: string; partyName: string; acNo: number }[])
+    .find((c) => c.partyName === 'Jan Vikas Party' && c.acNo === 66)!.id;
+
+  it('TC-SA-1/2 list members; add a volunteer directly with booths', async () => {
+    const id = await team();
+    const before = (await sup.get(`/v1/admin/customers/${id}/members`)).json() as { name: string; role: string; booths: number[] }[];
+    expect(before.some((x) => x.role === 'volunteer' && x.booths.includes(112))).toBe(true);
+    const r = await sup.post('/v1/admin/volunteers', { mobile: '9811100088', name: 'Direct Volunteer', partyAcId: id, booths: [101] });
+    expect(r.statusCode).toBe(200);
+    const after = (await sup.get(`/v1/admin/customers/${id}/members`)).json() as { membershipId: string; name: string; role: string; status: string; booths: number[] }[];
+    expect(after.find((x) => x.name === 'Direct Volunteer')).toMatchObject({ role: 'volunteer', status: 'approved', booths: [101] });
+  });
+
+  it('TC-SA-3 change booths; a booth outside the assembly is refused', async () => {
+    const id = await team();
+    const m = ((await sup.get(`/v1/admin/customers/${id}/members`)).json() as { membershipId: string; name: string }[]).find((x) => x.name === 'Direct Volunteer')!;
+    expect((await sup.put(`/v1/admin/customers/${id}/members/${m.membershipId}/booths`, { booths: [101, 102] })).statusCode).toBe(200);
+    expect((await sup.put(`/v1/admin/customers/${id}/members/${m.membershipId}/booths`, { booths: [9999] })).statusCode).toBe(422);
+  });
+
+  it('TC-SA-4 remove a member', async () => {
+    const id = await team();
+    const m = ((await sup.get(`/v1/admin/customers/${id}/members`)).json() as { membershipId: string; name: string }[]).find((x) => x.name === 'Direct Volunteer')!;
+    expect((await sup.del(`/v1/admin/customers/${id}/members/${m.membershipId}`)).statusCode).toBe(200);
+    const left = (await sup.get(`/v1/admin/customers/${id}/members`)).json() as { name: string }[];
+    expect(left.some((x) => x.name === 'Direct Volunteer')).toBe(false);
+  });
+
+  it('TC-SA-5 only the super-admin', async () => {
+    const id = await team();
+    const adm = call((await login('9000000002')).token);
+    expect((await adm.post('/v1/admin/volunteers', { mobile: '9811100089', name: 'Nope', partyAcId: id, booths: [101] })).statusCode).toBe(403);
+    expect((await adm.get(`/v1/admin/customers/${id}/members`)).statusCode).toBe(403);
+  });
+
+  it('TC-SA-6 views: saved, sent to the admin, validated', async () => {
+    const id = await team();
+    expect((await sup.patch(`/v1/admin/customers/${id}`, { views: ['zone', 'area'] })).json().views).toEqual(['zone', 'area']);
+    const me = (await call((await login('9000000002')).token).get('/v1/me')).json();
+    expect(me.memberships.find((x: { acNo: number; role: string }) => x.acNo === 66 && x.role === 'admin').views).toEqual(['zone', 'area']);
+    expect((await sup.patch(`/v1/admin/customers/${id}`, { views: [] })).statusCode).toBe(422);
+    expect((await sup.patch(`/v1/admin/customers/${id}`, { views: ['x'] })).statusCode).toBe(422);
+    await sup.patch(`/v1/admin/customers/${id}`, { views: ['zone'] });
+  });
+
+  it('TC-SA-7 booth area and village are edited by the super-admin and shown to the admin', async () => {
+    expect((await sup.patch('/v1/admin/booths/PB/66/101/place', { area: 'Tehsil Rampur', village: 'Kheri' })).statusCode).toBe(200);
+    const a = call((await login('9000000002')).token);
+    const amid = await membership((await login('9000000002')).token, (m) => m.role === 'admin' && m.acNo === 66);
+    const row = ((await a.get(`/v1/m/${amid}/booth-table`)).json() as { no: number; area: string; village: string }[]).find((b) => b.no === 101);
+    expect(row).toMatchObject({ area: 'Tehsil Rampur', village: 'Kheri' });
+  });
+});

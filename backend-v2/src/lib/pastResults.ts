@@ -184,8 +184,8 @@ export function areaYear(booths: BoothYear[], party: string) {
   return { total, votes, shares, ours: pct(ours, total), oursVotes: ours, winner: sorted[0]?.[0] ?? null, margin: ours - rival, rivalVotes: rival, electors, estimated };
 }
 
-/** Safe / swing / tough by the last margin (decision D6). */
-export const groupOf = (margin: number): 'safe' | 'swing' | 'tough' => (margin >= 100 ? 'safe' : margin < -100 ? 'tough' : 'swing');
+/** Safe / swing / tough by the last margin; `t` = the team's close-contest margin (spec map-results R1, default 100). */
+export const groupOf = (margin: number, t = 100): 'safe' | 'swing' | 'tough' => (margin >= t ? 'safe' : margin < -t ? 'tough' : 'swing');
 
 /** Votes needed now: the strongest rival's last votes + 1, scaled to today's roll when both sizes are known. */
 export function neededNow(rivalVotes: number, lastElectors: number | null, currentVoters: number) {
@@ -194,12 +194,12 @@ export function neededNow(rivalVotes: number, lastElectors: number | null, curre
 }
 
 /** Booth strength from the last election for this party (spec real-demo-data B3, D3): S won by ≥ 100, W lost by > 100, else M. */
-export function autoStrength(res: AcResults, party: string | null): Map<number, 'S' | 'M' | 'W'> {
+export function autoStrength(res: AcResults, party: string | null, t = 100): Map<number, 'S' | 'M' | 'W'> {
   const out = new Map<number, 'S' | 'M' | 'W'>();
   if (!party) return out;
   for (const year of [...res.keys()].sort((a, b) => a - b)) {
     for (const b of res.get(year)!.values()) {
-      const g = groupOf(areaYear([b], party).margin);
+      const g = groupOf(areaYear([b], party).margin, t);
       out.set(b.part, g === 'safe' ? 'S' : g === 'tough' ? 'W' : 'M');
     }
   }

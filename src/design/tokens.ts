@@ -84,6 +84,17 @@ export const chart = {
   seq: ['#BAC9E3', '#7493C7', '#184BA1'],
 } as const;
 
+/** spec booth-map: colours used inside the map page (plain HTML, so they are passed in as values). */
+export const mapColors = {
+  bg: '#E9EEF2',
+  pinBorder: '#FFFFFF',
+  pinTextDark: '#FFFFFF',
+  pinTextLight: '#111111',
+  cluster: '#334155',
+  me: '#1A73E8',
+  shadow: '#000000',
+} as const;
+
 /** Quick party-colour choices for the super-admin (any #RRGGBB can also be typed). */
 export const brandSwatches = ['#15803D', '#0E7490', '#1D4ED8', '#7C3AED', '#BE123C', '#C2410C', '#B45309', '#0F172A'] as const;
 

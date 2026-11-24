@@ -6,7 +6,7 @@
 export type GroupCode = 'our' | 'target' | 'opp';
 export type Relation = 'S/o' | 'W/o' | 'D/o';
 export type Gender = 'M' | 'F' | 'T';
-export type Residence = 'here' | 'moved';
+export type Residence = 'here' | 'moved' | 'died' | 'not_found';
 
 export interface Voter {
   id: string; // mock: `${booth}-${sno}`; server: numeric id as a string

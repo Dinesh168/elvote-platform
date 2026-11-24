@@ -81,6 +81,9 @@ function EditSheet({ state, ac, booth, onClose, onSaved }: { state: string; ac: 
   const [lat, setLat] = useState(booth.lat != null ? String(booth.lat) : '');
   const [lng, setLng] = useState(booth.lng != null ? String(booth.lng) : '');
   const [err, setErr] = useState<string | null>(null);
+  // spec admin-views G1: area (tehsil / ward) and village feed the admin's "view by".
+  const [area, setArea] = useState(booth.area ?? '');
+  const [village, setVillage] = useState(booth.locality ?? '');
   const la = Number(lat);
   const lo = Number(lng);
   const latBad = lat !== '' && !(la >= 6 && la <= 38);
@@ -94,6 +97,10 @@ function EditSheet({ state, ac, booth, onClose, onSaved }: { state: string; ac: 
         {err ? <AppText variant="callout" color={colors.danger}>{err}</AppText> : null}
         <Button label={t('cms.save')} disabled={!lat || !lng || latBad || lngBad} onPress={() => void go({ lat: la, lng: lo })} />
         {booth.lat != null ? <Button kind="plain" label={t('pd.b.clear')} onPress={() => void go({ lat: null, lng: null })} /> : null}
+        <Field label={t('allb.area')} value={area} onChangeText={setArea} maxLength={80} />
+        <Field label={t('allb.village')} value={village} onChangeText={setVillage} maxLength={120} />
+        <Button kind="tinted" label={t('steam.savePlace')} disabled={area === (booth.area ?? '') && village === (booth.locality ?? '')}
+          onPress={() => void platformApi.setBoothPlace(state, ac, booth.no, { area: area.trim() || null, village: village.trim() || null }).then(onSaved, (e: Error) => setErr(e.message))} />
       </View>
     </Sheet>
   );

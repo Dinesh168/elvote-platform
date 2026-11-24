@@ -28,12 +28,14 @@ const Settings = z.object({
   status: z.enum(['active', 'paused', 'closed']), validUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   syncMode: z.enum(['live', 'offline', 'scheduled']), syncMinutes: z.number().int().min(1, 'At least 1 minute').max(120, 'At most 120 minutes'),
   boothRadiusM: z.number().int().min(50, 'At least 50 m').max(2000, 'At most 2,000 m'),
+  views: z.array(z.enum(['zone', 'area', 'village'])).min(1, 'Pick at least one view').max(3),
+  resultMargin: z.number().int().min(10, 'At least 10 votes').max(2000, 'At most 2,000 votes'),
 }).partial().strict();
 
 const COLS = `pc.id, p.name AS party_name, trim(pc.state_code) AS state_code, pc.ac_no, pc.ac_name, pc.app_name, pc.logo_url, pc.banner_url, pc.brand_colour,
   pc.candidate_name, pc.candidate_photo_url, pc.ballot_no, pc.candidate_slogan, pc.candidate_message, pc.slip_share_text, pc.features,
   pc.regional_lang, pc.languages, pc.max_zones, pc.zone_count, pc.max_volunteers, pc.max_admins, pc.status,
-  to_char(pc.valid_until, 'YYYY-MM-DD') AS valid_until, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m,
+  to_char(pc.valid_until, 'YYYY-MM-DD') AS valid_until, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m, pc.views, pc.result_margin,
   (SELECT count(*)::int FROM memberships m WHERE m.party_constituency_id = pc.id AND m.status = 'approved' AND m.role = 'volunteer') AS volunteers,
   (SELECT count(*)::int FROM memberships m WHERE m.party_constituency_id = pc.id AND m.status = 'approved' AND m.role = 'admin') AS admins`;
 
@@ -44,7 +46,7 @@ const toCustomer = (r: Row) => ({
   ballotNo: r.ballot_no, slogan: r.candidate_slogan, message: r.candidate_message, slipShareText: r.slip_share_text,
   features: featuresOf(r.features), defaultLang: r.regional_lang, languages: r.languages,
   maxZones: r.max_zones, zoneCount: r.zone_count, maxVolunteers: r.max_volunteers, maxAdmins: r.max_admins,
-  status: r.status, validUntil: r.valid_until, volunteers: r.volunteers, admins: r.admins, syncMode: r.sync_mode, syncMinutes: r.sync_minutes, boothRadiusM: r.booth_radius_m,
+  status: r.status, validUntil: r.valid_until, volunteers: r.volunteers, admins: r.admins, syncMode: r.sync_mode, syncMinutes: r.sync_minutes, boothRadiusM: r.booth_radius_m, views: (r.views as string[] | null) ?? ['zone'], resultMargin: (r.result_margin as number | null) ?? 100,
   active: r.status === 'active' && (!r.valid_until || r.valid_until >= new Date().toISOString().slice(0, 10)),
 });
 
@@ -65,7 +67,7 @@ async function saveSettings(id: string, b: z.infer<typeof Settings>) {
     ['appName', 'app_name'], ['colour', 'brand_colour'], ['candidateName', 'candidate_name'], ['ballotNo', 'ballot_no'], ['slogan', 'candidate_slogan'],
     ['message', 'candidate_message'], ['slipShareText', 'slip_share_text'], ['defaultLang', 'regional_lang'], ['languages', 'languages'],
     ['maxZones', 'max_zones'], ['maxVolunteers', 'max_volunteers'], ['maxAdmins', 'max_admins'], ['status', 'status'], ['validUntil', 'valid_until'],
-    ['syncMode', 'sync_mode'], ['syncMinutes', 'sync_minutes'], ['boothRadiusM', 'booth_radius_m'],
+    ['syncMode', 'sync_mode'], ['syncMinutes', 'sync_minutes'], ['boothRadiusM', 'booth_radius_m'], ['views', 'views'], ['resultMargin', 'result_margin'],
   ];
   const sets: string[] = [];
   const params: unknown[] = [id];

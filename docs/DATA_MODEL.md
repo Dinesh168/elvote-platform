@@ -287,3 +287,7 @@ SELECT caste, count(*) FROM voters_<C> GROUP BY 1;
 | party_id | uuid | FK parties, cascade |
 | state_code | char(2) | FK states, cascade |
 PK (party_id, state_code). A party with no rows is national (shown in every state).
+
+### spec admin-views (2026-11-24)
+- state `booths.area text` (tehsil / ward) + index (ac_no, area); `voter_contacts.residence` ∈ here, moved, died, not_found (migration state/007).
+- core `party_constituencies.views text[]` ⊆ {zone, area, village}, default {zone} (migration core/010).

@@ -108,6 +108,28 @@ describe('PD polling day', () => {
     await sup.patch(`/v1/admin/elections/PB/${e1}`, { opensAt: '00:00', closesAt: '23:59' });
   });
 
+  it('TC-PF-6 one box: digits = S.No in every booth; letters = name; EPIC', async () => {
+    const sno = (await vol.get(`/v1/m/${vmid}/polling/find?q=5`)).json().items as { part: number; sno: number }[];
+    expect(sno.length).toBeGreaterThan(1);
+    expect(new Set(sno.map((x) => x.part)).size).toBeGreaterThan(1);
+    expect(sno.every((x) => x.sno === 5)).toBe(true);
+    const first = sno[0] as unknown as { name: string };
+    const word = first.name.split(' ')[0];
+    const byName = (await vol.get(`/v1/m/${vmid}/polling/find?q=${encodeURIComponent(word)}`)).json().items as { name: string }[];
+    expect(byName.length).toBeGreaterThan(0);
+    expect(byName.length).toBeLessThanOrEqual(50);
+    expect(byName.every((x) => x.name.toLowerCase().includes(word.toLowerCase()))).toBe(true);
+    expect((await vol.get(`/v1/m/${vmid}/polling/find?q=a`)).statusCode).toBe(422);
+  });
+
+  it('TC-V1-1 Lives here takes Died and Not found', async () => {
+    const [x] = (await vol.get(`/v1/m/${vmid}/polling/find?part=112&sno=7`)).json().items;
+    expect((await vol.post(`/v1/m/${vmid}/voters/${x.id}/changes`, { opId: crypto.randomUUID(), patch: { residence: 'died' } })).statusCode).toBe(200);
+    expect((await vol.post(`/v1/m/${vmid}/voters/${x.id}/changes`, { opId: crypto.randomUUID(), patch: { residence: 'not_found' } })).statusCode).toBe(200);
+    expect((await vol.post(`/v1/m/${vmid}/voters/${x.id}/changes`, { opId: crypto.randomUUID(), patch: { residence: 'gone' } })).statusCode).toBe(422);
+    await vol.post(`/v1/m/${vmid}/voters/${x.id}/changes`, { opId: crypto.randomUUID(), patch: { residence: 'here' } });
+  });
+
   it('TC-PF-5 a search needs an EPIC or booth + S.No', async () => {
     expect((await vol.get(`/v1/m/${vmid}/polling/find`)).statusCode).toBe(422);
     expect((await vol.get(`/v1/m/${vmid}/polling/find?part=101`)).statusCode).toBe(422);

@@ -4,6 +4,8 @@
 import { core } from '../db/pools.js';
 import { ApiError, forbidden } from './errors.js';
 
+export type View = 'zone' | 'area' | 'village';
+
 export interface Membership {
   id: string;
   userId: string;
@@ -26,6 +28,10 @@ export interface Membership {
   sync: { mode: 'live' | 'offline' | 'scheduled'; minutes: number };
   /** Polling day: counts as at the booth within this many metres (spec polling-day S3). */
   boothRadiusM: number;
+  /** spec admin-views G2: the levels the admin may view by. */
+  views: View[];
+  /** spec map-results R1: close-contest margin in votes. */
+  resultMargin: number;
   /** Super-admin working inside this team as its admin (spec usability-r2 S2): no membership row; id = team id. */
   asSuperAdmin?: boolean;
 }
@@ -44,7 +50,7 @@ const BASE = `
          trim(pc.state_code) AS state_code, pc.ac_no, pc.ac_name, pc.max_zones, pc.zone_count,
          pc.features, (pc.status = 'active' AND (pc.valid_until IS NULL OR pc.valid_until >= current_date)) AS active,
          pc.app_name, pc.logo_url, pc.banner_url, pc.brand_colour, pc.candidate_name, pc.candidate_photo_url, pc.ballot_no, pc.candidate_slogan,
-         pc.candidate_message, pc.slip_share_text, pc.regional_lang, pc.languages, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m,
+         pc.candidate_message, pc.slip_share_text, pc.regional_lang, pc.languages, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m, pc.views, pc.result_margin,
          COALESCE(array_agg(mb.part_no ORDER BY mb.part_no) FILTER (WHERE mb.part_no IS NOT NULL), '{}') AS booths
     FROM memberships m
     JOIN party_constituencies pc ON pc.id = m.party_constituency_id AND pc.deleted_at IS NULL
@@ -57,7 +63,7 @@ type Row = {
   features: Partial<Features>; active: boolean; app_name: string | null; logo_url: string | null; banner_url: string | null; brand_colour: string | null;
   candidate_name: string | null; candidate_photo_url: string | null; ballot_no: number | null; candidate_slogan: string | null;
   candidate_message: string | null; slip_share_text: string | null; regional_lang: string | null; languages: string[];
-  sync_mode: 'live' | 'offline' | 'scheduled'; sync_minutes: number; booth_radius_m: number;
+  sync_mode: 'live' | 'offline' | 'scheduled'; sync_minutes: number; booth_radius_m: number; views: string[] | null; result_margin: number | null;
 };
 export const featuresOf = (f: Partial<Features> | null | undefined): Features =>
   Object.fromEntries(FEATURE_KEYS.map((k) => [k, f?.[k] !== false])) as Features;
@@ -72,6 +78,8 @@ const map = (r: Row): Membership => ({
   },
   sync: { mode: r.sync_mode ?? 'live', minutes: r.sync_minutes ?? 15 },
   boothRadiusM: r.booth_radius_m ?? 300,
+  views: (r.views?.length ? r.views : ['zone']) as View[],
+  resultMargin: r.result_margin ?? 100,
 });
 
 export async function membershipsOf(userId: string): Promise<Membership[]> {

@@ -5,8 +5,8 @@ import { themed } from '@/design/theme';
 import { router } from 'expo-router';
 import { Linking, Pressable, StyleSheet, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import type { GroupCode, Voter } from '@/api/types';
-import { AppText, Button, GroupPicker, GroupTag, SegmentedControl, SnoBadge } from '@/design/components';
+import type { GroupCode, Residence, Voter } from '@/api/types';
+import { AppText, Button, GroupPicker, GroupTag, SegmentedControl, Select, SnoBadge } from '@/design/components';
 import { colors, fonts, hairline, radius, spacing } from '@/design/tokens';
 import { isValidMobile } from '@/lib/phone';
 import { relText } from './rel';
@@ -66,17 +66,18 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, first, last, on
             labels={{ our: t('groups.our'), target: t('groups.target'), opp: t('groups.opp') }}
             onPick={(g) => onGroup(v, g)}
           />
-          <View style={s.qa}>
-            <AppText variant="callout" style={s.flex}>{t('voters.livesHere')}</AppText>
-            <SegmentedControl
-              variant="answer"
-              label={t('voters.livesHere')}
-              style={s.seg}
-              value={v.residence}
-              options={[{ value: 'here', label: t('voters.yes') }, { value: 'moved', label: t('voters.moved') }]}
-              onChange={(residence) => onPatch(v, { residence })}
-            />
-          </View>
+          {/* spec admin-views V1: one dropdown with every answer, on the same card (no other page). */}
+          <Select<Residence>
+            label={t('voters.livesHere')}
+            value={v.residence}
+            options={[
+              { value: 'here', label: t('voters.res.here') },
+              { value: 'moved', label: t('voters.res.moved') },
+              { value: 'died', label: t('voters.res.died') },
+              { value: 'not_found', label: t('voters.res.not_found') },
+            ]}
+            onChange={(residence) => onPatch(v, { residence })}
+          />
           <View style={s.qa}>
             <AppText variant="callout" style={s.flex}>{t('voters.needsHelp')}</AppText>
             <SegmentedControl

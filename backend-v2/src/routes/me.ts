@@ -22,7 +22,7 @@ export async function clientMemberships(ms: Membership[]) {
     id: m.id, role: m.role, status: m.status, partyId: m.partyId, partyName: m.partyName, partyAcId: m.partyAcId,
     stateCode: m.stateCode, acNo: m.acNo, acName: m.acName, booths: m.booths, maxZones: m.maxZones, zoneCount: m.zoneCount,
     active: m.active, features: m.features, look: m.look, sync: m.sync,
-    boothRadiusM: m.boothRadiusM, pollingDay: days[i], dataLang: langs.get(m.stateCode)?.get(m.acNo) ?? 'hi',
+    boothRadiusM: m.boothRadiusM, views: m.views, resultMargin: m.resultMargin, pollingDay: days[i], dataLang: langs.get(m.stateCode)?.get(m.acNo) ?? 'hi',
     ...(m.asSuperAdmin ? { asSuperAdmin: true } : {}),
   }));
 }

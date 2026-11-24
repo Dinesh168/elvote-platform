@@ -13,7 +13,8 @@
     "loadError": "Could not load. Check the internet and try again.",
     "switchLangA11y": "Language — tap to change",
     "cancel": "Cancel",
-    "search": "Search"
+    "search": "Search",
+    "close": "Close"
   },
   "tabs": {
     "home": "Home",
@@ -156,7 +157,13 @@
     "rowA11y": "S.No {{sno}}, {{name}}, {{group}}",
     "newTag": "New in roll",
     "addrLine": "H.No {{house}}, Ward {{ward}}, {{village}}",
-    "houseShort": "H.No {{house}}"
+    "houseShort": "H.No {{house}}",
+    "res": {
+      "here": "Lives here",
+      "moved": "Moved",
+      "died": "Died",
+      "not_found": "Not found"
+    }
   },
   "poll": {
     "title": "Polling day",
@@ -194,7 +201,10 @@
       "none": "No voter found. Check the number.",
       "otherBooth": "other booth",
       "already": "Already marked voted",
-      "byName": "Search by name in my booths"
+      "byName": "Search by name in my booths",
+      "box": "EPIC, name or serial no.",
+      "count_one": "{{count}} voter found",
+      "count_other": "{{count}} voters found (first 50)"
     }
   },
   "me": {
@@ -1445,5 +1455,105 @@
     "autoTag": "Worked out from results",
     "adminTag": "Set by you",
     "reset": "Reset"
+  },
+  "bmap": {
+    "search": "Booth no. or name",
+    "view": "View",
+    "map": "Map",
+    "list": "List",
+    "zone": "Zone",
+    "allZones": "All zones",
+    "fit": "Show whole assembly",
+    "me": "My location",
+    "satellite": "Satellite",
+    "street": "Street map",
+    "notFound": "No booth with that number or name.",
+    "noPermission": "Location permission is off.",
+    "saved": "Location saved for booth {{no}}.",
+    "strong": "Strong",
+    "moderate": "Moderate",
+    "weak": "Weak",
+    "won": "Won 100+",
+    "close": "Close",
+    "lost": "Lost 100+",
+    "noResult": "No result",
+    "hasVol": "Has volunteer",
+    "noVol": "No volunteer",
+    "missing_one": "{{count}} booth without location",
+    "missing_other": "{{count}} booths without location",
+    "placeTitle": "Place booth {{no}}",
+    "placeTap": "Tap the map where the booth is.",
+    "placeSave": "Tap again to move it, then Save.",
+    "saveHere": "Save location",
+    "missingTitle": "Booths without location",
+    "missingFoot": "Pick a booth, then tap its place on the map.",
+    "setLocation": "Set",
+    "volunteers": "Volunteers",
+    "volunteer": "Volunteer: {{name}}",
+    "open": "Open",
+    "call": "Call",
+    "directions": "Directions",
+    "mode": {
+      "contacted": "% contacted",
+      "strength": "Booth strength",
+      "result": "Last result",
+      "volunteers": "Volunteers"
+    },
+    "wonBy": "Won by {{n}}+",
+    "lostBy": "Lost by {{n}}+",
+    "wonN": "won by {{n}}",
+    "lostN": "lost by {{n}}",
+    "wonWord": "won",
+    "lostWord": "lost",
+    "lastTitle": "Last election",
+    "lastA11y": "{{year}}: {{party}} {{ours}}%, {{rival}} {{rivalPct}}%, {{won}} by {{n}} votes"
+  },
+  "allb": {
+    "open": "All booths",
+    "title": "All booths",
+    "sub": "Lowest first. Tap a group, then a booth.",
+    "sortedBy": "Sorted by {{what}}, lowest first",
+    "viewBy": "View by",
+    "zone": "Zone",
+    "area": "Area",
+    "village": "Village",
+    "noArea": "No area",
+    "noVillage": "No village",
+    "overall": "Whole assembly",
+    "groups": "By {{what}}",
+    "foot": "Bar: Our · Target · Opp · Not met.",
+    "booths": "booths",
+    "met": "met",
+    "focus": {
+      "our": "Our",
+      "target": "Target",
+      "opp": "Opposition",
+      "notMet": "Not met"
+    }
+  },
+  "steam": {
+    "views": "Admin can view by",
+    "viewsHint": "Zones are made by the admin. Area and village come from the booth table (fix them on Booths).",
+    "oneView": "Keep at least one.",
+    "volunteers": "Volunteers",
+    "none": "Nobody yet",
+    "remove": "Remove",
+    "removeTitle": "Remove {{name}}?",
+    "removeHint": "They lose access to this team at once. Their work stays.",
+    "removed": "Removed.",
+    "add": "Add a person",
+    "addHint": "They sign in with this mobile (or email) and land straight in the team. No request needed.",
+    "role": "Role",
+    "volunteer": "Volunteer",
+    "admin": "Admin",
+    "booths": "Booths",
+    "boothsHint": "Booth numbers, e.g. 101, 102",
+    "addVolunteer": "Add volunteer",
+    "savePlace": "Save area and village"
+  },
+  "mr": {
+    "label": "Close-contest margin (votes)",
+    "hint": "Won by more = strong / green, lost by more = weak / red, within = close / orange. Used by the map, booth strength and the win plan.",
+    "range": "10 to 2,000 votes"
   }
 }

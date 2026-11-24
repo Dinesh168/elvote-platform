@@ -10,6 +10,8 @@ import { DateStr, Mobile, parse, Uuid } from '../lib/http.js';
 import { heldRows, mergeImport, stageImport } from '../lib/imports.js';
 import { stateLang } from '../lib/lang.js';
 import { createCustomer } from '../lib/scopes.js';
+import { assertOneRole } from '../lib/roles.js';
+import { areaOf, notify } from '../lib/notify.js';
 import { accessAdminRoutes } from './access.js';
 import { customerRoutes } from './customers.js';
 import { pollingAdminRoutes } from './polling.js';
@@ -213,6 +215,92 @@ export async function platformRoutes(app: FastifyInstance) {
          FROM memberships m JOIN users u ON u.id = m.user_id JOIN party_constituencies pc ON pc.id = m.party_constituency_id JOIN parties p ON p.id = pc.party_id
         WHERE m.role = 'admin' AND m.status = 'approved' ORDER BY p.name, pc.ac_no, u.name`);
     return r.rows.map((x) => ({ userId: x.user_id, name: x.name, mobile: x.mobile, partyName: x.party_name, stateCode: x.state_code, acNo: x.ac_no, acName: x.ac_name, partyAcId: x.party_ac_id }));
+  });
+
+  // ---------- Team members: list, add volunteer directly, change booths, remove (spec admin-views S1–S3) ----------
+  const teamOf = async (id: string) => {
+    const r = await core.query<{ party_id: string; state_code: string; ac_no: number }>(
+      'SELECT party_id, trim(state_code) AS state_code, ac_no FROM party_constituencies WHERE id = $1 AND deleted_at IS NULL', [id]);
+    if (!r.rowCount) throw notFound();
+    return r.rows[0];
+  };
+  const checkBooths = async (state: string, ac: number, booths: number[]) => {
+    const pool = await statePool(state);
+    const ok = await pool.query('SELECT part_no FROM booths WHERE ac_no = $1 AND part_no = ANY($2::smallint[]) AND deleted_at IS NULL', [ac, booths]);
+    if (ok.rowCount !== new Set(booths).size) throw invalid('booth_invalid', 'Some booth numbers are not in this assembly.');
+  };
+  const Booths = z.array(z.number().int().min(1).max(9999)).min(1, 'Pick at least one booth').max(50);
+
+  app.get('/v1/admin/customers/:id/members', async (req) => {
+    const { id } = parse(z.object({ id: Uuid }), req.params);
+    await teamOf(id);
+    const r = await core.query<{ id: string; user_id: string; name: string; mobile: string | null; email: string | null; role: string; status: string; booths: number[] }>(
+      `SELECT m.id, u.id AS user_id, u.name, u.mobile, u.email, m.role, m.status,
+              COALESCE(array_agg(mb.part_no ORDER BY mb.part_no) FILTER (WHERE mb.part_no IS NOT NULL), '{}') AS booths
+         FROM memberships m JOIN users u ON u.id = m.user_id LEFT JOIN membership_booths mb ON mb.membership_id = m.id
+        WHERE m.party_constituency_id = $1 AND m.status IN ('approved','pending') AND u.deleted_at IS NULL
+        GROUP BY m.id, u.id ORDER BY m.role, u.name`, [id]);
+    return r.rows.map((x) => ({ membershipId: x.id, userId: x.user_id, name: x.name, mobile: x.mobile, email: x.email, role: x.role, status: x.status, booths: x.booths }));
+  });
+
+  app.post('/v1/admin/volunteers', async (req) => {
+    const b = parse(z.object({ mobile: Mobile.optional(), email: Email.optional(), name: z.string().trim().min(2).max(80), partyAcId: Uuid, booths: Booths }), req.body);
+    const pc = await teamOf(b.partyAcId);
+    await checkBooths(pc.state_code, pc.ac_no, b.booths);
+    const userId = await personFor(b);
+    await assertOneRole(userId, 'volunteer');
+    const cur = await core.query<{ id: string; status: string }>('SELECT id, status FROM memberships WHERE user_id = $1 AND party_constituency_id = $2', [userId, b.partyAcId]);
+    if (cur.rows[0]?.status !== 'approved') await checkLimit(b.partyAcId, 'volunteer', cur.rows[0]?.id);
+    const m = await core.query<{ id: string }>(
+      `INSERT INTO memberships (user_id, party_constituency_id, role, status, source, decided_by, decided_at) VALUES ($1,$2,'volunteer','approved','direct',$3, now())
+       ON CONFLICT (user_id, party_constituency_id) DO UPDATE SET role = 'volunteer', status = 'approved', reject_reason = NULL, decided_by = $3, decided_at = now(), updated_at = now()
+       RETURNING id`, [userId, b.partyAcId, req.userId]);
+    const mid = m.rows[0].id;
+    await core.query('DELETE FROM membership_booths WHERE membership_id = $1', [mid]);
+    for (const no of new Set(b.booths)) await core.query('INSERT INTO membership_booths (membership_id, part_no, approved_by) VALUES ($1,$2,$3)', [mid, no, req.userId]);
+    await audit({ actor: req.userId, role: 'super_admin', action: 'volunteer.add', partyId: pc.party_id, stateCode: pc.state_code, acNo: pc.ac_no, entity: 'membership', entityId: mid, details: { booths: [...new Set(b.booths)] } });
+    await notify([userId], 'approved', await areaOf(b.partyAcId));
+    return { membershipId: mid, userId };
+  });
+
+  app.put('/v1/admin/customers/:id/members/:mid/booths', async (req) => {
+    const p = parse(z.object({ id: Uuid, mid: Uuid }), req.params);
+    const b = parse(z.object({ booths: Booths }), req.body);
+    const pc = await teamOf(p.id);
+    await checkBooths(pc.state_code, pc.ac_no, b.booths);
+    const m = await core.query(`SELECT 1 FROM memberships WHERE id = $1 AND party_constituency_id = $2 AND role = 'volunteer' AND status = 'approved'`, [p.mid, p.id]);
+    if (!m.rowCount) throw notFound();
+    await core.query('DELETE FROM membership_booths WHERE membership_id = $1', [p.mid]);
+    for (const no of new Set(b.booths)) await core.query('INSERT INTO membership_booths (membership_id, part_no, approved_by) VALUES ($1,$2,$3)', [p.mid, no, req.userId]);
+    await audit({ actor: req.userId, role: 'super_admin', action: 'volunteer.booths', partyId: pc.party_id, stateCode: pc.state_code, acNo: pc.ac_no, entity: 'membership', entityId: p.mid, details: { booths: [...new Set(b.booths)] } });
+    return { ok: true };
+  });
+
+  app.delete('/v1/admin/customers/:id/members/:mid', async (req) => {
+    const p = parse(z.object({ id: Uuid, mid: Uuid }), req.params);
+    const pc = await teamOf(p.id);
+    const r = await core.query<{ user_id: string; role: string }>(
+      `UPDATE memberships SET status = 'removed', updated_at = now() WHERE id = $1 AND party_constituency_id = $2 AND status <> 'removed' RETURNING user_id, role`, [p.mid, p.id]);
+    if (!r.rowCount) throw notFound();
+    await core.query('DELETE FROM membership_booths WHERE membership_id = $1', [p.mid]);
+    await audit({ actor: req.userId, role: 'super_admin', action: 'member.remove', partyId: pc.party_id, stateCode: pc.state_code, acNo: pc.ac_no, entity: 'membership', entityId: p.mid, details: { role: r.rows[0].role } });
+    await notify([r.rows[0].user_id], 'removed', await areaOf(p.id));
+    return { ok: true };
+  });
+
+  // spec admin-views G1: the super-admin corrects a booth's area (tehsil / ward) and village.
+  app.patch('/v1/admin/booths/:state/:ac/:no/place', async (req) => {
+    const p = parse(z.object({ state: z.string().length(2), ac: z.coerce.number().int().min(1).max(999), no: z.coerce.number().int().min(1).max(9999) }), req.params);
+    const b = parse(z.object({ area: z.string().trim().max(80).nullable().optional(), village: z.string().trim().max(120).nullable().optional() }).strict(), req.body);
+    if (!(await allStateCodes()).includes(p.state)) throw notFound();
+    const pool = await statePool(p.state);
+    const r = await pool.query(
+      `UPDATE booths SET area = CASE WHEN $4 THEN $3 ELSE area END, locality = CASE WHEN $6 THEN $5 ELSE locality END, updated_at = now()
+        WHERE ac_no = $1 AND part_no = $2 AND deleted_at IS NULL`,
+      [p.ac, p.no, b.area || null, 'area' in b, b.village || null, 'village' in b]);
+    if (!r.rowCount) throw notFound();
+    await audit({ actor: req.userId, role: 'super_admin', action: 'booth.place', stateCode: p.state, acNo: p.ac, entity: 'booth', entityId: String(p.no), details: b });
+    return { ok: true };
   });
 
   // ---------- Super-admins ----------

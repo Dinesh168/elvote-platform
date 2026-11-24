@@ -15,7 +15,7 @@ import { electionFor } from './presence.js';
 
 export const Patch = z.object({
   group: z.enum(['our', 'target', 'opp']).nullable().optional(),
-  residence: z.enum(['here', 'moved']).optional(),
+  residence: z.enum(['here', 'moved', 'died', 'not_found']).optional(),
   needsHelp: z.boolean().optional(),
   mobile: Mobile.nullable().optional(),
   votedAt: z.string().datetime().nullable().optional(),

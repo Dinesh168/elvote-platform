@@ -29,13 +29,19 @@ export interface Dashboard {
   topWorkers: { userId: string; name: string; contacted: number; today: number }[];
 }
 
-export interface BoothRow { no: number; name: string; zone: string | null; strength: 'S' | 'M' | 'W'; strengthSource?: 'admin' | 'auto'; workers: number; total: number; met: number; houses: number; housesVisited: number; withMobile: number; our: number; target: number; opp: number }
+export interface BoothRow { no: number; name: string; zone: string | null; area?: string | null; village?: string | null; strength: 'S' | 'M' | 'W'; strengthSource?: 'admin' | 'auto'; workers: number; total: number; met: number; houses: number; housesVisited: number; withMobile: number; our: number; target: number; opp: number }
 export interface Surnames { voters: number; surnames: { surname: string; total: number; met: number; our: number; target: number; opp: number }[] }
 export interface Zones { maxZones: number; zoneCount: number; zones: { id: string; number: number; name: string; booths: number[] }[]; unassigned: number[] }
 export interface TeamMember { membershipId: string; userId: string; name: string; mobile: string; epic: string | null; role: 'admin' | 'volunteer'; status: string; requestedAt: string; rejectReason: string | null; booths: number[]; contactedToday: number; contactedTotal: number; lastSyncAt?: string | null; unsent?: number }
 export interface Drive { id: string; kind: string; name: string; startsOn: string; endsOn: string; scope: string; status: 'not_started' | 'ongoing' | 'completed'; daysLeft: number; targeted: number; completed: number; pct: number; byZone: { zone: string; targeted: number; completed: number; pct: number }[] }
 export interface Poll { total: number; voted: number; pct: number; notVoted: { our: number; target: number; opp: number }; helpPending: number; zones: { name: string; total: number; voted: number; pct: number }[]; booths: { no: number; name: string; total: number; voted: number; pct: number; ourNotVoted: number; helpPending: number }[] }
-export interface MapBooth { no: number; name: string; lat: number | null; lng: number | null; total: number; met: number; our: number; target: number; opp: number; strength: string; zone: string | null; pct: number }
+export interface MapBooth {
+  no: number; name: string; lat: number | null; lng: number | null; total: number; met: number; our: number; target: number; opp: number; strength: string; zone: string | null; pct: number;
+  /** spec booth-map: volunteers, first volunteer to call, last-result group (S won by 100+, M close, W lost by 100+, null no result). */
+  strengthSource?: 'admin' | 'auto'; workers: number; contact: { name: string; mobile: string | null } | null; result: 'S' | 'M' | 'W' | null;
+  /** spec map-results M3: last election for this team's party. */
+  last: { year: number; party: string; ours: number; oursVotes: number; rival: string | null; rivalPct: number; rivalVotes: number; margin: number } | null;
+}
 
 const m = (mid: string) => `/v1/m/${mid}`;
 const qs = (o: Record<string, string | number | undefined>) => {
@@ -73,8 +79,8 @@ export const adminApi = {
   // Polling day (spec polling-day A1, A2, S2)
   polling: (mid: string) => http.get<PollingPage>(`${m(mid)}/polling`),
   /** spec flow-fixes P1: polling day: any voter of the assembly by EPIC, or booth + S.No. */
-  pollFind: (mid: string, q: { epic: string } | { part: number; sno: number }) =>
-    http.get<{ items: PollFound[] }>(`${m(mid)}/polling/find?${'epic' in q ? `epic=${encodeURIComponent(q.epic)}` : `part=${q.part}&sno=${q.sno}`}`),
+  /** spec admin-views P1: one box — EPIC, name or S.No — over the whole assembly (first 50). */
+  pollFind: (mid: string, q: string) => http.get<{ items: PollFound[] }>(`${m(mid)}/polling/find?q=${encodeURIComponent(q)}`),
   pollingAlerts: (mid: string) => http.get<{ items: PdAlert[]; unseen: number }>(`${m(mid)}/polling/alerts`),
   pollingSeen: (mid: string) => http.post(`${m(mid)}/polling/alerts/seen`),
   setBoothLocation: (mid: string, no: number, lat: number, lng: number) => http.put(`${m(mid)}/booths/${no}/location`, { lat, lng }),
@@ -92,6 +98,8 @@ export type BoothGroup = 'safe' | 'swing' | 'tough';
 export type RemindTemplate = 'booth_needs_you' | 'days_left' | 'call_me';
 /** A voter found on polling day (spec flow-fixes P1). Other booths carry no group, phone or notes. */
 export interface PollFound { id: string; sno: number; part: number; boothName: string; name: string; nameLocal: string | null; relation: string | null; relative: string | null; age: number | null; gender: string | null; voted: boolean; own: boolean }
+export interface TeamPerson { membershipId: string; userId: string; name: string; mobile: string | null; email: string | null; role: 'admin' | 'volunteer'; status: 'approved' | 'pending'; booths: number[] }
+
 export interface TrendYear { year: number; total: number; votes: Record<string, number>; shares: Record<string, number>; ours: number; winner: string | null; margin: number; estimated?: number }
 export interface TrendChild { key: string; name: string; ours: number | null; swing: number | null; winner: string | null; margin: number | null; group: BoothGroup | null }
 export interface Trend {
@@ -127,7 +135,7 @@ export interface PollingPage {
 export interface PdAlert { id: string; kind: 'left' | 'still_away' | 'returned' | 'location_off' | 'location_on'; membershipId: string; name: string; partNo: number | null; distanceM: number | null; at: string }
 export interface Election extends PdElection { stateCode: string; stateName: string; acNos: number[] | null; status: 'upcoming' | 'polling' | 'done' | 'cancelled'; inWindow: boolean }
 export type ElectionInput = { stateCode: string; kind: 'assembly' | 'parliament' | 'local' | 'bye'; name: string; pollDate: string; acNos: number[] | null; opensAt: string; closesAt: string };
-export interface AdminBooth { no: number; name: string; locality: string | null; lat: number | null; lng: number | null; source: 'upload' | 'gps' | 'edited' | null }
+export interface AdminBooth { no: number; name: string; locality: string | null; area?: string | null; lat: number | null; lng: number | null; source: 'upload' | 'gps' | 'edited' | null }
 
 export interface TraceEvent { at: string; by: string; party: string; change: Record<string, unknown>; source: string }
 export interface Trace { voter: { id: string; name: string; epic: string; booth: number; sno: number; house: string | null; age: number | null; relative: string | null }; events: TraceEvent[] }
@@ -142,6 +150,9 @@ export interface Customer {
   status: 'active' | 'paused' | 'closed'; validUntil: string | null; volunteers: number; admins: number; active: boolean;
   syncMode: 'live' | 'offline' | 'scheduled'; syncMinutes: number;
   boothRadiusM: number;
+  views: ('zone' | 'area' | 'village')[];
+  /** spec map-results R1: close-contest margin in votes (default 100). */
+  resultMargin: number;
 }
 export type CustomerPatch = Partial<Omit<Customer, 'id' | 'partyName' | 'stateCode' | 'acNo' | 'acName' | 'logoUrl' | 'bannerUrl' | 'candidatePhotoUrl' | 'zoneCount' | 'volunteers' | 'admins' | 'active' | 'features'>> & { features?: Partial<Record<FeatureKey, boolean>> };
 export type UserFilter = { q?: string; role?: 'all' | 'admin' | 'volunteer' | 'super'; status?: 'all' | 'active' | 'blocked'; customer?: string; offset?: number; limit?: number };
@@ -182,6 +193,13 @@ export const platformApi = {
   admins: () => http.get<{ userId: string; name: string; mobile: string; partyName: string; stateCode: string; acNo: number; acName: string; partyAcId: string }[]>('/v1/admin/admins'),
   /** spec accounts-access AC12: by Google / sign-in email (a mobile only in local test mode). */
   addAdmin: (who: { email?: string; mobile?: string }, name: string, partyAcId: string) => http.post('/v1/admin/admins', { ...who, name, partyAcId }),
+  /** spec admin-views S1–S3: a team's people; add a volunteer directly; change booths; remove. */
+  members: (partyAcId: string) => http.get<TeamPerson[]>(`/v1/admin/customers/${partyAcId}/members`),
+  addVolunteer: (who: { email?: string; mobile?: string }, name: string, partyAcId: string, booths: number[]) => http.post('/v1/admin/volunteers', { ...who, name, partyAcId, booths }),
+  setMemberBooths: (partyAcId: string, membershipId: string, booths: number[]) => http.put(`/v1/admin/customers/${partyAcId}/members/${membershipId}/booths`, { booths }),
+  removeMember: (partyAcId: string, membershipId: string) => http.del(`/v1/admin/customers/${partyAcId}/members/${membershipId}`),
+  /** spec admin-views G1: a booth's area (tehsil / ward) and village. */
+  setBoothPlace: (state: string, ac: number, no: number, p: { area?: string | null; village?: string | null }) => http.patch(`/v1/admin/booths/${state}/${ac}/${no}/place`, p),
   superAdmins: () => http.get<{ userId: string; name: string; mobile: string | null; email?: string | null; since: string }[]>('/v1/admin/super-admins'),
   /** spec accounts-access AC12: by Google / sign-in email (a mobile only in local test mode). */
   addSuperAdmin: (who: { email?: string; mobile?: string }, name: string) => http.post('/v1/admin/super-admins', { ...who, name }),

@@ -28,7 +28,6 @@ function sections(role: 'admin' | 'volunteer', t: TFunction): Section[] {
       { title: t('side.win'), items: [
         { href: '/admin/win-plan', label: t('win.title'), icon: 'trophy', color: colors.success },
         { href: '/admin/trend', label: t('trend.title'), icon: 'trending-up', color: colors.warning },
-        { href: '/admin/results-map', label: t('results.title'), icon: 'map', color: colors.warning },
         { href: '/admin/map', label: t('admin.tabs.map'), icon: 'location', color: colors.accent, feature: 'map' },
         { href: '/admin/surnames', label: t('asur.title'), icon: 'people-circle', color: colors.iconGender, feature: 'surnames' },
       ] },

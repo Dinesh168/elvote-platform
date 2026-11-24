@@ -2,16 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { themed } from '@/design/theme';
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { TeamBanner } from '@/features/shell/TeamBanner';
 import { TeamBar } from '@/features/shell/TeamBar';
 import { SummaryCard } from '@/features/shell/SummaryCard';
 import { SyncBadge } from '@/features/sync/SyncBadge';
 import { adminApi } from '@/api/adminApi';
-import {
-  AppText, BarList, ChoiceRow, Columns, DataTable, Grid, Group, Icon, IconSquare, LargeTitle, Row, Screen, Sheet, StackedBar, groupParts,
-} from '@/design/components';
+import { AppText, BarList, Button, ChoiceRow, Columns, DataTable, Grid, Group, groupParts, Icon, IconSquare, LargeTitle, Row, Screen, Sheet, StackedBar } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { chart, colors, radius, spacing, web } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
@@ -19,6 +17,7 @@ import { activate, rolesOf } from '@/features/session/session';
 import { useActiveMembership, useSession } from '@/stores/session';
 import { RollStrip } from './RollStrip';
 import { BoothStrength } from './BoothStrength';
+import { LastResult } from '@/features/map/LastResult';
 
 const fmt = (n: number) => n.toLocaleString('en-IN');
 const pct = (n: number, of: number) => (of ? Math.round((n / of) * 100) : 0);
@@ -39,6 +38,7 @@ export function DashboardView({ booth }: { booth?: number }) {
   const g = { our: t('groups.our'), target: t('groups.target'), opp: t('groups.opp') };
   const surnamesOn = m?.features?.surnames !== false;
   const pendQ = useQuery({ queryKey: ['team', mid, 'pending'], queryFn: () => adminApi.team(mid, 'pending'), enabled: !!mid && !booth });
+  const [zoneSheet, setZoneSheet] = useState(false);
   const pendingN = pendQ.data?.length ?? 0;
 
   return (
@@ -56,17 +56,20 @@ export function DashboardView({ booth }: { booth?: number }) {
         </Pressable>
       ) : null}
 
+      {/* spec admin-views A1: no zone row on top; one small button picks a zone. */}
+      {!booth && d && d.charts.zones.length ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={`${t('bmap.zone')}, ${zone ? d.charts.zones.find((z) => z.id === zone)?.name ?? '' : t('admin.allZones')}`}
+          onPress={() => setZoneSheet(true)} style={s.acSwitch}>
+          <AppText variant="callout" color={colors.accent}>{zone ? d.charts.zones.find((z) => z.id === zone)?.name ?? '' : t('admin.allZones')}</AppText>
+          <Icon name="chevron-down" size={16} color={colors.accent} />
+        </Pressable>
+      ) : null}
       {!booth && d ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
-          {[{ id: undefined, name: t('admin.allZones') }, ...d.charts.zones.map((z) => ({ id: z.id as string | undefined, name: z.name }))].map((z) => {
-            const on = zone === z.id;
-            return (
-              <Pressable key={z.id ?? 'all'} accessibilityRole="radio" accessibilityState={{ selected: on, checked: on }} aria-checked={on} onPress={() => setZone(z.id)} style={[s.chip, on && s.chipOn]}>
-                <AppText variant="callout" weight="semibold" color={on ? colors.textOnAccent : colors.text}>{z.name}</AppText>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <Sheet visible={zoneSheet} title={t('bmap.zone')} onClose={() => setZoneSheet(false)}>
+          {[{ id: undefined as string | undefined, name: t('admin.allZones') }, ...d.charts.zones.map((z) => ({ id: z.id as string | undefined, name: z.name }))].map((z, i, arr) => (
+            <ChoiceRow key={z.id ?? 'all'} title={z.name} selected={zone === z.id} onPress={() => { setZone(z.id); setZoneSheet(false); }} last={i === arr.length - 1} />
+          ))}
+        </Sheet>
       ) : null}
 
       {!d ? (
@@ -78,12 +81,14 @@ export function DashboardView({ booth }: { booth?: number }) {
             pct={pct(d.totals.met, d.totals.total)}
             title={t('common.metOf', { met: fmt(d.totals.met), total: fmt(d.totals.total) })}
             subtitle={`${zone ? d.charts.zones.find((z) => z.id === zone)?.name ?? '' : booth ? t('common.booth', { no: booth }) : t('admin.allZones')} · ${t('admin.visitsToday', { n: fmt(d.visitedToday) })}`}
+            action={booth ? undefined : t('allb.open')}
+            onAction={booth ? undefined : () => router.push({ pathname: '/admin/booths-all', params: {} })}
             cells={[
               { key: 'our', value: d.charts.groups.our, label: g.our, color: chart.our },
               { key: 'target', value: d.charts.groups.target, label: g.target, color: chart.target },
               { key: 'opp', value: d.charts.groups.opp, label: t('poll.oppShort'), color: chart.opp },
               { key: 'notMet', value: d.charts.groups.notMet, label: t('admin.notMet'), color: colors.text },
-            ]}
+            ].map((c) => (booth ? c : { ...c, onPress: () => router.push({ pathname: '/admin/booths-all', params: { focus: c.key } }) }))}
           />
           {!booth && !zone && d.yesterday ? (
             // spec map-trend Y1: yesterday at a glance
@@ -177,6 +182,7 @@ export function DashboardView({ booth }: { booth?: number }) {
             <Row title={t('admin.helpNeeded')} value={fmt(d.totals.helpNeeded)} last />
           </Group>
 
+          {booth ? <BoothLast mid={mid} booth={booth} /> : null}
           {booth ? <BoothStrength mid={mid} booth={booth} /> : null}
           {!booth ? (
             <Group header={t('admin.booths')}>
@@ -284,3 +290,24 @@ const s = themed(() => StyleSheet.create({
   pctFill: { height: 6, borderRadius: 3, backgroundColor: chart.series },
   pctText: { width: 40, textAlign: 'right' },
 }));
+
+/** spec map-results M4: the booth's last election on its own page (same numbers as the map card). */
+function BoothLast({ mid, booth }: { mid: string; booth: number }) {
+  const { t } = useTranslation();
+  const q = useQuery({ queryKey: ['map', mid], queryFn: () => adminApi.map(mid), enabled: !!mid, staleTime: 5 * 60_000 });
+  const b = q.data?.find((x) => x.no === booth);
+  if (!b) return null;
+  return (
+    <Group header={t('bmap.lastTitle')}>
+      <View style={{ padding: spacing.lg, gap: spacing.sm }}>
+        <LastResult b={b} />
+        {b.contact ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <AppText variant="callout" style={{ flex: 1 }}>{t('bmap.volunteer', { name: b.contact.name })}</AppText>
+            {b.contact.mobile ? <Button kind="tinted" compact label={t('bmap.call')} onPress={() => void Linking.openURL(`tel:${b.contact!.mobile}`)} /> : null}
+          </View>
+        ) : <AppText variant="callout" color={colors.textSecondary}>{t('bmap.noVol')}</AppText>}
+      </View>
+    </Group>
+  );
+}

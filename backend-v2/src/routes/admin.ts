@@ -12,7 +12,7 @@ import { saveImage } from '../lib/images.js';
 import { invalid, notFound } from '../lib/errors.js';
 import { DateStr, parse, PartNo, Uuid } from '../lib/http.js';
 import { DRIVE_NAMES, DRIVE_SEGMENTS, segmentSql, type Segment } from '../lib/voters.js';
-import { autoStrength, loadAc, pickParty } from '../lib/pastResults.js';
+import { areaYear, autoStrength, loadAc, pickParty } from '../lib/pastResults.js';
 import { teamParty } from './results.js';
 
 const Mid = z.object({ mid: Uuid });
@@ -42,8 +42,32 @@ function scopeSql(params: unknown[], zone?: string, booth?: number) {
 /** Worked-out strength per booth for this team (spec real-demo-data B3); an admin's own setting overrides it. */
 async function strengthOf(pool: pg.Pool, m: Membership) {
   const res = await loadAc(pool, m.acNo);
-  const auto = autoStrength(res, pickParty(res, undefined, await teamParty(m)));
-  return (part: number, set: string | null) => (set ? { strength: set, strengthSource: 'admin' as const } : { strength: auto.get(part) ?? 'M', strengthSource: 'auto' as const });
+  const party = pickParty(res, undefined, await teamParty(m));
+  const auto = autoStrength(res, party, m.resultMargin);
+  const fn = (part: number, set: string | null) => (set ? { strength: set, strengthSource: 'admin' as const } : { strength: auto.get(part) ?? 'M', strengthSource: 'auto' as const });
+  // spec map-results M3: last election per booth for this team's party (year, our %, main rival, margin, votes).
+  const year = [...res.keys()].sort((a, b) => a - b).at(-1);
+  const last = new Map<number, { year: number; party: string; ours: number; oursVotes: number; rival: string | null; rivalPct: number; rivalVotes: number; margin: number }>();
+  if (party && year) {
+    for (const b of res.get(year)!.values()) {
+      const a = areaYear([b], party);
+      const rival = Object.entries(a.votes).filter(([k]) => k !== party).sort((x, y) => y[1] - x[1])[0];
+      last.set(b.part, { year, party, ours: a.ours, oursVotes: a.oursVotes, rival: rival?.[0] ?? null, rivalPct: rival ? a.shares[rival[0]] ?? 0 : 0, rivalVotes: a.rivalVotes, margin: a.margin });
+    }
+  }
+  return Object.assign(fn, { auto, last });
+}
+
+/** spec booth-map M4: volunteers per booth with the first one's name and mobile (the admin calls them from the map). */
+async function volunteersByBooth(m: Membership): Promise<Map<number, { n: number; name: string; mobile: string | null }>> {
+  const r = await core.query<{ part_no: number; n: number; name: string; mobile: string | null }>(
+    `SELECT DISTINCT ON (mb.part_no) mb.part_no, count(*) OVER (PARTITION BY mb.part_no)::int AS n, u.name, u.mobile
+       FROM memberships ms JOIN membership_booths mb ON mb.membership_id = ms.id JOIN users u ON u.id = ms.user_id
+      WHERE ms.party_constituency_id = $1 AND ms.status = 'approved' AND ms.role = 'volunteer'
+      ORDER BY mb.part_no, ms.created_at`,
+    [m.partyAcId],
+  );
+  return new Map(r.rows.map((x) => [x.part_no, { n: x.n, name: x.name, mobile: x.mobile }]));
 }
 
 async function workersByBooth(m: Membership): Promise<Map<number, number>> {
@@ -152,13 +176,13 @@ export async function adminRoutes(app: FastifyInstance) {
     return inParty(pool, m.partyId, async (c) => {
       const params: unknown[] = [m.partyId, m.acNo];
       const scope = scopeSql(params, q.zone);
-      const r = await c.query<Counters & { part_no: number; name: string; strength: string | null; zone: string | null }>(
-        `SELECT s.*, b.name, bp.strength, z.name AS zone FROM stats_booth s JOIN booths b ON b.id = s.booth_id
+      const r = await c.query<Counters & { part_no: number; name: string; strength: string | null; zone: string | null; area: string | null; village: string | null }>(
+        `SELECT s.*, b.name, b.area, b.locality AS village, bp.strength, z.name AS zone FROM stats_booth s JOIN booths b ON b.id = s.booth_id
            LEFT JOIN booth_party_info bp ON bp.party_id = s.party_id AND bp.booth_id = s.booth_id
            LEFT JOIN zone_booths zb ON zb.party_id = s.party_id AND zb.booth_id = s.booth_id LEFT JOIN zones z ON z.id = zb.zone_id
           WHERE s.party_id = $1 AND s.ac_no = $2${scope} ORDER BY s.part_no`, params);
       return r.rows.map((b) => ({
-        no: b.part_no, name: b.name, zone: b.zone, ...sOf(b.part_no, b.strength), workers: workers.get(b.part_no) ?? 0,
+        no: b.part_no, name: b.name, zone: b.zone, area: b.area, village: b.village, ...sOf(b.part_no, b.strength), workers: workers.get(b.part_no) ?? 0,
         total: b.total, met: b.met, houses: b.houses, housesVisited: b.houses_visited, withMobile: b.with_mobile, our: b.our, target: b.target, opp: b.opp,
       }));
     });
@@ -392,6 +416,7 @@ export async function adminRoutes(app: FastifyInstance) {
   app.get('/v1/m/:mid/map', async (req) => {
     const { m, pool } = await admin(req, 'map');
     const sOf = await strengthOf(pool, m);
+    const vols = await volunteersByBooth(m);
     return inParty(pool, m.partyId, async (c) => {
       const r = await c.query<{ part_no: number; name: string; lat: string | null; lng: string | null; total: number; met: number; our: number; target: number; opp: number; strength: string | null; zone: string | null }>(
         `SELECT b.part_no, b.name, b.lat, b.lng, COALESCE(s.total, 0) AS total, COALESCE(s.met, 0) AS met, COALESCE(s.our, 0) AS our, COALESCE(s.target, 0) AS target, COALESCE(s.opp, 0) AS opp,
@@ -400,7 +425,16 @@ export async function adminRoutes(app: FastifyInstance) {
            LEFT JOIN booth_party_info bp ON bp.party_id = $1 AND bp.booth_id = b.id
            LEFT JOIN zone_booths zb ON zb.party_id = $1 AND zb.booth_id = b.id LEFT JOIN zones z ON z.id = zb.zone_id
           WHERE b.ac_no = $2 AND b.deleted_at IS NULL ORDER BY b.part_no`, [m.partyId, m.acNo]);
-      return r.rows.map((b) => ({ no: b.part_no, name: b.name, lat: b.lat ? Number(b.lat) : null, lng: b.lng ? Number(b.lng) : null, total: b.total, met: b.met, our: b.our, target: b.target, opp: b.opp, ...sOf(b.part_no, b.strength), zone: b.zone, pct: b.total ? Math.round((b.met / b.total) * 1000) / 10 : 0 }));
+      // spec booth-map: + volunteers, first volunteer to call, last-result group (S won by 100+, M close, W lost by 100+).
+      return r.rows.map((b) => {
+        const v = vols.get(b.part_no);
+        return {
+          no: b.part_no, name: b.name, lat: b.lat ? Number(b.lat) : null, lng: b.lng ? Number(b.lng) : null, total: b.total, met: b.met, our: b.our, target: b.target, opp: b.opp,
+          ...sOf(b.part_no, b.strength), zone: b.zone, pct: b.total ? Math.round((b.met / b.total) * 1000) / 10 : 0,
+          workers: v?.n ?? 0, contact: v ? { name: v.name, mobile: v.mobile } : null, result: sOf.auto.get(b.part_no) ?? null,
+          last: sOf.last.get(b.part_no) ?? null,
+        };
+      });
     });
   });
 

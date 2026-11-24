@@ -86,7 +86,7 @@ export default function TrendScreen() {
           {d.closeLosses.length ? (
             <Group>
               <Row title={t('trend.closeLosses', { count: d.closeLosses.length })} subtitle={t('trend.closeSub')} leading={<IconSquare name="map" bg={colors.warning} />}
-                chevron onPress={() => router.push({ pathname: '/admin/results-map', params: { party: d.party ?? '' } })} last={level !== 'assembly'} />
+                chevron onPress={() => router.push({ pathname: '/admin/map', params: { mode: 'result' } })} last={level !== 'assembly'} />
               {level === 'assembly' ? <Row title={t('win.title')} subtitle={t('win.rowSub')} leading={<IconSquare name="trophy" bg={colors.success} />} chevron onPress={() => router.push({ pathname: '/admin/win-plan', params: { party: d.party ?? '' } })} last /> : null}
             </Group>
           ) : null}

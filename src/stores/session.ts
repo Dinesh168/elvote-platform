@@ -37,6 +37,9 @@ export interface MembershipInfo {
   /** Polling day for this team's assembly, if one is set (spec polling-day S1); remembered offline. */
   pollingDay?: { electionId: string; name: string; date: string; opensAt: string; closesAt: string; radiusM: number } | null;
   boothRadiusM?: number;
+  /** spec admin-views G2: levels the admin may view by (super-admin setting). */
+  views?: ('zone' | 'area' | 'village')[];
+  resultMargin?: number;
   /** Super-admin working inside this team as its admin (spec usability-r2 S2); id = team id. */
   asSuperAdmin?: boolean;
   /** Regional language of this assembly's data (spec bilingual-roll L1). */

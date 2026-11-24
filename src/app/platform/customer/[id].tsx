@@ -47,7 +47,7 @@ export default function CustomerPage() {
     if (!d || !q.data) return {};
     const o = q.data;
     const out: Record<string, unknown> = {};
-    const keys: (keyof Customer)[] = ['appName', 'colour', 'candidateName', 'ballotNo', 'slogan', 'message', 'slipShareText', 'defaultLang', 'languages', 'maxZones', 'maxVolunteers', 'maxAdmins', 'status', 'validUntil', 'syncMode', 'syncMinutes', 'boothRadiusM'];
+    const keys: (keyof Customer)[] = ['appName', 'colour', 'candidateName', 'ballotNo', 'slogan', 'message', 'slipShareText', 'defaultLang', 'languages', 'maxZones', 'maxVolunteers', 'maxAdmins', 'status', 'validUntil', 'syncMode', 'syncMinutes', 'boothRadiusM', 'resultMargin'];
     for (const k of keys) if (JSON.stringify(d[k]) !== JSON.stringify(o[k])) out[k] = d[k];
     const f = Object.fromEntries(FEATURES.filter((k) => d.features[k] !== o.features[k]).map((k) => [k, d.features[k]]));
     if (Object.keys(f).length) out.features = f;
@@ -235,6 +235,10 @@ export default function CustomerPage() {
               onChangeText={(x) => set({ boothRadiusM: Number(x.replace(/\D/g, '')) || 0 })}
               error={d.boothRadiusM < 50 || d.boothRadiusM > 2000 ? t('pd.radiusRange') : null} />
             <Button kind="tinted" label={t('pd.openPage')} onPress={() => router.push(`/platform/polling/${d.id}`)} />
+            {/* spec map-results R1: close-contest margin (votes) for map colours, booth strength and the win plan. */}
+            <Field label={t('mr.label')} value={d.resultMargin ? String(d.resultMargin) : ''} keyboardType="number-pad" maxLength={4} hint={t('mr.hint')}
+              onChangeText={(x) => set({ resultMargin: Number(x.replace(/\D/g, '')) || 0 })}
+              error={d.resultMargin < 10 || d.resultMargin > 2000 ? t('mr.range') : null} />
           </View>
         </Group>
       ) : null}
@@ -252,7 +256,7 @@ export default function CustomerPage() {
       ) : null}
 
       <View style={s.actions}>
-        <Button label={t('cms.save')} disabled={!dirty || busy || !colourOk || d.syncMinutes < 1 || d.syncMinutes > 120 || d.boothRadiusM < 50 || d.boothRadiusM > 2000} onPress={() => void save()} />
+        <Button label={t('cms.save')} disabled={!dirty || busy || !colourOk || d.syncMinutes < 1 || d.syncMinutes > 120 || d.boothRadiusM < 50 || d.boothRadiusM > 2000 || d.resultMargin < 10 || d.resultMargin > 2000} onPress={() => void save()} />
         {dirty ? <Button kind="plain" label={t('cms.discard')} onPress={() => { setD(q.data ?? null); setMsg(null); }} /> : null}
         {msg ? <AppText variant="callout" color={msg.ok ? colors.success : colors.danger} style={s.flex}>{msg.text}</AppText> : null}
       </View>

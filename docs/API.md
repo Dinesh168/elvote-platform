@@ -177,3 +177,8 @@ The server enforces super-admin with `validatePrivateUser(userId)` in `private.j
 ### Polling day: find any voter of the assembly (spec flow-fixes P1/P2)
 - `GET /v1/m/:mid/polling/find?epic=XXX` or `?part=101&sno=5` → `{ items: [{ id, sno, part, boothName, name, nameLocal, relation, relative, age, gender, voted, own }] }` (no group/phone). 422 without EPIC or booth + S.No.
 - `POST /v1/m/:mid/voters/:id/changes` with only `votedAt` is accepted for any booth of the assembly while the election window is open; other changes stay limited to own booths (403 `booth_forbidden`).
+
+### Admin views + super-admin team control (spec admin-views)
+- `GET /v1/m/:mid/polling/find?q=` — one box: digits = S.No in every booth, letters+digits = EPIC, text = name; first 50.
+- `GET /v1/m/:mid/booth-table` adds `area`, `village`. Memberships in `/v1/me` carry `views` (zone/area/village).
+- Super-admin: `GET /v1/admin/customers/:id/members`; `POST /v1/admin/volunteers {mobile|email, name, partyAcId, booths}`; `PUT /v1/admin/customers/:id/members/:mid/booths {booths}`; `DELETE /v1/admin/customers/:id/members/:mid`; `PATCH /v1/admin/booths/:state/:ac/:no/place {area?, village?}`; `PATCH /v1/admin/customers/:id {views}`.

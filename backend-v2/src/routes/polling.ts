@@ -37,10 +37,21 @@ export async function pollingRoutes(app: FastifyInstance) {
   app.get('/v1/m/:mid/polling/find', async (req) => {
     const { mid } = parse(Mid, req.params);
     const q = parse(z.object({
+      q: z.string().trim().min(1).max(60).optional(),
       epic: z.string().trim().toUpperCase().min(4).max(20).optional(),
       part: PartNo.optional(),
       sno: z.coerce.number().int().min(1).max(9999).optional(),
-    }).refine((x) => !!x.epic || (x.part != null && x.sno != null), { message: 'Type an EPIC number, or a booth and serial number.' }), req.query);
+    }).refine((x) => !!x.q || !!x.epic || (x.part != null && x.sno != null), { message: 'Type an EPIC number, a name or a serial number.' }), req.query);
+    // spec admin-views P1: one box. Digits = S.No in every booth; letters + digits = EPIC; otherwise a name (English or regional).
+    let mode: 'epic' | 'sno' | 'name' | 'partsno' = q.epic ? 'epic' : 'partsno';
+    let term: string | number | null = q.epic ?? null;
+    if (q.q) {
+      const x = q.q.trim();
+      if (/^\d{1,4}$/.test(x)) { mode = 'sno'; term = Number(x); }
+      else if (/^[A-Za-z]{2,4}\/?\d{4,10}$/.test(x.replace(/\s/g, ''))) { mode = 'epic'; term = x.replace(/\s/g, '').toUpperCase(); }
+      else if (x.length >= 2) { mode = 'name'; term = `%${x.replace(/[%_\\]/g, (ch) => `\\${ch}`)}%`; }
+      else throw invalid('find_query', 'Type at least 2 letters of the name.');
+    }
     const m = await requireMembership(req.userId, mid);
     requireFeature(m, 'poll');
     const pool = await statePool(m.stateCode);
@@ -51,9 +62,14 @@ export async function pollingRoutes(app: FastifyInstance) {
                 EXISTS (SELECT 1 FROM poll_marks pm WHERE pm.election_id = $2 AND pm.ac_no = v.ac_no AND pm.voter_id = v.id AND pm.undone_at IS NULL) AS voted
            FROM voters v JOIN booths b ON b.id = v.booth_id
           WHERE v.ac_no = $1 AND v.status IN ('active','added')
-            AND (($3::text IS NOT NULL AND v.epic = $3) OR ($3::text IS NULL AND v.part_no = $4 AND v.sno = $5))
-          ORDER BY v.part_no, v.sno LIMIT 5`,
-        [m.acNo, el ?? '00000000-0000-0000-0000-000000000000', q.epic ?? null, q.part ?? null, q.sno ?? null]);
+            AND CASE $3::text
+                  WHEN 'epic' THEN v.epic = $4
+                  WHEN 'sno' THEN v.sno = $5::int
+                  WHEN 'name' THEN (v.name ILIKE $4 OR v.name_local ILIKE $4)
+                  ELSE v.part_no = $6 AND v.sno = $5::int END
+          ORDER BY v.part_no, v.sno LIMIT 50`,
+        [m.acNo, el ?? '00000000-0000-0000-0000-000000000000', mode, typeof term === 'string' ? term : null,
+         mode === 'sno' ? term : q.sno ?? null, q.part ?? null]);
       return {
         items: r.rows.map((v) => ({
           id: v.id, sno: v.sno, part: v.part_no, boothName: v.booth_name, name: v.name, nameLocal: v.name_local, relation: v.relation,
@@ -164,9 +180,9 @@ export async function pollingAdminRoutes(app: FastifyInstance) {
     const q = parse(z.object({ state: State, ac: z.coerce.number().int().min(1).max(999), missing: z.enum(['0', '1']).optional() }), req.query);
     if (!(await allStateCodes()).includes(q.state)) throw notFound();
     const pool = await statePool(q.state);
-    const r = await pool.query<{ part_no: number; name: string; locality: string | null; lat: string | null; lng: string | null; location_source: string | null }>(
-      `SELECT part_no, name, locality, lat, lng, location_source FROM booths WHERE ac_no = $1 AND deleted_at IS NULL ORDER BY part_no`, [q.ac]);
-    const all = r.rows.map((x) => ({ no: x.part_no, name: x.name, locality: x.locality, lat: x.lat != null ? Number(x.lat) : null, lng: x.lng != null ? Number(x.lng) : null, source: x.location_source }));
+    const r = await pool.query<{ part_no: number; name: string; locality: string | null; area: string | null; lat: string | null; lng: string | null; location_source: string | null }>(
+      `SELECT part_no, name, locality, area, lat, lng, location_source FROM booths WHERE ac_no = $1 AND deleted_at IS NULL ORDER BY part_no`, [q.ac]);
+    const all = r.rows.map((x) => ({ no: x.part_no, name: x.name, locality: x.locality, area: x.area, lat: x.lat != null ? Number(x.lat) : null, lng: x.lng != null ? Number(x.lng) : null, source: x.location_source }));
     const missing = all.filter((x) => x.lat == null || x.lng == null);
     return { items: q.missing === '1' ? missing : all, total: all.length, missing: missing.length };
   });

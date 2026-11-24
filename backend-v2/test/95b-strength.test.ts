@@ -77,3 +77,35 @@ describe('estimated booths and UP (B1, O1)', () => {
     expect(o.states.map((s: { code: string }) => s.code)).toContain('UP');
   });
 });
+
+/** spec booth-map TC-BM-1: map data has volunteers, the first volunteer to call and the last-result group. */
+describe('booth map data', () => {
+  it('TC-BM-1 workers, contact and result per booth', async () => {
+    const rows = (await adm.get(`/v1/m/${amid}/map`)).json() as { no: number; workers: number; contact: { name: string; mobile: string | null } | null; result: string | null }[];
+    const b112 = rows.find((b) => b.no === 112)!;
+    expect(b112.workers).toBeGreaterThan(0);
+    expect(b112.contact?.name).toBeTruthy();
+    expect(rows.find((b) => b.no === 101)!.result).toBe('S');
+    expect((await vol.get(`/v1/m/${vmid}/map`)).statusCode).toBe(403);
+  });
+});
+
+/** spec map-results TC-MR-1/2: the super-admin's close-contest margin drives strength and the map's last-election data. */
+describe('team margin', () => {
+  it('TC-MR-1 a larger margin turns a won-by-100+ booth into Moderate; back to 100 restores it', async () => {
+    const id = ((await sup.get('/v1/admin/customers')).json() as { id: string; partyName: string; acNo: number }[]).find((c) => c.partyName === 'Jan Vikas Party' && c.acNo === 66)!.id;
+    await adm.del(`/v1/m/${amid}/booths/101/strength`);
+    expect((await sup.patch(`/v1/admin/customers/${id}`, { resultMargin: 2000 })).json().resultMargin).toBe(2000);
+    expect(await row(101)).toEqual(expect.objectContaining({ strength: 'M', strengthSource: 'auto' }));
+    expect((await sup.patch(`/v1/admin/customers/${id}`, { resultMargin: 5 })).statusCode).toBe(422);
+    await sup.patch(`/v1/admin/customers/${id}`, { resultMargin: 100 });
+    expect(await row(101)).toEqual(expect.objectContaining({ strength: 'S' }));
+  });
+
+  it('TC-MR-2 map: last election per booth (year, party, our %, rival, margin, votes)', async () => {
+    const b = ((await adm.get(`/v1/m/${amid}/map`)).json() as { no: number; last: { year: number; party: string; ours: number; rival: string; margin: number; oursVotes: number; rivalVotes: number } | null }[]).find((x) => x.no === 101)!;
+    expect(b.last).toMatchObject({ party: 'JVP' });
+    expect(b.last!.margin).toBe(b.last!.oursVotes - b.last!.rivalVotes);
+    expect(b.last!.year).toBeGreaterThan(2000);
+  });
+});

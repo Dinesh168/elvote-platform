@@ -62,7 +62,7 @@ export default function AdminLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.textSecondary,
-        tabBarLabelStyle: { fontFamily: pa ? fonts.paSemibold : hi ? fonts.hiSemibold : fonts.medium, fontSize: 12 },
+        tabBarLabelStyle: { fontFamily: pa ? fonts.paSemibold : hi ? fonts.hiSemibold : fonts.medium, fontSize: 12, lineHeight: 16, marginTop: 2 },
         ...bar,
         tabBarIcon: ({ focused, color }) => <Icon name={ICONS[route.name.replace(/[()]/g, '')]?.[focused ? 0 : 1] ?? 'ellipse'} size={26} color={color} />,
       })}

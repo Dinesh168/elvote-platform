@@ -112,17 +112,17 @@ function series(res: AcResults, party: string, parts?: Set<number>) {
   };
 }
 
-function child(res: AcResults, party: string, key: string, name: string, parts?: Set<number>) {
+function child(res: AcResults, party: string, key: string, name: string, parts?: Set<number>, t = 100) {
   const s = series(res, party, parts);
-  return { key, name, ours: s.last?.ours ?? null, swing: s.swing, winner: s.last?.winner ?? null, margin: s.last?.margin ?? null, group: s.last ? groupOf(s.last.margin) : null };
+  return { key, name, ours: s.last?.ours ?? null, swing: s.swing, winner: s.last?.winner ?? null, margin: s.last?.margin ?? null, group: s.last ? groupOf(s.last.margin, t) : null };
 }
 
-const boothChildren = (res: AcResults, party: string, parts: Iterable<number>) => {
+const boothChildren = (res: AcResults, party: string, parts: Iterable<number>, t = 100) => {
   const lastYear = years(res).at(-1);
   const names = new Map<number, string>();
   for (const y of years(res)) for (const b of res.get(y)!.values()) names.set(b.part, b.name ?? `Booth ${b.part}`);
   return [...parts].filter((p) => names.has(p)).sort((a, b) => a - b)
-    .map((p) => child(res, party, String(p), names.get(p)!, new Set([p])))
+    .map((p) => child(res, party, String(p), names.get(p)!, new Set([p]), t))
     .filter(() => lastYear !== undefined);
 };
 
@@ -142,10 +142,10 @@ export async function resultsRoutes(app: FastifyInstance) {
       const zones = await zonesOf(pool, m);
       const zoned = new Set([...zones.values()].flatMap((z) => [...z.parts]));
       if ([...zones.values()].some((z) => z.parts.size)) {
-        children = [...zones.entries()].filter(([, z]) => z.parts.size).map(([id, z]) => child(res, party, id, z.name, z.parts));
+        children = [...zones.entries()].filter(([, z]) => z.parts.size).map(([id, z]) => child(res, party, id, z.name, z.parts, m.resultMargin));
         const none = new Set([...allParts].filter((p) => !zoned.has(p)));
-        if (none.size) children.push(child(res, party, 'none', 'No zone', none));
-      } else children = boothChildren(res, party, allParts);
+        if (none.size) children.push(child(res, party, 'none', 'No zone', none, m.resultMargin));
+      } else children = boothChildren(res, party, allParts, m.resultMargin);
     } else if (q.level === 'zone') {
       if (!q.key) throw invalid('key_required', 'Pick a zone.');
       const zones = await zonesOf(pool, m);
@@ -159,16 +159,16 @@ export async function resultsRoutes(app: FastifyInstance) {
         parts = z.parts;
         name = z.name;
       }
-      children = boothChildren(res, party, parts);
+      children = boothChildren(res, party, parts, m.resultMargin);
     } else if (q.level === 'village') {
       if (!q.key) {
         const villages = new Map<string, Set<number>>();
         for (const y of res.values()) for (const b of y.values()) if (b.village) (villages.get(b.village) ?? villages.set(b.village, new Set()).get(b.village)!).add(b.part);
-        children = [...villages.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([v, p]) => child(res, party, v, v, p));
+        children = [...villages.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([v, p]) => child(res, party, v, v, p, m.resultMargin));
       } else {
         parts = new Set([...res.values()].flatMap((y) => [...y.values()].filter((b) => b.village?.toLowerCase() === q.key!.toLowerCase()).map((b) => b.part)));
         name = q.key;
-        children = boothChildren(res, party, parts);
+        children = boothChildren(res, party, parts, m.resultMargin);
       }
     } else {
       const part = PartNo.parse(q.key);
@@ -187,7 +187,7 @@ export async function resultsRoutes(app: FastifyInstance) {
     const t = await today(pool, m);
     const needed = neededNow(s.last.rivalVotes, s.last.electors, t.voters.get(part) ?? 0);
     const oursFound = t.stats.get(part)?.our ?? 0;
-    return { ...out, group: groupOf(s.last.margin), toWin: { needed, oursFound, toGo: Math.max(0, needed - oursFound) }, metPct: pctMet(t.stats.get(part)) };
+    return { ...out, group: groupOf(s.last.margin, m.resultMargin), toWin: { needed, oursFound, toGo: Math.max(0, needed - oursFound) }, metPct: pctMet(t.stats.get(part)) };
   });
 
   app.get('/v1/m/:mid/results-map', async (req) => {
@@ -232,7 +232,7 @@ export async function resultsRoutes(app: FastifyInstance) {
     const current = [...t.voters.values()].reduce((a, x) => a + x, 0);
     const needed = neededNow(area.rivalVotes, area.electors, current);
     const groups = { safe: [] as number[], swing: [] as number[], tough: [] as number[] };
-    for (const b of all) groups[groupOf(areaYear([b], party).margin)].push(b.part);
+    for (const b of all) groups[groupOf(areaYear([b], party).margin, m.resultMargin)].push(b.part);
     const covered = await core.query<{ part_no: number }>(
       `SELECT DISTINCT mb.part_no FROM membership_booths mb JOIN memberships ms ON ms.id = mb.membership_id
         WHERE ms.party_constituency_id = $1 AND ms.role = 'volunteer' AND ms.status = 'approved' AND NOT mb.requested`, [m.partyAcId]);

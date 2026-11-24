@@ -65,6 +65,9 @@ Last updated: 2026-11-23 (theelvote account session).
 - spec flow-fixes (2026-11-23): walk-through fixes (Home next voter first, Poll day keypad pinned, 6-digit auto sign-in, Team Review/Approve, team bar on all admin tabs), bottom menu safe-area, gifted charts, polling-day find across the assembly (EPIC / booth+S.No, mark Voted in window), old v1 client + backend/ removed. EAS 5f9e4fc6. Demo data reloaded 2026-11-23 (backup *-1122.dump); transliteration dropped (owner later).
 - NEXT: super-admin full control (add admin/volunteer directly, create state, edit/remove roles) — confirmed by owner, not built yet.
 
+- spec booth-map (2026-11-23): Leaflet map (WebView/iframe), clusters, colour by, booth card, set missing locations; Results map merged. Tiles: keyless Esri for the demo — needs a keyed provider (MapTiler) before production.
+- spec admin-views (2026-11-24): zone button (no chip row), All booths page with bars, view by zone/area/village (super-admin), one-card voter marking (Died / Not found), poll-day one search box, super-admin add/remove admin & volunteer, booth area/village edit. Backup *-20261124-0402. EAS f62f3d05. Screens not yet seen in a browser (extension disconnected).
+
 ## Next
 1. Owner checks the demo on the phone; fix what they report. Then "commit and push" when asked.
 2. Screen checks still open: TC-MT-21, 22, 23, 25, 26, 27 (real phone, Hindi/Punjabi, 130 % font, speed on demo).
