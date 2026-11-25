@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { core, statePool } from '../db/pools.js';
-import { isSuperAdmin, membershipsOf, type Membership } from '../lib/access.js';
+import { effectiveFeatures, isSuperAdmin, membershipsOf, type Membership } from '../lib/access.js';
 import { assertOneRole } from '../lib/roles.js';
 import { requestDeletion, sendDeletionCode } from '../lib/account.js';
 import { acLangs } from '../lib/lang.js';
@@ -21,7 +21,7 @@ export async function clientMemberships(ms: Membership[]) {
   return ms.map((m, i) => ({
     id: m.id, role: m.role, status: m.status, partyId: m.partyId, partyName: m.partyName, partyAcId: m.partyAcId,
     stateCode: m.stateCode, acNo: m.acNo, acName: m.acName, booths: m.booths, maxZones: m.maxZones, zoneCount: m.zoneCount,
-    active: m.active, features: m.features, look: m.look, sync: m.sync,
+    active: m.active, features: effectiveFeatures(m), look: m.look, sync: m.sync, paused: m.paused, deny: m.deny,
     boothRadiusM: m.boothRadiusM, views: m.views, resultMargin: m.resultMargin, pollingDay: days[i], dataLang: langs.get(m.stateCode)?.get(m.acNo) ?? 'hi',
     ...(m.asSuperAdmin ? { asSuperAdmin: true } : {}),
   }));

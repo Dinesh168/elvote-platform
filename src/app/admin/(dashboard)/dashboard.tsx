@@ -1,5 +1,4 @@
-import { DashboardView } from '@/features/admin/DashboardView';
+import { AdminDashboard } from '@/features/easy/admin/AdminScreens';
 
-export default function AdminDashboard() {
-  return <DashboardView />;
-}
+/** Admin Dashboard (spec easy-redesign A1). */
+export default AdminDashboard;

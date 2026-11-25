@@ -5,7 +5,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { core, statePool } from '../db/pools.js';
-import { audit, checkLimit, FEATURE_KEYS, featuresOf, forgetUserStatus } from '../lib/access.js';
+import { ABILITIES, audit, checkLimit, FEATURE_KEYS, featuresOf, forgetUserStatus } from '../lib/access.js';
 import { ApiError, invalid, notFound } from '../lib/errors.js';
 import { Mobile, parse, PartNo, Uuid } from '../lib/http.js';
 import { areaOf, notify } from '../lib/notify.js';
@@ -30,12 +30,14 @@ const Settings = z.object({
   boothRadiusM: z.number().int().min(50, 'At least 50 m').max(2000, 'At most 2,000 m'),
   views: z.array(z.enum(['zone', 'area', 'village'])).min(1, 'Pick at least one view').max(3),
   resultMargin: z.number().int().min(10, 'At least 10 votes').max(2000, 'At most 2,000 votes'),
+  /** spec easy-redesign B3: who gets each feature. */
+  featureWho: z.partialRecord(z.enum(FEATURE_KEYS), z.enum(['all', 'admin', 'volunteer'])),
 }).partial().strict();
 
 const COLS = `pc.id, p.name AS party_name, trim(pc.state_code) AS state_code, pc.ac_no, pc.ac_name, pc.app_name, pc.logo_url, pc.banner_url, pc.brand_colour,
   pc.candidate_name, pc.candidate_photo_url, pc.ballot_no, pc.candidate_slogan, pc.candidate_message, pc.slip_share_text, pc.features,
   pc.regional_lang, pc.languages, pc.max_zones, pc.zone_count, pc.max_volunteers, pc.max_admins, pc.status,
-  to_char(pc.valid_until, 'YYYY-MM-DD') AS valid_until, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m, pc.views, pc.result_margin,
+  to_char(pc.valid_until, 'YYYY-MM-DD') AS valid_until, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m, pc.views, pc.result_margin, pc.feature_who,
   (SELECT count(*)::int FROM memberships m WHERE m.party_constituency_id = pc.id AND m.status = 'approved' AND m.role = 'volunteer') AS volunteers,
   (SELECT count(*)::int FROM memberships m WHERE m.party_constituency_id = pc.id AND m.status = 'approved' AND m.role = 'admin') AS admins`;
 
@@ -47,6 +49,7 @@ const toCustomer = (r: Row) => ({
   features: featuresOf(r.features), defaultLang: r.regional_lang, languages: r.languages,
   maxZones: r.max_zones, zoneCount: r.zone_count, maxVolunteers: r.max_volunteers, maxAdmins: r.max_admins,
   status: r.status, validUntil: r.valid_until, volunteers: r.volunteers, admins: r.admins, syncMode: r.sync_mode, syncMinutes: r.sync_minutes, boothRadiusM: r.booth_radius_m, views: (r.views as string[] | null) ?? ['zone'], resultMargin: (r.result_margin as number | null) ?? 100,
+  featureWho: (r.feature_who as Record<string, string> | null) ?? {},
   active: r.status === 'active' && (!r.valid_until || r.valid_until >= new Date().toISOString().slice(0, 10)),
 });
 
@@ -80,6 +83,10 @@ async function saveSettings(id: string, b: z.infer<typeof Settings>) {
   if (b.features) {
     params.push(JSON.stringify({ ...featuresOf(cur.features), ...b.features }));
     sets.push(`features = $${params.length}::jsonb`);
+  }
+  if (b.featureWho) {
+    params.push(JSON.stringify({ ...((cur.feature_who as Record<string, string> | null) ?? {}), ...b.featureWho }));
+    sets.push(`feature_who = $${params.length}::jsonb`);
   }
   if (sets.length) await core.query(`UPDATE party_constituencies SET ${sets.join(', ')}, updated_at = now() WHERE id = $1`, params);
 }
@@ -250,6 +257,19 @@ export async function customerRoutes(app: FastifyInstance) {
     }
     await audit({ actor: req.userId, role: 'super_admin', action: b.remove ? 'member.remove' : 'member.update', entity: 'membership', entityId: id, details: { reason: b.reason, role: b.role, booths: b.booths } });
     return { ok: true };
+  });
+
+  /** spec easy-redesign B4: pause one person in this team, or switch off single abilities. */
+  app.patch('/v1/admin/memberships/:id/access', async (req) => {
+    const { id } = parse(z.object({ id: Uuid }), req.params);
+    const b = parse(z.object({ paused: z.boolean().optional(), deny: z.array(z.enum(ABILITIES)).max(4).optional() }).strict(), req.body);
+    const m = await core.query<{ user_id: string }>('SELECT user_id FROM memberships WHERE id = $1', [id]);
+    if (!m.rowCount) throw notFound();
+    if (b.paused !== undefined) await core.query('UPDATE memberships SET paused = $2, updated_at = now() WHERE id = $1', [id, b.paused]);
+    if (b.deny) await core.query('UPDATE memberships SET deny = $2::text[], updated_at = now() WHERE id = $1', [id, [...new Set(b.deny)]]);
+    await audit({ actor: req.userId, role: 'super_admin', action: 'member.access', entity: 'membership', entityId: id, details: b });
+    const r = await core.query<{ paused: boolean; deny: string[] }>('SELECT paused, deny FROM memberships WHERE id = $1', [id]);
+    return r.rows[0];
   });
 
   // ---------- Vote trace (C9), all parties ----------

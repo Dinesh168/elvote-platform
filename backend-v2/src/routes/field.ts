@@ -8,7 +8,7 @@ import { ApiError, notFound } from '../lib/errors.js';
 import { Mobile, parse, PartNo, Uuid, VoterId } from '../lib/http.js';
 import { currentElectionId } from '../lib/stats.js';
 import { VISIBLE } from '../lib/imports.js';
-import { DRIVE_NAMES, toVoter, VOTER_SELECT, type VoterRow } from '../lib/voters.js';
+import { DRIVE_NAMES, voterFor, VOTER_SELECT, type VoterRow } from '../lib/voters.js';
 
 const Mid = z.object({ mid: Uuid });
 
@@ -47,7 +47,7 @@ export async function fieldRoutes(app: FastifyInstance) {
         since = ` AND (c.updated_at > $5 OR pm.marked_at > $5 OR pm.undone_at > $5 OR v.updated_at > $5)`;
       }
       const r = await c.query<VoterRow>(`${VOTER_SELECT} WHERE v.ac_no = $3 AND v.part_no = $4 AND v.${VISIBLE}${since} ORDER BY v.sno`, params);
-      return { serverTime: new Date().toISOString(), voters: r.rows.map(toVoter) };
+      return { serverTime: new Date().toISOString(), voters: r.rows.map(voterFor(m.deny)) };
     });
   });
 
@@ -71,7 +71,7 @@ export async function fieldRoutes(app: FastifyInstance) {
       const r = await c.query<VoterRow>(
         `${VOTER_SELECT} WHERE v.ac_no = $3 AND ($4::boolean OR v.part_no = ANY($5::smallint[])) AND v.${VISIBLE} AND ${cond}
          ORDER BY v.part_no, v.sno LIMIT 100`, params);
-      return r.rows.map(toVoter);
+      return r.rows.map(voterFor(m.deny));
     });
   });
 
@@ -115,7 +115,7 @@ export async function fieldRoutes(app: FastifyInstance) {
       const el = await currentElectionId(c);
       await applyChange(c, m, el, { opId: b.opId, voterId, clientAt: b.clientAt, patch: b.patch });
       const r = await c.query<VoterRow>(`${VOTER_SELECT} WHERE v.ac_no = $3 AND v.id = $4`, [m.partyId, el ?? '00000000-0000-0000-0000-000000000000', m.acNo, voterId]);
-      return toVoter(r.rows[0]);
+      return voterFor(m.deny)(r.rows[0]);
     });
   });
 
@@ -178,8 +178,9 @@ export async function fieldRoutes(app: FastifyInstance) {
     const { mid, no } = parse(z.object({ mid: Uuid, no: PartNo }), req.params);
     const b = parse(z.object({ lat: z.number().min(6).max(38), lng: z.number().min(68).max(98) }), req.body);
     const m = await requireMembership(req.userId, mid);
-    // Admins fix booth locations from the polling-day page (spec polling-day S2) whatever the plan.
-    if (m.role !== 'admin') requireFeature(m, 'boothGps');
+    // Admins fix booth locations from the polling-day page (spec polling-day S2). Volunteers never set them
+    // (spec easy-redesign V4, owner 2026-11-25: locations come with the data).
+    if (m.role !== 'admin') throw new ApiError(403, 'admin_only', 'Booth locations are set by your admin.');
     requireBooth(m, no);
     const pool = await statePool(m.stateCode);
     const r = await pool.query(`UPDATE booths SET lat = $3, lng = $4, location_source = $6, location_set_by = $5, updated_at = now() WHERE ac_no = $1 AND part_no = $2 AND deleted_at IS NULL`,

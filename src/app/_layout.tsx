@@ -9,7 +9,8 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { initialWindowMetrics, SafeAreaProvider } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { colors, web } from '@/design/tokens';
 import { persistOptions, queryClient } from '@/features/data';
 import { initI18n } from '@/i18n';
@@ -54,6 +55,8 @@ export default function RootLayout() {
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
     NotoSansGurmukhi_400Regular, NotoSansGurmukhi_600SemiBold, NotoSansGurmukhi_700Bold,
     NotoSansDevanagari_400Regular, NotoSansDevanagari_600SemiBold, NotoSansDevanagari_700Bold,
+    // spec easy-redesign O1: the icon font is loaded before the first screen (the ☰ icon was missing on Android).
+    ...Ionicons.font,
   });
   // spec nav-back B1–B3: Back (on screen and Android) returns to the screen you came from, across tabs too.
   useTrackHistory();
@@ -96,7 +99,8 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
-      <SafeAreaProvider>
+      {/* O1: start with the phone's real insets so the tab bar never sits behind the Android buttons. */}
+      <SafeAreaProvider initialMetrics={initialWindowMetrics}>
         <QueryClientProvider client={queryClient}>
           <StatusBar style="dark" />
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />

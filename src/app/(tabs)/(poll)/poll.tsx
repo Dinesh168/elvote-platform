@@ -17,6 +17,7 @@ import { notVotedByGroup } from '@/features/stats/selectors';
 import { usePrefs } from '@/stores/prefs';
 import { relText } from '@/features/voters/rel';
 import { FindVoter } from '@/features/poll/FindVoter';
+import { PollLocation } from '@/features/easy/PollLocation';
 
 const KEYS: (Key | 'ok')[] = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'back', '0', 'ok'];
 const R = 19;
@@ -107,6 +108,7 @@ export default function PollScreen() {
       }
     >
       {/* spec flow-fixes O1: the keypad stays fully visible on small phones; the part above it scrolls. */}
+      <PollLocation>
       <ScrollView ref={scroller} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
       {wide ? <LargeTitle title={t('poll.title')} subtitle={t('poll.keyboardHint')} /> : null}
       {!left ? (
@@ -250,6 +252,7 @@ export default function PollScreen() {
         })}
       </View>
       )}
+      </PollLocation>
       <BoothSheet visible={sheet} onClose={() => setSheet(false)} />
       <FindVoter visible={finder} booth={booth} onClose={() => setFinder(false)} onSearchName={() => router.push({ pathname: '/voters', params: { focus: '1' } })} />
     </Screen>

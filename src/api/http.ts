@@ -86,6 +86,8 @@ export async function request<T>(method: string, path: string, body?: unknown, o
   const json = text ? JSON.parse(text) : undefined;
   // C5: the customer's subscription ended while the app was open → show the paused page.
   if (res.status === 403 && json?.error === 'subscription_ended') router.replace('/paused');
+  // spec easy-redesign O5: the super-admin paused this person in this team.
+  if (res.status === 403 && json?.error === 'paused') router.replace({ pathname: '/paused', params: { who: 'me' } });
   if (!res.ok) throw new ApiError(res.status, json?.error ?? 'error', json?.message ?? 'Something went wrong.', json?.details);
   return json as T;
 }

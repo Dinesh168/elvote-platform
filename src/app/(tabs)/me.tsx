@@ -1,5 +1,5 @@
 import { useSyncStatus } from '@/features/sync/SyncStatus';
-import { useAllowedLangs, useFeature } from '@/features/session/customer';
+import { useAllowedLangs } from '@/features/session/customer';
 import { themed } from '@/design/theme';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
@@ -40,7 +40,8 @@ export default function MeScreen() {
   const sync = useSyncStatus();
   const when = (iso: string) => new Date(iso).toLocaleString(localeOf(i18n.language), { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
   const signOut = useSignOut();
-  const gpsOn = useFeature('boothGps');
+  // spec easy-redesign V4 (owner): booth locations come with the data; volunteers cannot set them.
+  const gpsOn: boolean = false;
   const langs = useAllowedLangs();
   const [loc, setLoc] = useState<{ ok: boolean; text: string } | null>(null);
   const roles = session ? rolesOf(session) : [];

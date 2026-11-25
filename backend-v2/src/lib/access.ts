@@ -34,9 +34,18 @@ export interface Membership {
   resultMargin: number;
   /** Super-admin working inside this team as its admin (spec usability-r2 S2): no membership row; id = team id. */
   asSuperAdmin?: boolean;
+  /** spec easy-redesign B3: who gets each feature (missing = everyone). */
+  who: Partial<Record<FeatureKey, Who>>;
+  /** spec easy-redesign B4: paused in this team, and abilities switched off for this person. */
+  paused: boolean;
+  deny: Ability[];
 }
 
-export const FEATURE_KEYS = ['map', 'poll', 'zones', 'tasks', 'slip', 'surnames', 'help', 'boothGps'] as const;
+export type Who = 'all' | 'admin' | 'volunteer';
+export const ABILITIES = ['mark', 'phones', 'addPhone', 'poll'] as const;
+export type Ability = (typeof ABILITIES)[number];
+
+export const FEATURE_KEYS = ['map', 'poll', 'zones', 'tasks', 'slip', 'surnames', 'help', 'boothGps', 'voice', 'reports', 'trend', 'addPhone', 'residence', 'tips'] as const;
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
 export type Features = Record<FeatureKey, boolean>;
 export interface Look {
@@ -51,6 +60,7 @@ const BASE = `
          pc.features, (pc.status = 'active' AND (pc.valid_until IS NULL OR pc.valid_until >= current_date)) AS active,
          pc.app_name, pc.logo_url, pc.banner_url, pc.brand_colour, pc.candidate_name, pc.candidate_photo_url, pc.ballot_no, pc.candidate_slogan,
          pc.candidate_message, pc.slip_share_text, pc.regional_lang, pc.languages, pc.sync_mode, pc.sync_minutes, pc.booth_radius_m, pc.views, pc.result_margin,
+         pc.feature_who, m.paused, m.deny,
          COALESCE(array_agg(mb.part_no ORDER BY mb.part_no) FILTER (WHERE mb.part_no IS NOT NULL), '{}') AS booths
     FROM memberships m
     JOIN party_constituencies pc ON pc.id = m.party_constituency_id AND pc.deleted_at IS NULL
@@ -64,6 +74,7 @@ type Row = {
   candidate_name: string | null; candidate_photo_url: string | null; ballot_no: number | null; candidate_slogan: string | null;
   candidate_message: string | null; slip_share_text: string | null; regional_lang: string | null; languages: string[];
   sync_mode: 'live' | 'offline' | 'scheduled'; sync_minutes: number; booth_radius_m: number; views: string[] | null; result_margin: number | null;
+  feature_who: Partial<Record<FeatureKey, Who>> | null; paused: boolean | null; deny: string[] | null;
 };
 export const featuresOf = (f: Partial<Features> | null | undefined): Features =>
   Object.fromEntries(FEATURE_KEYS.map((k) => [k, f?.[k] !== false])) as Features;
@@ -80,7 +91,23 @@ const map = (r: Row): Membership => ({
   boothRadiusM: r.booth_radius_m ?? 300,
   views: (r.views?.length ? r.views : ['zone']) as View[],
   resultMargin: r.result_margin ?? 100,
+  who: r.feature_who ?? {},
+  paused: !!r.paused,
+  deny: (r.deny ?? []).filter((a): a is Ability => (ABILITIES as readonly string[]).includes(a)),
 });
+
+/** Features as this person's app sees them: off for the team, or not for this role (spec easy-redesign B3). */
+export function effectiveFeatures(m: Membership): Features {
+  return Object.fromEntries(FEATURE_KEYS.map((k) => {
+    const who = m.who[k] ?? 'all';
+    return [k, m.features[k] && (who === 'all' || who === m.role || !!m.asSuperAdmin)];
+  })) as Features;
+}
+
+/** B4: an ability the super-admin switched off for this person is refused by the server. */
+export function requireAbility(m: Membership, a: Ability) {
+  if (m.deny.includes(a)) throw new ApiError(403, 'not_allowed', 'This is switched off for you. Ask your admin.');
+}
 
 export async function membershipsOf(userId: string): Promise<Membership[]> {
   const r = await core.query<Row>(`${BASE} WHERE m.user_id = $1 GROUP BY m.id, pc.id, p.id ORDER BY m.created_at`, [userId]);
@@ -95,7 +122,8 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
 const TEAM = BASE
   .replace('SELECT m.id, m.user_id, m.role, m.status,', `SELECT pc.id, $2::uuid AS user_id, 'admin' AS role, 'approved' AS status,`)
   .replace(/FROM memberships m\s+JOIN party_constituencies pc ON pc.id = m.party_constituency_id AND pc.deleted_at IS NULL/, 'FROM party_constituencies pc')
-  .replace('LEFT JOIN membership_booths mb ON mb.membership_id = m.id', 'LEFT JOIN membership_booths mb ON false');
+  .replace('LEFT JOIN membership_booths mb ON mb.membership_id = m.id', 'LEFT JOIN membership_booths mb ON false')
+  .replace('m.paused, m.deny', `false AS paused, '{}'::text[] AS deny`);
 
 /**
  * S2: the super-admin opens a team (party · AC, by its id) with full admin rights. Every write is audit-logged with
@@ -117,6 +145,7 @@ export async function requireMembership(userId: string, membershipId: string, ro
   const m = r.rows[0] && map(r.rows[0]);
   if (!m || m.status !== 'approved') throw forbidden();
   if (role === 'admin' && m.role !== 'admin') throw forbidden();
+  if (m.paused) throw new ApiError(403, 'paused', 'Your access to this team is paused. Contact your provider.');
   if (!m.active) throw new ApiError(403, 'subscription_ended', 'This team’s subscription has ended. Contact your provider.');
   return m;
 }

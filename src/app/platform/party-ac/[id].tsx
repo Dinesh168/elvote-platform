@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { themed } from '@/design/theme';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Switch, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { platformApi, type TeamPerson } from '@/api/adminApi';
 import { AppText, Button, Field, Group, Icon, LargeTitle, Row, Screen, SegmentedControl, Sheet } from '@/design/components';
@@ -24,6 +24,7 @@ export default function PartyAc() {
   const [boothsText, setBoothsText] = useState('');
   const [editing, setEditing] = useState<TeamPerson | null>(null);
   const [removing, setRemoving] = useState<TeamPerson | null>(null);
+  const [access, setAccess] = useState<TeamPerson | null>(null);
   const parseBooths = (x: string) => [...new Set(x.split(/[\s,]+/).map(Number).filter((n) => Number.isInteger(n) && n > 0))];
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
@@ -85,9 +86,11 @@ export default function PartyAc() {
           <Group key={r} header={`${t(r === 'admin' ? 'platform.admins' : 'steam.volunteers')} (${list.length})`}>
             {list.length === 0 ? <Row title={t('steam.none')} last /> : list.map((p, i) => (
               <Row key={p.membershipId} title={p.name} last={i === list.length - 1}
-                subtitle={[p.mobile ? `+91 ${p.mobile}` : p.email?.endsWith('.invalid') ? null : p.email, r === 'volunteer' ? t('common.booth', { no: p.booths.join(', ') }) : null].filter(Boolean).join(' · ')}
+                subtitle={[p.mobile ? `+91 ${p.mobile}` : p.email?.endsWith('.invalid') ? null : p.email, r === 'volunteer' ? t('common.booth', { no: p.booths.join(', ') }) : null,
+                  p.paused ? t('easy.sa.pausedTag') : p.deny?.length ? t('easy.sa.limitedTag') : null].filter(Boolean).join(' · ')}
                 trailing={
                   <View style={s.acts}>
+                    <Button kind="plain" compact label={t('easy.sa.access')} a11yLabel={`${t('easy.sa.access')} ${p.name}`} onPress={() => setAccess(p)} />
                     {r === 'volunteer' ? (
                       <Button kind="plain" compact label={t('steam.booths')} a11yLabel={`${t('steam.booths')} ${p.name}`}
                         onPress={() => { setEditing(p); setBoothsText(p.booths.join(', ')); }} />
@@ -125,6 +128,27 @@ export default function PartyAc() {
         </View>
       </Group>
 
+      {/* spec easy-redesign S2/O5: pause this person in this team, or switch off single abilities (enforced by the server). */}
+      <Sheet visible={!!access} title={access?.name ?? ''} onClose={() => setAccess(null)} footer={t('easy.sa.accessHint')}>
+        {access ? (
+          <>
+            <Row title={t('easy.sa.canSignIn')} subtitle={access.paused ? t('easy.sa.pausedSub') : t('easy.sa.activeSub')}
+              trailing={<Switch value={!access.paused} accessibilityLabel={t('easy.sa.canSignIn')} trackColor={{ true: colors.success, false: colors.ringTrack }}
+                onValueChange={(v) => void platformApi.setAccess(access.membershipId, { paused: !v }).then((x) => { setAccess({ ...access, ...x }); refresh(); }, fail)} />} />
+            {(['mark', 'phones', 'addPhone', 'poll'] as const).map((a, i) => {
+              const on = !(access.deny ?? []).includes(a);
+              return (
+                <Row key={a} title={t(`easy.sa.ab.${a}`)} subtitle={t(`easy.sa.abSub.${a}`)} last={i === 3}
+                  trailing={<Switch value={on} accessibilityLabel={t(`easy.sa.ab.${a}`)} trackColor={{ true: colors.success, false: colors.ringTrack }}
+                    onValueChange={(v) => {
+                      const deny = v ? (access.deny ?? []).filter((x) => x !== a) : [...(access.deny ?? []), a];
+                      void platformApi.setAccess(access.membershipId, { deny }).then((x) => { setAccess({ ...access, ...x }); refresh(); }, fail);
+                    }} />} />
+              );
+            })}
+          </>
+        ) : null}
+      </Sheet>
       <Sheet visible={!!editing} title={editing?.name ?? ''} onClose={() => setEditing(null)} footer={t('steam.boothsHint')}>
         <View style={s.form}>
           <Field label={t('steam.booths')} value={boothsText} onChangeText={setBoothsText} keyboardType="numbers-and-punctuation" />

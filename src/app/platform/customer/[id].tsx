@@ -19,7 +19,8 @@ import { fileUrl } from '@/features/session/customer';
 import { LANG_LABEL } from '@/i18n';
 
 type Tab = 'look' | 'candidate' | 'features' | 'language' | 'limits' | 'messages' | 'sync' | 'polling';
-const FEATURES: FeatureKey[] = ['tasks', 'surnames', 'map', 'zones', 'slip', 'help', 'boothGps', 'poll'];
+const FEATURES: FeatureKey[] = ['poll', 'voice', 'reports', 'trend', 'map', 'tasks', 'surnames', 'zones', 'slip', 'addPhone', 'residence', 'tips', 'help', 'boothGps'];
+type Who = 'all' | 'admin' | 'volunteer';
 const PLANS: Record<'basic' | 'pro' | 'all', FeatureKey[]> = {
   basic: ['tasks', 'surnames'],
   pro: ['tasks', 'surnames', 'map', 'zones', 'slip', 'help', 'boothGps'],
@@ -51,6 +52,9 @@ export default function CustomerPage() {
     for (const k of keys) if (JSON.stringify(d[k]) !== JSON.stringify(o[k])) out[k] = d[k];
     const f = Object.fromEntries(FEATURES.filter((k) => d.features[k] !== o.features[k]).map((k) => [k, d.features[k]]));
     if (Object.keys(f).length) out.features = f;
+    // spec easy-redesign S1: who gets each feature.
+    const w = Object.fromEntries(FEATURES.filter((k) => (d.featureWho?.[k] ?? 'all') !== (o.featureWho?.[k] ?? 'all')).map((k) => [k, d.featureWho?.[k] ?? 'all']));
+    if (Object.keys(w).length) out.featureWho = w;
     return out as CustomerPatch;
   }, [d, q.data]);
   const dirty = Object.keys(patch).length > 0;
@@ -162,10 +166,17 @@ export default function CustomerPage() {
             </View>
           </Group>
           <Group header={t('cms.tab.features')} footer={t('cms.featuresHint')}>
-            {FEATURES.map((k, i) => (
-              <Row key={k} title={t(`cms.feature.${k}`)} subtitle={t(`cms.featureSub.${k}`)} last={i === FEATURES.length - 1}
-                trailing={<Switch value={d.features[k]} onValueChange={(v) => set({ features: { ...d.features, [k]: v } })} accessibilityLabel={t(`cms.feature.${k}`)} trackColor={{ true: colors.success, false: colors.ringTrack }} />} />
-            ))}
+            {FEATURES.map((k, i) => {
+              const who: Who = d.featureWho?.[k] ?? 'all';
+              const next: Who = who === 'all' ? 'admin' : who === 'admin' ? 'volunteer' : 'all';
+              return (
+                <Row key={k} title={t(`cms.feature.${k}`, { defaultValue: t(`easy.feat.${k}`) })} last={i === FEATURES.length - 1}
+                  subtitle={`${t(`cms.featureSub.${k}`, { defaultValue: t(`easy.featSub.${k}`) })} · ${t(`easy.who.${who}`)}`}
+                  onPress={d.features[k] ? () => set({ featureWho: { ...(d.featureWho ?? {}), [k]: next } }) : undefined}
+                  a11yLabel={`${t(`cms.feature.${k}`, { defaultValue: t(`easy.feat.${k}`) })}: ${t(`easy.who.${who}`)}. ${t('easy.who.tap')}`}
+                  trailing={<Switch value={d.features[k]} onValueChange={(v) => set({ features: { ...d.features, [k]: v } })} accessibilityLabel={t(`cms.feature.${k}`, { defaultValue: t(`easy.feat.${k}`) })} trackColor={{ true: colors.success, false: colors.ringTrack }} />} />
+              );
+            })}
           </Group>
         </>
       ) : null}

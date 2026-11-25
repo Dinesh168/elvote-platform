@@ -81,3 +81,24 @@ tsc / eslint / jest / vitest → deploy demo → `eas update` + new APK only if 
 - Local services may be stopped for memory; ask before restarting. No Android emulator (owner's rule).
 - Commit only when asked. Never set passwords or create logins for the owner.
 - Demo deploy: `pg_dump` first, restart only pm2 `elvote-v2-demo`; never touch the live `elvote` DB/app.
+
+## Easy redesign (2026-11-24, designs only, NO code yet)
+- Canvas (theelvote account): https://claude.ai/artifact/ByQFriznn47eEFH1QQt1U9 — clickable volunteer app, admin app, super-admin panel + snapshots.
+- Owner decisions: cards fully tinted in group colour (light tint); "Our house" = most people met are ours; word **Swing** replaces Target;
+  no "Next house" (volunteers go where they can: "Go to a house" + type house number); voice help kept.
+- Every feature (Poll day, voice, reports, map, trend, export, tasks…) is switched on/off **per team by the super-admin**, with "who gets it"
+  (everyone / admins / volunteers); super-admin can pause any person or switch off single abilities (mark voters, see phones, poll day, download).
+- Admin: Group by Zone | Area switch (areas come from super-admin data); every list has search + filter + sort; Map and Trend are separate pages;
+  Reports tab (complete data table for picked booths, every cell tappable; compare; daily; volunteer work; people; not living here) with charts.
+- Navigation rule: Back returns to the page exactly as left. Opening a booth/zone/area pushes its own page (shortcuts + charts + all data);
+  the Dashboard dropdowns never change by themselves.
+- Voter card must show EPIC, father/husband name, house, needs-help, voted (old app had these). Family head removed. Caste/religion left out (DPDP).
+- Poll day: volunteer is asked for location as soon as they open Poll day; booth locations come with the data (volunteers cannot set them);
+  admin Poll day page = voting numbers (like today's app) + booth attendance (spec polling-day.md, already built).
+- Open bugs reported by owner (Android): ☰ menu icon not visible in TeamBar; bottom tab bar sits behind the system navigation area.
+- BUILT 2026-11-25 on branch feature/easy-redesign (not committed): spec docs/specs/easy-redesign.md (built), tests docs/test-cases/easy-redesign.md.
+  Server 233/233, app 156/156. Checked on the Android emulator against a local API (see test-case results).
+- Waiting on owner: (1) `npx eas-cli login` (Expo account not signed in on this PC) so the APK can be built;
+  (2) approval to deploy backend-v2 + migrations core/012 and state/008 to the demo server (app falls back to the booth table until then);
+  (3) "commit and push".
+- Local tooling: Node 22.20 portable in the session scratchpad (machine Node 20.8 is too old for vitest/embedded-postgres); backend-v2/.env created locally (gitignored).

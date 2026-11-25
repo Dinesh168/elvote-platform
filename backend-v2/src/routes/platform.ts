@@ -235,13 +235,13 @@ export async function platformRoutes(app: FastifyInstance) {
   app.get('/v1/admin/customers/:id/members', async (req) => {
     const { id } = parse(z.object({ id: Uuid }), req.params);
     await teamOf(id);
-    const r = await core.query<{ id: string; user_id: string; name: string; mobile: string | null; email: string | null; role: string; status: string; booths: number[] }>(
-      `SELECT m.id, u.id AS user_id, u.name, u.mobile, u.email, m.role, m.status,
+    const r = await core.query<{ id: string; user_id: string; name: string; mobile: string | null; email: string | null; role: string; status: string; booths: number[]; paused: boolean; deny: string[] }>(
+      `SELECT m.id, u.id AS user_id, u.name, u.mobile, u.email, m.role, m.status, m.paused, m.deny,
               COALESCE(array_agg(mb.part_no ORDER BY mb.part_no) FILTER (WHERE mb.part_no IS NOT NULL), '{}') AS booths
          FROM memberships m JOIN users u ON u.id = m.user_id LEFT JOIN membership_booths mb ON mb.membership_id = m.id
         WHERE m.party_constituency_id = $1 AND m.status IN ('approved','pending') AND u.deleted_at IS NULL
         GROUP BY m.id, u.id ORDER BY m.role, u.name`, [id]);
-    return r.rows.map((x) => ({ membershipId: x.id, userId: x.user_id, name: x.name, mobile: x.mobile, email: x.email, role: x.role, status: x.status, booths: x.booths }));
+    return r.rows.map((x) => ({ membershipId: x.id, userId: x.user_id, name: x.name, mobile: x.mobile, email: x.email, role: x.role, status: x.status, booths: x.booths, paused: x.paused, deny: x.deny }));
   });
 
   app.post('/v1/admin/volunteers', async (req) => {

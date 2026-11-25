@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { initialWindowMetrics, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, hairline } from '@/design/tokens';
 
 /**
@@ -9,7 +9,8 @@ import { colors, hairline } from '@/design/tokens';
 export function useTabBarStyle() {
   const insets = useSafeAreaInsets();
   const web = Platform.OS === 'web';
-  const bottom = insets.bottom;
+  // spec easy-redesign O1: Android edge-to-edge can report 0 before the first layout; use the window's inset then.
+  const bottom = Math.max(insets.bottom, Platform.OS === 'android' ? initialWindowMetrics?.insets.bottom ?? 0 : 0);
   return {
     tabBarStyle: {
       backgroundColor: web ? colors.tabBar : colors.surface,

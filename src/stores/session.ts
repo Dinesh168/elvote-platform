@@ -44,9 +44,14 @@ export interface MembershipInfo {
   asSuperAdmin?: boolean;
   /** Regional language of this assembly's data (spec bilingual-roll L1). */
   dataLang?: 'hi' | 'pa';
+  /** spec easy-redesign O5: paused in this team, and abilities the super-admin switched off for this person. */
+  paused?: boolean;
+  deny?: Ability[];
 }
 
-export type FeatureKey = 'map' | 'poll' | 'zones' | 'tasks' | 'slip' | 'surnames' | 'help' | 'boothGps';
+export type Ability = 'mark' | 'phones' | 'addPhone' | 'poll';
+
+export type FeatureKey = 'map' | 'poll' | 'zones' | 'tasks' | 'slip' | 'surnames' | 'help' | 'boothGps' | 'voice' | 'reports' | 'trend' | 'addPhone' | 'residence' | 'tips';
 export interface CustomerLook {
   appName: string | null; logoUrl: string | null; bannerUrl?: string | null; colour: string | null;
   candidateName: string | null; candidatePhotoUrl: string | null; ballotNo: number | null; slogan: string | null;

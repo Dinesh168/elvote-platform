@@ -33,7 +33,7 @@ WITH v AS (
 )
 INSERT INTO stats_booth AS s (party_id, booth_id, ac_no, part_no, total, met, our, target, opp, moved,
   with_mobile, our_mobile, target_mobile, opp_mobile, houses, houses_visited, houses_with_mobile, our_houses, target_houses, opp_houses,
-  first_time, young, mid, senior, male, female, third, help_needed, voted, our_voted, target_voted, opp_voted, help_voted, updated_at)
+  first_time, young, mid, senior, male, female, third, help_needed, voted, our_voted, target_voted, opp_voted, help_voted, died, not_found, updated_at)
 SELECT $1::uuid, b.id, b.ac_no, b.part_no,
   (SELECT count(*) FROM v),
   (SELECT count(*) FROM v WHERE group_code IS NOT NULL),
@@ -64,6 +64,8 @@ SELECT $1::uuid, b.id, b.ac_no, b.part_no,
   (SELECT count(*) FROM v WHERE voted AND group_code = 'target'),
   (SELECT count(*) FROM v WHERE voted AND group_code = 'opp'),
   (SELECT count(*) FROM v WHERE voted AND needs_help),
+  (SELECT count(*) FROM v WHERE residence = 'died'),
+  (SELECT count(*) FROM v WHERE residence = 'not_found'),
   now()
 FROM booths b WHERE b.id = $2
 ON CONFLICT (party_id, booth_id) DO UPDATE SET
@@ -74,7 +76,7 @@ ON CONFLICT (party_id, booth_id) DO UPDATE SET
   first_time = EXCLUDED.first_time, young = EXCLUDED.young, mid = EXCLUDED.mid, senior = EXCLUDED.senior,
   male = EXCLUDED.male, female = EXCLUDED.female, third = EXCLUDED.third, help_needed = EXCLUDED.help_needed,
   voted = EXCLUDED.voted, our_voted = EXCLUDED.our_voted, target_voted = EXCLUDED.target_voted, opp_voted = EXCLUDED.opp_voted,
-  help_voted = EXCLUDED.help_voted, updated_at = now()`;
+  help_voted = EXCLUDED.help_voted, died = EXCLUDED.died, not_found = EXCLUDED.not_found, updated_at = now()`;
 
 const DAILY = `
 INSERT INTO stats_booth_daily (party_id, booth_id, ac_no, day, contacted)

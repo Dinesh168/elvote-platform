@@ -59,14 +59,34 @@ export const colors = {
   deviceFrame: '#1C1C1E',
 } as const;
 
-export type GroupTone = { strong: string; tint: string };
+export type GroupTone = { strong: string; tint: string; card: string; text: string };
 
+/**
+ * spec easy-redesign V1: `card` = the whole voter card / house box tint (owner: "colour the whole card green");
+ * `text` = the group word on that tint (AA contrast). `tint` stays the lighter fill for chips and buttons.
+ */
 export const group: Record<GroupCode, GroupTone> & { none: GroupTone } = {
-  our: { strong: '#1B7F3B', tint: '#F0FAF2' },
-  target: { strong: '#B45309', tint: '#FFF8EB' },
-  opp: { strong: '#D70015', tint: '#FFF0F1' },
-  none: { strong: '#6C6C70', tint: '#FFFFFF' }, // "Not met" text: 5.1:1 on white (was 3.3:1)
+  our: { strong: '#1B7F3B', tint: '#F0FAF2', card: '#DCF2E2', text: '#14662F' },
+  target: { strong: '#B45309', tint: '#FFF8EB', card: '#FFEACB', text: '#8A3F06' },
+  opp: { strong: '#D70015', tint: '#FFF0F1', card: '#FFDCE0', text: '#A50D26' },
+  none: { strong: '#6C6C70', tint: '#FFFFFF', card: '#FFFFFF', text: '#4A4A4F' }, // "Not met" text: 5.1:1 on white (was 3.3:1)
 };
+
+/** spec easy-redesign: the frame and strip of the voter card being marked, and the path line. */
+export const easy = {
+  active: '#184BA1',
+  activeRing: 'rgba(24,75,161,0.18)',
+  band: '#DCE4F2',
+  bandText: '#113571',
+  pill: '#3A3A3C',
+  dashed: '#8E8E93',
+  tileBorder: '#C7C7CC',
+  helpBlue: '#113571',
+  helpTint: '#E8EDF6',
+  /** Report icons and the women / third-gender chart marks. */
+  purple: '#7C3AED',
+  teal: '#0E7490',
+} as const;
 
 /**
  * Chart mark colours (validated with the dataviz palette checker: CVD + normal-vision separation pass).

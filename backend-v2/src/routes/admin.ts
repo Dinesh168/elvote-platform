@@ -18,7 +18,7 @@ import { teamParty } from './results.js';
 const Mid = z.object({ mid: Uuid });
 const COUNTER_COLS = ['total', 'met', 'our', 'target', 'opp', 'moved', 'with_mobile', 'our_mobile', 'target_mobile', 'opp_mobile', 'houses', 'houses_visited',
   'houses_with_mobile', 'our_houses', 'target_houses', 'opp_houses', 'first_time', 'young', 'mid', 'senior', 'male', 'female', 'third', 'help_needed',
-  'voted', 'our_voted', 'target_voted', 'opp_voted', 'help_voted'] as const;
+  'voted', 'our_voted', 'target_voted', 'opp_voted', 'help_voted', 'died', 'not_found'] as const;
 type Counters = Record<(typeof COUNTER_COLS)[number], number>;
 const SUMS = COUNTER_COLS.map((c) => `COALESCE(sum(s.${c}), 0)::int AS ${c}`).join(', ');
 const camel = (s: string) => s.replace(/_([a-z])/g, (_, x: string) => x.toUpperCase());
@@ -32,9 +32,11 @@ async function admin(req: { userId: string; params: unknown }, feature?: Feature
 }
 
 /** Booth filter for a dashboard scope (zone or single booth) → SQL on alias `s` (stats_booth). */
-function scopeSql(params: unknown[], zone?: string, booth?: number) {
+function scopeSql(params: unknown[], zone?: string, booth?: number, area?: string) {
   let sql = '';
   if (zone) { params.push(zone); sql += ` AND s.booth_id IN (SELECT booth_id FROM zone_booths WHERE zone_id = $${params.length})`; }
+  // spec easy-redesign B2: area (tehsil / ward) set by the super-admin per booth
+  if (area) { params.push(area); sql += ` AND s.booth_id IN (SELECT id FROM booths WHERE area = $${params.length})`; }
   if (booth) { params.push(booth); sql += ` AND s.part_no = $${params.length}`; }
   return sql;
 }
@@ -82,12 +84,12 @@ async function workersByBooth(m: Membership): Promise<Map<number, number>> {
 export async function adminRoutes(app: FastifyInstance) {
   app.get('/v1/m/:mid/dashboard', async (req) => {
     const { m, pool } = await admin(req);
-    const q = parse(z.object({ zone: Uuid.optional(), booth: PartNo.optional() }), req.query);
+    const q = parse(z.object({ zone: Uuid.optional(), booth: PartNo.optional(), area: z.string().trim().min(1).max(80).optional() }), req.query);
     const workers = await workersByBooth(m);
     const sOf = await strengthOf(pool, m);
     return inParty(pool, m.partyId, async (c) => {
       const params: unknown[] = [m.partyId, m.acNo];
-      const scope = scopeSql(params, q.zone, q.booth);
+      const scope = scopeSql(params, q.zone, q.booth, q.area);
       const tot = (await c.query<Counters>(`SELECT ${SUMS} FROM stats_booth s WHERE s.party_id = $1 AND s.ac_no = $2${scope}`, params)).rows[0];
 
       const booths = await c.query<{ part_no: number; strength: string | null; total: number; met: number }>(
@@ -107,7 +109,7 @@ export async function adminRoutes(app: FastifyInstance) {
           WHERE z.party_id = $1 AND z.ac_no = $2 GROUP BY z.id ORDER BY z.number`, [m.partyId, m.acNo]);
 
       const tParams: unknown[] = [m.partyId, m.acNo];
-      const tScope = scopeSql(tParams, q.zone, q.booth).replaceAll('s.part_no', 'b.part_no');
+      const tScope = scopeSql(tParams, q.zone, q.booth, q.area).replaceAll('s.part_no', 'b.part_no').replaceAll('s.booth_id', 'b.id');
       const trend = await c.query<{ day: string; contacted: number }>(
         `SELECT to_char(d.day, 'YYYY-MM-DD') AS day, COALESCE(sum(s.contacted), 0)::int AS contacted
            FROM generate_series(current_date - 6, current_date, interval '1 day') AS d(day)
@@ -165,6 +167,46 @@ export async function adminRoutes(app: FastifyInstance) {
         },
         topWorkers: top.rows.map((t) => ({ userId: t.user_id, name: names.get(t.user_id) ?? '', contacted: t.contacted, today: t.today })),
       };
+    });
+  });
+
+  /**
+   * spec easy-redesign B2: every counter per booth (Complete data table, Compare booths, place pages) for the whole
+   * assembly, a zone, an area or one booth, plus the 14-day work per booth and the team per booth.
+   */
+  app.get('/v1/m/:mid/booth-stats', async (req) => {
+    const { m, pool } = await admin(req);
+    const q = parse(z.object({ zone: Uuid.optional(), area: z.string().trim().min(1).max(80).optional(), booth: PartNo.optional() }), req.query);
+    const team = await core.query<{ part_no: number; vols: number }>(
+      `SELECT mb.part_no, count(DISTINCT ms.id)::int AS vols FROM memberships ms JOIN membership_booths mb ON mb.membership_id = ms.id
+        WHERE ms.party_constituency_id = $1 AND ms.status = 'approved' AND ms.role = 'volunteer' AND NOT mb.requested GROUP BY mb.part_no`, [m.partyAcId]);
+    const vols = new Map(team.rows.map((x) => [x.part_no, x.vols]));
+    const sOf = await strengthOf(pool, m);
+    return inParty(pool, m.partyId, async (c) => {
+      const params: unknown[] = [m.partyId, m.acNo];
+      const scope = scopeSql(params, q.zone, q.booth, q.area);
+      const r = await c.query<Counters & { part_no: number; name: string; area: string | null; zone_id: string | null; zone: string | null; lat: string | null; lng: string | null }>(
+        `SELECT s.*, b.name, b.area, b.lat, b.lng, z.id AS zone_id, z.name AS zone FROM stats_booth s JOIN booths b ON b.id = s.booth_id
+           LEFT JOIN zone_booths zb ON zb.party_id = s.party_id AND zb.booth_id = s.booth_id LEFT JOIN zones z ON z.id = zb.zone_id
+          WHERE s.party_id = $1 AND s.ac_no = $2${scope} ORDER BY s.part_no`, params);
+      const dParams: unknown[] = [m.partyId, m.acNo];
+      const dScope = scopeSql(dParams, q.zone, q.booth, q.area).replaceAll('s.part_no', 'b.part_no');
+      const days = await c.query<{ part_no: number; day: string; contacted: number }>(
+        `SELECT b.part_no, to_char(s.day, 'YYYY-MM-DD') AS day, s.contacted FROM stats_booth_daily s JOIN booths b ON b.id = s.booth_id
+          WHERE s.party_id = $1 AND s.ac_no = $2 AND s.day > current_date - 14${dScope}`, dParams);
+      const today = await c.query<{ part_no: number; n: number }>(
+        `SELECT part_no, count(DISTINCT voter_id)::int AS n FROM contact_events WHERE party_id = $1 AND ac_no = $2
+            AND at >= date_trunc('day', now() AT TIME ZONE 'Asia/Kolkata') AT TIME ZONE 'Asia/Kolkata' GROUP BY part_no`, [m.partyId, m.acNo]);
+      const todayOf = new Map(today.rows.map((x) => [x.part_no, x.n]));
+      const out = r.rows.map((b) => {
+        const counters = Object.fromEntries(COUNTER_COLS.map((k) => [camel(k), b[k]]));
+        const last = sOf.last.get(b.part_no);
+        return {
+          no: b.part_no, name: b.name, area: b.area, zoneId: b.zone_id, zone: b.zone, lat: b.lat ? Number(b.lat) : null, lng: b.lng ? Number(b.lng) : null,
+          ...counters, volunteers: vols.get(b.part_no) ?? 0, metToday: todayOf.get(b.part_no) ?? 0, lastMargin: last ? last.margin : null,
+        };
+      });
+      return { booths: out, days: days.rows.map((d) => ({ booth: d.part_no, day: d.day, contacted: d.contacted })) };
     });
   });
 

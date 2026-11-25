@@ -75,7 +75,7 @@
   },
   "groups": {
     "our": "Our",
-    "target": "Target",
+    "target": "Swing",
     "opp": "Opposition",
     "none": "Not met"
   },
@@ -113,14 +113,14 @@
     "withMobile": "Voters with mobile",
     "withoutMobile": "Without mobile",
     "ourMobile": "Our, with mobile",
-    "targetMobile": "Target, with mobile",
+    "targetMobile": "Swing, with mobile",
     "oppMobile": "Opposition, with mobile",
     "totalHouses": "Total houses",
     "ourHouses": "Our houses",
-    "targetHouses": "Target houses",
+    "targetHouses": "Swing houses",
     "oppHouses": "Opposition houses",
     "ourHousesMobile": "Our houses with mobile",
-    "targetHousesMobile": "Target houses with mobile",
+    "targetHousesMobile": "Swing houses with mobile",
     "oppHousesMobile": "Opposition houses with mobile",
     "ageFirst": "First-time voters (18–20)",
     "ageYoung": "Young (21–35)",
@@ -399,7 +399,7 @@
       "women": "Women outreach",
       "first_time": "First-time voters",
       "young": "Young voters",
-      "target": "Target voters",
+      "target": "Swing voters",
       "our": "Our voters",
       "senior": "Senior citizens",
       "migrated": "Migrated voters",
@@ -1260,7 +1260,7 @@
     "most": "Most voters",
     "az": "A–Z",
     "a11y": "{{name}}: {{n}} voters, {{met}}% met, {{our}}% our",
-    "line": "{{met}}% met · {{our}}% our · {{target}} target · {{opp}} opp."
+    "line": "{{met}}% met · {{our}}% our · {{target}} swing · {{opp}} opp."
   },
   "asAdmin": {
     "strip": "Super-admin · {{team}}",
@@ -1338,7 +1338,7 @@
     "tough": "Tough",
     "safeDo": "Won by 100+ · keep ours voting.",
     "swingDo": "Within 100 votes · win these first.",
-    "toughDo": "Lost by 100+ · find target voters.",
+    "toughDo": "Lost by 100+ · find swing voters.",
     "booth": "Booth {{no}}",
     "noVolunteer": "No volunteer",
     "empty": "None"
@@ -1451,8 +1451,8 @@
     "next": "Next",
     "start": "Start",
     "meet": {
-      "title": "Tap Start meeting",
-      "text": "The app shows the next voter. Meet them at their house."
+      "title": "Tap Go to a house",
+      "text": "Pick the house you are standing at, then tap a person to mark."
     },
     "colour": {
       "title": "Tap one colour",
@@ -1535,12 +1535,12 @@
     "noVillage": "No village",
     "overall": "Whole assembly",
     "groups": "By {{what}}",
-    "foot": "Bar: Our · Target · Opp · Not met.",
+    "foot": "Bar: Our · Swing · Opp · Not met.",
     "booths": "booths",
     "met": "met",
     "focus": {
       "our": "Our",
-      "target": "Target",
+      "target": "Swing",
       "opp": "Opposition",
       "notMet": "Not met"
     }
@@ -1602,5 +1602,316 @@
   },
   "find": {
     "tooMany": "Too many searches. Wait a minute and try again."
+  },
+  "easy": {
+    "backTo": "Back to {{page}}",
+    "previous": "previous page",
+    "filter": "Filter",
+    "filterN": "Filter ({{n}})",
+    "sort": "Sort",
+    "remove": "Remove {{what}}",
+    "clearAll": "Clear all",
+    "showAll": "Show all",
+    "showN": "Show {{n}}",
+    "all": "All",
+    "listen": "Listen",
+    "firstVote": "First vote",
+    "needsHelp": "Needs help to vote",
+    "needsHelpOn": "Needs help ✓",
+    "voted": "Voted",
+    "nowMarking": "Now marking",
+    "phone": "Phone",
+    "markOff": "Marking voters is switched off for you. Ask your admin.",
+    "addPhone": "Add phone",
+    "slip": "Slip on WhatsApp",
+    "livesHere": "Living here?",
+    "allVoters": "All voters",
+    "allHouses": "All houses",
+    "notVisited": "Not visited",
+    "houses": {
+      "our": "Our houses",
+      "target": "Swing houses",
+      "opp": "Opposition houses"
+    },
+    "f": {
+      "withPhone": "With phone",
+      "noPhone": "No phone",
+      "a1": "First vote 18–20",
+      "a2": "Young 18–34",
+      "a3": "Middle 35–59",
+      "a4": "60 and above",
+      "sexM": "Men",
+      "sexF": "Women",
+      "sexT": "Third gender",
+      "notVoted": "Not voted"
+    },
+    "sortBy": {
+      "sno": "Serial number",
+      "name": "Name A to Z",
+      "young": "Youngest first",
+      "old": "Oldest first",
+      "house": "House number"
+    },
+    "hsort": {
+      "house": "House number",
+      "most": "Most voters first",
+      "left": "Most not met first"
+    },
+    "cat": {
+      "group": "Group",
+      "phone": "Phone number",
+      "age": "Age",
+      "sex": "Men / Women",
+      "living": "Living",
+      "poll": "Polling day",
+      "houseColour": "House colour",
+      "lead": "Who leads",
+      "met": "Voters met",
+      "team": "Team"
+    },
+    "say": {
+      "home": "This is your booth. Press the big blue button to go to a house. The coloured boxes show your numbers. Press a box to see those voters.",
+      "list": "These are voters. Green is ours, yellow is swing, red is opposition, white is not met. Press a voter to mark. Press Filter to choose who to see.",
+      "dash": "This is your dashboard. Pick a zone, an area or a booth at the top. Press any box or bar to see that list.",
+      "reports": "These are reports. Press a report to open it. Every bar and number can be pressed.",
+      "poll": "This is polling day. The numbers show who has voted. Press a box to see who has not voted yet."
+    },
+    "booth": "Booth",
+    "section": "Section",
+    "house": "House",
+    "houseNo": "House {{no}}",
+    "pickSection": "Pick a section",
+    "pickHouse": "Pick a house",
+    "pickBooth": "Pick a booth",
+    "allSections": "All sections",
+    "nVoters": "{{n}} voters",
+    "nHouses": "{{n}} houses",
+    "nBooths": "{{n}} booths",
+    "family": "{{name}}'s family",
+    "sectionN": "Section {{n}} · {{name}}",
+    "noSection": "No section",
+    "voters": "Voters",
+    "housesTitle": "Houses",
+    "searchHouse": "House number or family name",
+    "searchVoter": "Name, serial no. or EPIC",
+    "searchBooth": "Booth number or name",
+    "searchVol": "Volunteer name or booth",
+    "metOf": "{{met}} of {{n}} met",
+    "tapPerson": "Tap a person to mark",
+    "goToHouse": "Go to a house",
+    "lastHouse": "Open last house: {{no}}",
+    "oursVoters": "Our voters",
+    "swingVoters": "Swing voters",
+    "phones": "Phone numbers",
+    "ourWithPhone": "Ours with phone",
+    "people": "People",
+    "notLiving": "Not living here",
+    "atBooth": "You are at Booth {{no}}",
+    "awayFrom": "You are away from Booth {{no}}",
+    "pausedMe": "Your access to this team is paused. Contact your admin or provider.",
+    "groupBy": "Group by",
+    "view": {
+      "zone": "Zone",
+      "area": "Area"
+    },
+    "pick": {
+      "zone": "Pick a zone",
+      "area": "Pick an area"
+    },
+    "boothNo": "Booth {{no}}",
+    "boothSec": "Booth {{no}} · Section {{sec}}",
+    "areaName": "Area: {{name}}",
+    "wholeAc": "Whole assembly",
+    "lead": {
+      "our": "We lead",
+      "target": "Close fight",
+      "opp": "They lead"
+    },
+    "wonBy": "2022: won by {{n}}",
+    "lostBy": "2022: lost by {{n}}",
+    "needsYou": "Needs you today",
+    "nobodyOut": "{{n}} booths: nobody went out today",
+    "quietVols": "{{n}} volunteers quiet for 3 days",
+    "byGroup": "Voters by group",
+    "met14": "Voters met, last 14 days",
+    "todayBest": "Today {{today}} · best day {{best}}",
+    "allNumbers": "All numbers in one table",
+    "g": {
+      "poll": "Polling day",
+      "voters": "Voters",
+      "houses": "Houses",
+      "phones": "Phone numbers",
+      "people": "People",
+      "living": "Not living here",
+      "team": "Team",
+      "last": "Last election"
+    },
+    "age": "Age",
+    "boothsHere": "Booths here · {{n}}",
+    "bsort": {
+      "lead": "We lead most first",
+      "notMet": "Most not met first",
+      "no": "Booth number"
+    },
+    "metWord": "met",
+    "todayN": "Today {{n}}",
+    "sections": "Sections",
+    "secLine": "{{n}} voters · {{our}} ours",
+    "volsHere": "Volunteers here",
+    "boothsBy": "Booths by {{what}}",
+    "boothSort": {
+      "high": "Highest first",
+      "low": "Lowest first",
+      "no": "Booth number"
+    },
+    "cov": {
+      "low": "Under 50% met",
+      "high": "50% or more met"
+    },
+    "team": {
+      "none": "Nobody out today",
+      "some": "Someone out today"
+    },
+    "reports": "Reports",
+    "reportsSub": "Whole assembly. Every bar and number can be tapped.",
+    "r": {
+      "matrix": "Complete data",
+      "matrixSub": "Every number for the polling stations you pick, in one table",
+      "compare": "Compare booths",
+      "compareSub": "Pick a number and see every booth as a bar",
+      "daily": "Daily work",
+      "dailySub": "Voters met each day for two weeks",
+      "vwork": "Volunteer work",
+      "vworkSub": "Who met how many voters",
+      "people": "People",
+      "peopleSub": "Age groups, men and women",
+      "living": "Not living here",
+      "livingSub": "Moved, died and not found, booth by booth"
+    },
+    "inTable": "Polling stations in the table · {{n}}",
+    "nonePicked": "None picked",
+    "findNumber": "Find a number, e.g. phone",
+    "colSort": {
+      "no": "Booth number",
+      "high": "Most voters first",
+      "low": "Fewest voters first"
+    },
+    "tableHint": "Tap any number to open that list. Slide sideways for more booths.",
+    "number": "Number",
+    "total": "Total",
+    "pickTable": "Polling stations in the table",
+    "allBooths": "All booths",
+    "allGroups": "All groups",
+    "dailySub": "Tap a day to see that day.",
+    "metThatDay": "{{n}} voters met",
+    "topBooths": "Busiest booths that day",
+    "nobodyThatDay": "Nobody met voters that day.",
+    "vsort": {
+      "high": "Most met first",
+      "low": "Least met first",
+      "name": "Name A to Z"
+    },
+    "tsort": {
+      "today": "Most met today",
+      "least": "Least met in all",
+      "name": "Name A to Z",
+      "booth": "Booth number"
+    },
+    "act": {
+      "all": "All",
+      "out": "Out today",
+      "quiet": "Quiet today"
+    },
+    "menWomen": "Men and women",
+    "pollDay": "Poll day",
+    "pollLive": "Polling day is live · {{from}} to {{to}}",
+    "voting": "Voting",
+    "attendance": "Booth attendance",
+    "votedOf": "{{voted}} of {{total}} voted",
+    "oursVoted": "Ours voted: {{pct}}% ({{voted}} of {{of}})",
+    "notVotedYet": "Not voted yet · tap one",
+    "votedByZone": "Voted % by zone",
+    "mostOursNotVoted": "Booths with most of ours not voted",
+    "boothPollLine": "{{pct}}% voted · {{help}} need help",
+    "feat": {
+      "voice": "Spoken help",
+      "reports": "Reports",
+      "trend": "Trend (past elections)",
+      "addPhone": "Add phone numbers",
+      "residence": "Mark moved / died",
+      "tips": "Picture tips"
+    },
+    "featSub": {
+      "voice": "Speaker button reads the screen aloud",
+      "reports": "Reports tab for admins",
+      "trend": "Vote share by year, win plan",
+      "addPhone": "Volunteers add a voter’s phone",
+      "residence": "Not-here choice on the voter card",
+      "tips": "How-to pictures in the menu"
+    },
+    "who": {
+      "all": "Everyone",
+      "admin": "Admins only",
+      "volunteer": "Volunteers only",
+      "tap": "Tap to change who gets it"
+    },
+    "sa": {
+      "access": "Access",
+      "accessHint": "Switches here apply only to this person in this team. The server enforces them.",
+      "canSignIn": "Can use this team",
+      "pausedSub": "Paused: every request is refused",
+      "activeSub": "Active",
+      "pausedTag": "Paused",
+      "limitedTag": "Restricted",
+      "ab": {
+        "mark": "Mark voters",
+        "phones": "See phone numbers",
+        "addPhone": "Add phone numbers",
+        "poll": "Polling day marks"
+      },
+      "abSub": {
+        "mark": "Ours / Swing / Opposition, needs help, living",
+        "phones": "Off: numbers show as 98xxxxx210",
+        "addPhone": "Save a voter’s phone",
+        "poll": "Mark voted on polling day"
+      }
+    }
+  },
+  "em": {
+    "m": {
+      "voted": "Voted",
+      "ourNotVoted": "Ours not voted",
+      "targetNotVoted": "Swing not voted",
+      "oppNotVoted": "Opposition not voted",
+      "helpNotVoted": "Needs help, not voted",
+      "total": "All voters",
+      "our": "Ours",
+      "target": "Swing",
+      "opp": "Opposition",
+      "notMet": "Not met",
+      "metPct": "Met %",
+      "houses": "All houses",
+      "ourHouses": "Our houses",
+      "targetHouses": "Swing houses",
+      "oppHouses": "Opposition houses",
+      "leftHouses": "Not visited",
+      "withMobile": "With phone",
+      "withoutMobile": "No phone",
+      "ourMobile": "Ours with phone",
+      "firstTime": "First vote 18–20",
+      "young": "Young 18–34",
+      "mid": "Middle 35–59",
+      "senior": "60 and above",
+      "male": "Men",
+      "female": "Women",
+      "third": "Third gender",
+      "helpNeeded": "Needs help to vote",
+      "moved": "Moved",
+      "died": "Died",
+      "notFound": "Not found",
+      "volunteers": "Volunteers",
+      "metToday": "Met today",
+      "lastMargin": "2022 result (votes)"
+    }
   }
 }

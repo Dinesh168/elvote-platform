@@ -78,7 +78,8 @@ function withPending(booth: number, list: Voter[]): Voter[] {
 export const useVoters = (booth: number) => {
   const regional = useRegionalData();
   const select = useCallback((list: Voter[]) => list.map((v) => localizeVoter(v, regional)), [regional]);
-  return useQuery({ queryKey: keys.voters(booth), queryFn: async () => withPending(booth, await api.getVoters(booth)), select });
+  // booth 0 = no booth picked (admin pages of a zone or the whole assembly): nothing to load.
+  return useQuery({ queryKey: keys.voters(booth), queryFn: async () => withPending(booth, await api.getVoters(booth)), select, enabled: booth > 0 });
 };
 
 function patchCache(booth: number, id: string, patch: VoterPatch) {
