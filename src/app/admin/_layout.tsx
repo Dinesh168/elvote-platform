@@ -16,6 +16,9 @@ import { registerPush } from '@/features/pollingDay/push';
 
 const ICONS: Record<string, [string, string]> = {
   dashboard: ['stats-chart', 'stats-chart-outline'],
+  reports: ['grid', 'grid-outline'],
+  pollday: ['checkbox', 'checkbox-outline'],
+  trend: ['trending-up', 'trending-up-outline'],
   map: ['map', 'map-outline'],
   team: ['people', 'people-outline'],
   tasks: ['flag', 'flag-outline'],
@@ -35,7 +38,9 @@ export default function AdminLayout() {
   useSyncEngine(); // sync mode set by the super-admin (spec sync-modes S3)
   const pd = useAdminPolling(); // polling day: alerts badge (spec polling-day A1)
   useEffect(() => { if (m?.role === 'admin') void registerPush(); }, [m?.id, m?.role]);
-  const f = { map: m?.features?.map !== false, tasks: m?.features?.tasks !== false, poll: m?.features?.poll !== false, zones: m?.features?.zones !== false };
+  const f = { map: m?.features?.map !== false, tasks: m?.features?.tasks !== false, poll: m?.features?.poll !== false, zones: m?.features?.zones !== false, reports: m?.features?.reports !== false, trend: m?.features?.trend !== false };
+  // spec easy-redesign A5/A6: Poll day takes Trend's place in the tab bar when the super-admin turned it on.
+  const pollTab = f.poll && !!m?.pollingDay;
   const me = useSession((s) => s.me);
   const adminAcs = (me?.memberships ?? []).filter((x) => x.role === 'admin' && x.status === 'approved').length;
   if (guard) return guard;
@@ -68,11 +73,15 @@ export default function AdminLayout() {
       })}
     >
       {/* spec usability-r2 U2: Dashboard and More are page stacks (booth, surnames, zones, banner… open on top). */}
+      {/* spec easy-redesign: Dashboard · Reports · Map · Poll day (or Trend) · Team; the rest lives in the ☰ menu. */}
       <Tabs.Screen name="(dashboard)" options={{ title: t('admin.tabs.dashboard') }} />
+      <Tabs.Screen name="(reports)" options={{ title: t('easy.reports'), href: f.reports ? undefined : null }} />
       <Tabs.Screen name="map" options={{ title: t('admin.tabs.map'), href: f.map ? undefined : null }} />
+      <Tabs.Screen name="(pollday)" options={{ title: t('easy.pollDay'), href: pollTab ? undefined : null }} />
+      <Tabs.Screen name="(trend)" options={{ title: t('trend.title'), href: !pollTab && f.trend ? undefined : null }} />
       <Tabs.Screen name="team" options={{ title: t('admin.tabs.team') }} />
-      <Tabs.Screen name="tasks" options={{ title: t('admin.tabs.tasks'), href: f.tasks ? undefined : null }} />
-      <Tabs.Screen name="(more)" options={{ title: t('admin.tabs.more') }} />
+      <Tabs.Screen name="tasks" options={{ title: t('admin.tabs.tasks'), href: null }} />
+      <Tabs.Screen name="(more)" options={{ title: t('admin.tabs.more'), href: null }} />
     </Tabs>
   );
   // Phones: a "polling day is live" strip above every admin screen (opens the polling-day page).

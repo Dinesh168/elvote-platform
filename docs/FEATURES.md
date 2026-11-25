@@ -185,3 +185,8 @@ API: `POST/DELETE /v1/m/:mid/banner`; `POST /v1/admin/customers/:id/upload?kind=
 - **Admin Dashboard:** Yesterday card (+met ▲%, +ours ▲%, best booth); "Needs you today": Quiet volunteers → **Remind** (`/admin/remind`, pick a message, send alert, once per 12 h), Map & Trend, Win plan.
 - **Polling day → Call list** (`/call-list`): ours / needs-help not voted, call buttons, countdown to closing (works offline).
 - **Picture tips** on Home, first use only (Skip / Next). Meeting colour buttons show icon + word (👍 ours, ◎ maybe, 👎 other).
+
+## Easy redesign (spec easy-redesign, 2026-11-25)
+- Volunteer: Home (Go to a house, last house, where bar, shortcut groups), Voters | Houses list with search / Filter / Sort / chips, house page, tinted voter card with EPIC, Poll day location first, spoken help (feature `voice`).
+- Admin tabs: Dashboard (Group by Zone | Area, donut, 14-day line, shortcut groups, booths here) · Reports (Complete data table, Compare, Daily work, Volunteer work, People, Not living here) · Map · Poll day (when on) or Trend · Team. Pushed pages: `/admin/place`, `/admin/booths`, `/admin/avoters`, `/admin/ahouse`, reports `/admin/r-*`.
+- Super-admin: feature switches with "who gets it" (tap the row), per-person Access sheet (pause, mark, see phones, add phones, poll day).

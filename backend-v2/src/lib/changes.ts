@@ -8,7 +8,7 @@
  */
 import type pg from 'pg';
 import { z } from 'zod';
-import { requireBooth, requireFeature, type Membership } from './access.js';
+import { requireAbility, requireBooth, requireFeature, type Membership } from './access.js';
 import { notFound } from './errors.js';
 import { Mobile } from './http.js';
 import { electionFor } from './presence.js';
@@ -69,6 +69,10 @@ export async function applyChange(c: pg.PoolClient, m: Membership, electionId: s
   const mine = m.role === 'admin' || m.booths.includes(partNo);
   if (!mine && !movedFromMine(m, v.rows[0], op.clientAt) && !(votedOnly && (await electionFor(m.stateCode, m.acNo))?.inWindow)) requireBooth(m, partNo);
   if ('votedAt' in p) requireFeature(m, 'poll');
+  // spec easy-redesign B4: abilities the super-admin switched off for this person.
+  if ('votedAt' in p) requireAbility(m, 'poll');
+  if ('group' in p || 'residence' in p || 'needsHelp' in p) requireAbility(m, 'mark');
+  if ('mobile' in p) requireAbility(m, 'addPhone');
 
   const fresh = await c.query('INSERT INTO applied_ops (op_id, party_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [op.opId, m.partyId]);
   if (!fresh.rowCount) return { status: 'duplicate', boothId };

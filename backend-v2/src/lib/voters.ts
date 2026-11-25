@@ -47,6 +47,16 @@ export function toVoter(r: VoterRow) {
   };
 }
 
+/** spec easy-redesign B4: people with "see phone numbers" switched off get 98xxxxx210. */
+export const maskMobile = (n: string) => (n.length > 5 ? `${n.slice(0, 2)}${'x'.repeat(n.length - 5)}${n.slice(-3)}` : 'xxxxx');
+export function voterFor(deny: readonly string[]) {
+  const hide = deny.includes('phones');
+  return (r: VoterRow) => {
+    const v = toVoter(r);
+    return hide && v.mobile ? { ...v, mobile: maskMobile(v.mobile) } : v;
+  };
+}
+
 export interface Segment {
   gender?: 'M' | 'F' | 'T';
   ageMin?: number;

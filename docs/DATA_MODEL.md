@@ -291,3 +291,7 @@ PK (party_id, state_code). A party with no rows is national (shown in every stat
 ### spec admin-views (2026-11-24)
 - state `booths.area text` (tehsil / ward) + index (ac_no, area); `voter_contacts.residence` ∈ here, moved, died, not_found (migration state/007).
 - core `party_constituencies.views text[]` ⊆ {zone, area, village}, default {zone} (migration core/010).
+
+## Easy redesign (2026-11-25)
+- core `party_constituencies.feature_who jsonb` (who gets each feature), `memberships.paused boolean`, `memberships.deny text[]` ⊆ {mark, phones, addPhone, poll} (migration core/012).
+- state `stats_booth.died`, `stats_booth.not_found` (migration state/008; recount of every booth queued).

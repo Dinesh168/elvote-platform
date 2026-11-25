@@ -53,7 +53,13 @@ const qs = (o: Record<string, string | number | undefined>) => {
   return p.length ? `?${p.join('&')}` : '';
 };
 
+/** spec easy-redesign B2: every counter per booth + the 14-day work per booth. */
+export interface BoothStats { booths: import('@/features/easy/logic').BoothStatRow[]; days: { booth: number; day: string; contacted: number }[] }
+export interface TeamAccess { paused: boolean; deny: ('mark' | 'phones' | 'addPhone' | 'poll')[] }
+
 export const adminApi = {
+  boothStats: (mid: string, f: { zone?: string; area?: string; booth?: number } = {}) => http.get<BoothStats>(`${m(mid)}/booth-stats${qs(f)}`),
+
   /** spec onboarding-branding OB8: the team's Home banner (admin). */
   uploadBanner: (mid: string, form: FormData) => http.form<{ url: string }>(`/v1/m/${mid}/banner`, form),
   removeBanner: (mid: string) => http.del<{ ok: boolean }>(`/v1/m/${mid}/banner`),
@@ -105,7 +111,7 @@ export type BoothGroup = 'safe' | 'swing' | 'tough';
 export type RemindTemplate = 'booth_needs_you' | 'days_left' | 'call_me';
 /** A voter found on polling day (spec flow-fixes P1). Other booths carry no group, phone or notes. */
 export interface PollFound { id: string; sno: number; part: number; boothName: string; name: string; nameLocal: string | null; relation: string | null; relative: string | null; age: number | null; gender: string | null; voted: boolean; own: boolean }
-export interface TeamPerson { membershipId: string; userId: string; name: string; mobile: string | null; email: string | null; role: 'admin' | 'volunteer'; status: 'approved' | 'pending'; booths: number[] }
+export interface TeamPerson { membershipId: string; userId: string; name: string; mobile: string | null; email: string | null; role: 'admin' | 'volunteer'; status: 'approved' | 'pending'; booths: number[]; paused?: boolean; deny?: TeamAccess['deny'] }
 
 export interface TrendYear { year: number; total: number; votes: Record<string, number>; shares: Record<string, number>; ours: number; winner: string | null; margin: number; estimated?: number }
 export interface TrendChild { key: string; name: string; ours: number | null; swing: number | null; winner: string | null; margin: number | null; group: BoothGroup | null }
@@ -147,7 +153,7 @@ export interface AdminBooth { no: number; name: string; locality: string | null;
 export interface TraceEvent { at: string; by: string; party: string; change: Record<string, unknown>; source: string }
 export interface Trace { voter: { id: string; name: string; epic: string; booth: number; sno: number; house: string | null; age: number | null; relative: string | null }; events: TraceEvent[] }
 
-export type FeatureKey = 'map' | 'poll' | 'zones' | 'tasks' | 'slip' | 'surnames' | 'help' | 'boothGps';
+export type FeatureKey = 'map' | 'poll' | 'zones' | 'tasks' | 'slip' | 'surnames' | 'help' | 'boothGps' | 'voice' | 'reports' | 'trend' | 'addPhone' | 'residence' | 'tips';
 export interface Customer {
   id: string; partyName: string; stateCode: string; acNo: number; acName: string;
   appName: string | null; logoUrl: string | null; bannerUrl?: string | null; colour: string | null; candidateName: string | null; candidatePhotoUrl: string | null;
@@ -160,8 +166,10 @@ export interface Customer {
   views: ('zone' | 'area' | 'village')[];
   /** spec map-results R1: close-contest margin in votes (default 100). */
   resultMargin: number;
+  /** spec easy-redesign B3: who gets each feature (missing = everyone). */
+  featureWho?: Partial<Record<FeatureKey, 'all' | 'admin' | 'volunteer'>>;
 }
-export type CustomerPatch = Partial<Omit<Customer, 'id' | 'partyName' | 'stateCode' | 'acNo' | 'acName' | 'logoUrl' | 'bannerUrl' | 'candidatePhotoUrl' | 'zoneCount' | 'volunteers' | 'admins' | 'active' | 'features'>> & { features?: Partial<Record<FeatureKey, boolean>> };
+export type CustomerPatch = Partial<Omit<Customer, 'id' | 'partyName' | 'stateCode' | 'acNo' | 'acName' | 'logoUrl' | 'bannerUrl' | 'candidatePhotoUrl' | 'zoneCount' | 'volunteers' | 'admins' | 'active' | 'features' | 'featureWho'>> & { features?: Partial<Record<FeatureKey, boolean>>; featureWho?: Partial<Record<FeatureKey, 'all' | 'admin' | 'volunteer'>> };
 export type UserFilter = { q?: string; role?: 'all' | 'admin' | 'volunteer' | 'super'; status?: 'all' | 'active' | 'blocked'; customer?: string; offset?: number; limit?: number };
 export interface AdminUser {
   id: string; name: string; mobile: string | null; email?: string | null; status: 'active' | 'blocked'; blockedReason: string | null; isSuperAdmin: boolean;
@@ -183,6 +191,8 @@ export interface ImportJob {
 }
 
 export const platformApi = {
+  /** spec easy-redesign B4: pause a person in a team or switch off single abilities. */
+  setAccess: (membershipId: string, b: Partial<TeamAccess>) => http.patch<TeamAccess>(`/v1/admin/memberships/${membershipId}/access`, b),
   /** spec map-trend T2: past election results (super-admin only). */
   pastResults: (state: string) => http.get<{ items: { acNo: number; year: number; booths: number; sample: boolean; loadedAt: string }[] }>(`/v1/admin/past-results?state=${state}`),
   uploadPastResults: (stateCode: string, csv: string, sample: boolean) => http.post<{ rows: number; acs: number[]; years: number[]; parties: string[] }>('/v1/admin/past-results', { stateCode, csv, sample }),

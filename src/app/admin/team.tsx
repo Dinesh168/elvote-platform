@@ -1,10 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { themed } from '@/design/theme';
+import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { adminApi, type TeamMember } from '@/api/adminApi';
-import { AppText, Button, DataTable, Field, Group, LargeTitle, Row, Screen, SegmentedControl, Sheet, type Column } from '@/design/components';
+import { AppText, Button, ChipRow, ChoiceRow, DataTable, Field, Group, LargeTitle, Row, Screen, SegmentedControl, Sheet, ToolRow, type Column } from '@/design/components';
 import { useWide } from '@/design/layout';
 import { colors, radius, spacing } from '@/design/tokens';
 import { QueryState } from '@/features/common/QueryState';
@@ -29,12 +30,21 @@ export default function Team() {
   const m = useActiveMembership();
   const mid = m?.id ?? '';
   const qc = useQueryClient();
-  const [tab, setTab] = useState<Tab>('pending');
+  // spec easy-redesign A7: opened from a booth's numbers → that booth's approved volunteers.
+  const { booth: boothParam } = useLocalSearchParams<{ booth?: string }>();
+  const boothNo = Number(boothParam) > 0 ? Number(boothParam) : null;
+  const [tab, setTab] = useState<Tab>(boothNo ? 'approved' : 'pending');
   const [search, setSearch] = useState('');
+  const [sort, setSort] = useState<'today' | 'least' | 'name' | 'booth'>('today');
+  const [act, setAct] = useState<'all' | 'out' | 'quiet'>('all');
+  const [sortSheet, setSortSheet] = useState(false);
   const [open, setOpen] = useState<TeamMember | null>(null);
   const q = useQuery({ queryKey: ['team', mid, tab, search], queryFn: () => adminApi.team(mid, tab, search || undefined), enabled: !!mid });
   const pendingQ = useQuery({ queryKey: ['team', mid, 'pending', ''], queryFn: () => adminApi.team(mid, 'pending'), enabled: !!mid });
   const pendingN = pendingQ.data?.length ?? 0;
+  const rows = (q.data ?? [])
+    .filter((p) => (!boothNo || p.booths.includes(boothNo)) && (tab !== 'approved' || act === 'all' || (act === 'out' ? p.contactedToday > 0 : p.contactedToday === 0)))
+    .sort((a, b) => (sort === 'name' ? a.name.localeCompare(b.name) : sort === 'booth' ? (a.booths[0] ?? 0) - (b.booths[0] ?? 0) : sort === 'least' ? a.contactedTotal - b.contactedTotal : b.contactedToday - a.contactedToday || b.contactedTotal - a.contactedTotal));
   const wide = useWide();
   const press = (p: TeamMember) => (tab === 'pending' ? setOpen(p) : p.mobile ? void Linking.openURL(`tel:${p.mobile}`) : undefined);
   const cols: Column<TeamMember>[] = [
@@ -69,18 +79,24 @@ export default function Team() {
           ]}
         />
         {tab !== 'pending' ? <Field label={t('admin.searchTeam')} value={search} onChangeText={setSearch} autoCorrect={false} /> : null}
+        {tab === 'approved' ? (
+          <ChipRow chips={(['all', 'out', 'quiet'] as const).map((k) => ({ key: k, label: t(`easy.act.${k}`), selected: act === k, tone: k === 'out' ? 'our' as const : k === 'quiet' ? 'opp' as const : undefined,
+            count: (q.data ?? []).filter((p) => (!boothNo || p.booths.includes(boothNo)) && (k === 'all' || (k === 'out' ? p.contactedToday > 0 : p.contactedToday === 0))).length, onPress: () => setAct(k) }))} />
+        ) : null}
       </View>
+      {tab === 'approved' ? <ToolRow sortWord={t(`easy.tsort.${sort}`)} onSort={() => setSortSheet(true)} /> : null}
+      {boothNo ? <AppText variant="callout" weight="bold" color={colors.textSecondary} style={s.pad}>{t('easy.boothNo', { no: boothNo })}</AppText> : null}
       {!q.data ? (
         <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
-      ) : q.data.length === 0 ? (
+      ) : rows.length === 0 ? (
         <AppText variant="callout" color={colors.textSecondary} align="center" style={s.empty}>{tab === 'pending' ? t('admin.noPending') : '—'}</AppText>
       ) : wide ? (
         <View style={s.tableGap}>
-          <DataTable columns={cols} rows={q.data} rowKey={(p) => p.membershipId} onRowPress={press} rowA11y={(p) => [p.name, p.mobile ? `+91 ${p.mobile}` : null].filter(Boolean).join(', ')} />
+          <DataTable columns={cols} rows={rows} rowKey={(p) => p.membershipId} onRowPress={press} rowA11y={(p) => [p.name, p.mobile ? `+91 ${p.mobile}` : null].filter(Boolean).join(', ')} />
         </View>
       ) : (
         <Group>
-          {q.data.map((p, i) => (
+          {rows.map((p, i) => (
             <Row
               key={p.membershipId}
               title={p.name}
@@ -98,11 +114,14 @@ export default function Team() {
                 </View>
               ) : undefined}
               onPress={tab === 'pending' || !p.mobile ? undefined : () => void Linking.openURL(`tel:${p.mobile}`)}
-              last={i === q.data.length - 1}
+              last={i === rows.length - 1}
             />
           ))}
         </Group>
       )}
+      <Sheet visible={sortSheet} title={t('easy.sort')} onClose={() => setSortSheet(false)}>
+        {(['today', 'least', 'name', 'booth'] as const).map((x, i) => <ChoiceRow key={x} title={t(`easy.tsort.${x}`)} selected={sort === x} last={i === 3} onPress={() => { setSort(x); setSortSheet(false); }} />)}
+      </Sheet>
       {open ? (
         <ApproveSheet
           mid={mid}

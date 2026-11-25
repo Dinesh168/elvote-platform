@@ -15,3 +15,5 @@ export type { BarItem, Part } from './Charts';
 export { Field } from './Field';
 export { DataTable, Grid, TileRow } from './Desktop';
 export type { Column } from './Desktop';
+export { ActivePills, BarLine, Card, ChipRow, DayBars, Donut, FilterSheet, LineChart, PathBar, SearchBox, SectionBand, ShortcutTile, TileGroup, ToolRow } from './Easy';
+export type { ChipItem, Crumb, DonutPart, FilterCat, Tone } from './Easy';

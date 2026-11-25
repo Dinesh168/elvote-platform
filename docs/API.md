@@ -182,3 +182,12 @@ The server enforces super-admin with `validatePrivateUser(userId)` in `private.j
 - `GET /v1/m/:mid/polling/find?q=` — one box: digits = S.No in every booth, letters+digits = EPIC, text = name; first 50. At most 30 searches a minute per person → 429 `find_rate` (spec security-fixes SF2).
 - `GET /v1/m/:mid/booth-table` adds `area`, `village`. Memberships in `/v1/me` carry `views` (zone/area/village).
 - Super-admin: `GET /v1/admin/customers/:id/members`; `POST /v1/admin/volunteers {mobile|email, name, partyAcId, booths}`; `PUT /v1/admin/customers/:id/members/:mid/booths {booths}`; `DELETE /v1/admin/customers/:id/members/:mid`; `PATCH /v1/admin/booths/:state/:ac/:no/place {area?, village?}`; `PATCH /v1/admin/customers/:id {views}`.
+
+## Easy redesign (spec easy-redesign, 2026-11-25)
+- `GET /v1/m/:mid/booth-stats?zone=&area=&booth=` (admin) → `{ booths: [{ no, name, area, zoneId, zone, lat, lng, total, met, our, target, opp, moved, withMobile, ourMobile, …, died, notFound, volunteers, metToday, lastMargin }], days: [{ booth, day, contacted }] }` (14 days).
+- `GET /v1/m/:mid/dashboard` also takes `area=`.
+- `PATCH /v1/admin/customers/:id` takes `featureWho: { <featureKey>: 'all' | 'admin' | 'volunteer' }`; customers return `featureWho`.
+- `PATCH /v1/admin/memberships/:id/access` (super-admin) `{ paused?, deny?: ('mark'|'phones'|'addPhone'|'poll')[] }` → `{ paused, deny }`.
+- `/v1/me` memberships: `features` are effective for the person's role; plus `paused`, `deny`. Team routes answer 403 `paused` for a paused membership; denied writes 403 `not_allowed`; voter lists mask mobiles when `phones` is denied.
+- `PUT /v1/m/:mid/booths/:no/location`: volunteers 403 `admin_only` (admins only).
+- New feature keys: voice, reports, trend, addPhone, residence, tips.
