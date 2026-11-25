@@ -53,7 +53,7 @@ export default function CallListScreen() {
         </View>
       ) : null}
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <FlatList
           data={list}

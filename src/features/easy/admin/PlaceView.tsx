@@ -20,12 +20,12 @@ import { useVoters } from '@/features/data';
 import { useActiveMembership } from '@/stores/session';
 import { sectionKey, sectionLabel } from '../labels';
 import {
-  GROUP_ORDER, last14Days, leadOf, METRICS, shortcutCounts, sumStats, type BoothStatRow, type Metric, type MetricGroup, type StatTotals,
+  DASH_GROUPS, last14Days, leadOf, METRICS, shortcutCounts, sumStats, type BoothStatRow, type Metric, type MetricGroup, type StatTotals,
 } from '../logic';
 import { scopeName, scopeParams, useAdminRoutes, useAllBoothStats, useBoothStats, type Scope } from './scope';
 
 const fmt = (n: number) => Math.round(n).toLocaleString('en-IN');
-export const GROUP_ICON: Record<MetricGroup, string> = { poll: 'checkbox', voters: 'people', houses: 'home', phones: 'call', people: 'person', living: 'walk', team: 'people-circle', last: 'trending-up' };
+export const GROUP_ICON: Record<MetricGroup, string> = { poll: 'checkbox', voters: 'people', houses: 'home', phones: 'call', age: 'calendar', gender: 'male-female', living: 'walk', team: 'people-circle', last: 'trending-up' };
 
 /** Totals for a booth or a section worked out from its voter list (same rules as the volunteer's numbers). */
 function totalsFromVoters(vs: Voter[], row?: BoothStatRow): StatTotals {
@@ -66,7 +66,6 @@ export function PlaceView({ scope, root }: { scope: Scope; root?: boolean }) {
   const routes = useAdminRoutes();
   const m = useActiveMembership();
   const mid = m?.id ?? '';
-  const pollOn = m?.features?.poll !== false && !!m?.pollingDay;
   const allQ = useAllBoothStats();
   const groupQ = useBoothStats(scope);
   const votersQ = useVoters(scope.booth ?? 0);
@@ -92,11 +91,11 @@ export function PlaceView({ scope, root }: { scope: Scope; root?: boolean }) {
     return keys.map((k) => sum.get(k) ?? 0);
   }, [groupQ.data, rows]);
 
-  if (!tot) return <QueryState loading={groupQ.isLoading || votersQ.isLoading} error={groupQ.isError} onRetry={() => void groupQ.refetch()} />;
+  if (!tot) return <QueryState loading={groupQ.isLoading || votersQ.isLoading} error={groupQ.isError} err={groupQ.error} onRetry={() => void groupQ.refetch()} />;
   const lead = boothRow ? leadOf(boothRow) : null;
   const name = scopeName(t, scope, all);
   const pct = (n: number) => (tot.total ? `${Math.round((n / tot.total) * 100)}%` : '');
-  const groups = GROUP_ORDER.filter((g) => g !== 'last' && (g !== 'poll' || pollOn));
+  const groups = DASH_GROUPS; // spec admin-fixes-r1 A8: no Polling day group here
   const toneOf = (mt: Metric): Tone | undefined => (mt.tone === 'grey' ? 'grey' : mt.tone);
   const booths = rows.filter((b) => !bq.trim() || String(b.no).startsWith(bq.trim()) || b.name.toLowerCase().includes(bq.trim().toLowerCase()))
     .sort((a, b) => bsort === 'no' ? a.no - b.no : bsort === 'notMet' ? (b.total - b.met) - (a.total - a.met) : (b.our - b.opp) / Math.max(1, b.total) - (a.our - a.opp) / Math.max(1, a.total));
@@ -162,15 +161,6 @@ export function PlaceView({ scope, root }: { scope: Scope; root?: boolean }) {
           </TileGroup>
         );
       })}
-
-      <Card>
-        <AppText variant="headline" style={{ fontSize: 18 }}>{t('easy.age')}</AppText>
-        {(['firstTime', 'young', 'mid', 'senior'] as const).map((k) => {
-          const mt = METRICS.find((x) => x.key === k)!;
-          const v = mt.value(tot);
-          return <BarLine key={k} label={t(`em.m.${k}`)} value={fmt(v)} sub={pct(v)} pct={tot.total ? (v / tot.total) * 200 : 0} onPress={() => go(mt)} />;
-        })}
-      </Card>
 
       {!scope.booth ? (
         <View style={{ marginTop: spacing.lg, gap: spacing.sm }}>

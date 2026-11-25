@@ -102,3 +102,10 @@ tsc / eslint / jest / vitest → deploy demo → `eas update` + new APK only if 
   (2) approval to deploy backend-v2 + migrations core/012 and state/008 to the demo server (app falls back to the booth table until then);
   (3) "commit and push".
 - Local tooling: Node 22.20 portable in the session scratchpad (machine Node 20.8 is too old for vitest/embedded-postgres); backend-v2/.env created locally (gitignored).
+
+## Admin fixes round 1 (2026-11-25, branch feature/easy-redesign, NOT committed, NOT deployed)
+- Spec docs/specs/admin-fixes-r1.md (built), tests docs/test-cases/admin-fixes-r1.md. Server 240/240, app 165/165, web e2e pass.
+- Main causes: `(more)` tab hidden with `href: null` made Win plan / Zones / Trend / Settings unreachable (now hidden with
+  tabBarButton); Complete data drew every booth (now 10, max 25); Sheet had no scroll; old-server fallback sent zone names.
+- Server change: `GET /v1/m/:mid/search` structured form (no migration). Needs a demo API deploy + EAS update (owner approval).
+- Local tooling this session: Node 22 from the earlier session scratchpad; Playwright scripts in this session's scratchpad.

@@ -32,7 +32,7 @@ export default function Tasks() {
     <Screen width="medium" header={<TeamBar trailing={<Button kind="plain" compact label={`+ ${t('admin.newDrive')}`} onPress={() => setCreating(true)} />} />} trailing={<Button kind={wide ? 'filled' : 'plain'} compact label={`+ ${t('admin.newDrive')}`} onPress={() => setCreating(true)} />}>
       <LargeTitle title={t('admin.drives')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <Group>
           {q.data.map((d, i) => (

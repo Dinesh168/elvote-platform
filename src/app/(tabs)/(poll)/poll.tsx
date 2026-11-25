@@ -112,7 +112,7 @@ export default function PollScreen() {
       <ScrollView ref={scroller} style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
       {wide ? <LargeTitle title={t('poll.title')} subtitle={t('poll.keyboardHint')} /> : null}
       {!left ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <View style={[s.top, wide && s.topWide]}>
           <View style={s.card}>

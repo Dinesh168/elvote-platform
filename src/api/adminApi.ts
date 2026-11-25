@@ -58,6 +58,9 @@ export interface BoothStats { booths: import('@/features/easy/logic').BoothStatR
 export interface TeamAccess { paused: boolean; deny: ('mark' | 'phones' | 'addPhone' | 'poll')[] }
 
 export const adminApi = {
+  /** spec admin-fixes-r1 B1: any voter of the assembly by EPIC, or name + address (house / locality) + age ±2. */
+  searchVoters: (mid: string, f: { epic?: string; name?: string; address?: string; age?: number }) =>
+    http.get<{ items: import('./types').Voter[]; more: boolean }>(`${m(mid)}/search${qs(f)}`),
   boothStats: (mid: string, f: { zone?: string; area?: string; booth?: number } = {}) => http.get<BoothStats>(`${m(mid)}/booth-stats${qs(f)}`),
 
   /** spec onboarding-branding OB8: the team's Home banner (admin). */

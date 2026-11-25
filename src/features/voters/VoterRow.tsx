@@ -22,7 +22,10 @@ export interface VoterRowProps {
   onToggle: (id: string) => void;
   onGroup: (v: Voter, g: GroupCode) => void;
   onPatch: (v: Voter, patch: Partial<Voter>) => void;
+  /** spec admin-fixes-r1 V1: opens the house page of this voter's house. */
   onSameAddress?: (house: string) => void;
+  /** Voters with this house number in the booth (the button shows when 2 or more). */
+  sameCount?: number;
   /** Show the house / address line (lists sorted by serial number). */
   showAddress?: boolean;
 }
@@ -31,7 +34,7 @@ export interface VoterRowProps {
  * spec easy-redesign V1: one voter card. The whole card takes the group's colour (white = not met); the card being
  * marked gets a thick blue frame and a "Now marking" strip. EPIC, relative and house are always shown.
  */
-export const VoterRow = memo(function VoterRow({ voter: v, open, onToggle, onGroup, onPatch, showAddress }: VoterRowProps) {
+export const VoterRow = memo(function VoterRow({ voter: v, open, onToggle, onGroup, onPatch, showAddress, onSameAddress, sameCount = 0 }: VoterRowProps) {
   const { t } = useTranslation();
   const slipOn = useFeature('slip');
   const phoneOn = useFeature('addPhone');
@@ -112,6 +115,9 @@ export const VoterRow = memo(function VoterRow({ voter: v, open, onToggle, onGro
             ) : null}
             {slipOn ? <ActBtn icon="logo-whatsapp" label={t('easy.slip')} onPress={() => router.push({ pathname: '/slip', params: { id: v.id, booth: String(v.booth) } })} /> : null}
             {canMark ? <ActBtn icon="accessibility" label={v.needsHelp ? t('easy.needsHelpOn') : t('easy.needsHelp')} on={v.needsHelp} onPress={() => onPatch(v, { needsHelp: !v.needsHelp })} /> : null}
+            {onSameAddress && v.house && sameCount >= 2 ? (
+              <ActBtn icon="home" label={t('easy.sameAddress', { n: sameCount })} onPress={() => onSameAddress(v.house)} />
+            ) : null}
           </View>
           {addingPhone && canAddPhone ? (
             <View>

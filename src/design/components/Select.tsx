@@ -40,7 +40,7 @@ export function Select<T extends string>({ label, value, options, onChange, plac
           <Icon name="chevron-down" size={20} color={colors.textSecondary} />
         </Pressable>
       )}
-      <Sheet visible={open} title={label} onClose={close}>
+      <Sheet visible={open} title={label} onClose={close} scroll={false}>
         {searchable ? (
           <View style={s.search}>
             <Icon name="search" size={18} color={colors.textSecondary} />
@@ -48,7 +48,7 @@ export function Select<T extends string>({ label, value, options, onChange, plac
               value={q} onChangeText={setQ} style={s.input} autoCorrect={false} />
           </View>
         ) : null}
-        <ScrollView style={s.list} keyboardShouldPersistTaps="handled">
+        <ScrollView style={s.list} keyboardShouldPersistTaps="handled" nestedScrollEnabled>
           {shown.map((o, i) => (
             <ChoiceRow key={o.value} title={o.label} subtitle={o.subtitle} selected={o.value === value} last={i === shown.length - 1}
               onPress={() => { close(); if (o.value !== value) onChange(o.value); }} />

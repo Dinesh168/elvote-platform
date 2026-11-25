@@ -64,7 +64,7 @@ export default function Users() {
         </Pressable>
       </View>
       {!r.data ? (
-        <QueryState loading={r.isLoading} error={r.isError} onRetry={() => void r.refetch()} />
+        <QueryState loading={r.isLoading} error={r.isError} err={r.error} onRetry={() => void r.refetch()} />
       ) : rows.length === 0 ? (
         <AppText variant="callout" color={colors.textSecondary} style={s.hint}>{t('users.none')}</AppText>
       ) : wide ? (

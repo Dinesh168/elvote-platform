@@ -52,7 +52,7 @@ export function HouseScreen() {
     <Screen scroll={false}>
       <PathBar back={back} onBack={goBack} crumbs={[{ label: back, onPress: goBack }, { label: t('easy.houseNo', { no }) }]} />
       {!votersQ.data ? (
-        <QueryState loading={votersQ.isLoading} error={votersQ.isError} onRetry={() => void votersQ.refetch()} />
+        <QueryState loading={votersQ.isLoading} error={votersQ.isError} err={votersQ.error} onRetry={() => void votersQ.refetch()} />
       ) : (
         <ScrollView contentContainerStyle={{ paddingBottom: 96 }} keyboardShouldPersistTaps="handled">
           <View style={[s.head, { backgroundColor: tone.bg, borderColor: tone.bd, borderStyle: colour === 'left' ? 'dashed' : 'solid' }]}>

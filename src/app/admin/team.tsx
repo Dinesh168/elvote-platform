@@ -87,7 +87,7 @@ export default function Team() {
       {tab === 'approved' ? <ToolRow sortWord={t(`easy.tsort.${sort}`)} onSort={() => setSortSheet(true)} /> : null}
       {boothNo ? <AppText variant="callout" weight="bold" color={colors.textSecondary} style={s.pad}>{t('easy.boothNo', { no: boothNo })}</AppText> : null}
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : rows.length === 0 ? (
         <AppText variant="callout" color={colors.textSecondary} align="center" style={s.empty}>{tab === 'pending' ? t('admin.noPending') : '—'}</AppText>
       ) : wide ? (

@@ -43,7 +43,7 @@ export function AdminPollDay() {
           <Icon name="location" size={20} color={easy.active} /><AppText variant="body" weight="bold" color={easy.active}>{t('easy.attendance')}</AppText>
         </Pressable>
       </View>
-      {!bs.data ? <QueryState loading={bs.isLoading} error={bs.isError} onRetry={() => void bs.refetch()} /> : (
+      {!bs.data ? <QueryState loading={bs.isLoading} error={bs.isError} err={bs.error} onRetry={() => void bs.refetch()} /> : (
         <>
           <Card>
             <Donut a11y={t('easy.votedOf', { voted: fmt(tot.voted), total: fmt(tot.total) })} centre={`${tot.total ? Math.round((tot.voted / tot.total) * 100) : 0}%`} centreSub={t('easy.voted')}

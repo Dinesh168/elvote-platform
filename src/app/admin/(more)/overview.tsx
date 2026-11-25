@@ -26,7 +26,7 @@ export default function AdminOverview() {
     <Screen width="medium" back={t('admin.tabs.more')}>
       <LargeTitle title={t('overview.title')} subtitle={q.data ? t('overview.count', { count: rows.length }) : undefined} />
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         [...byState.entries()].map(([st, list]) => (
           <Group key={st} header={st}>

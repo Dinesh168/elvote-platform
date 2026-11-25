@@ -70,7 +70,7 @@ export default function PastResultsScreen() {
       </View>
       <Group header={t('past.loaded')}>
         {!list.data ? (
-          <QueryState loading={list.isLoading} error={list.isError} onRetry={() => void list.refetch()} />
+          <QueryState loading={list.isLoading} error={list.isError} err={list.error} onRetry={() => void list.refetch()} />
         ) : !list.data.items.length ? (
           <Row title={t('past.none')} last />
         ) : list.data.items.map((x, i, arr) => (

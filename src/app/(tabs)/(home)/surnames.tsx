@@ -32,7 +32,7 @@ export default function Surnames() {
           accessibilityLabel={t('surnames.search')} autoCorrect={false} style={s.search} />
       </View>
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : rows.length === 0 ? (
         <AppText variant="callout" color={colors.textSecondary} align="center" style={s.empty}>{t('surnames.none')}</AppText>
       ) : (

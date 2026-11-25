@@ -14,7 +14,9 @@
     "switchLangA11y": "Language — tap to change",
     "cancel": "Cancel",
     "search": "Search",
-    "close": "Close"
+    "close": "Close",
+    "noInternet": "No internet. Check the connection and try again.",
+    "loadErrorCode": "Could not load (the server answered {{code}}). Try again."
   },
   "tabs": {
     "home": "Home",
@@ -1438,11 +1440,16 @@
     "win": "Win & analyse",
     "polling": "Polling day",
     "setup": "Team set-up",
-    "quiet": "Quiet volunteers",
     "work": "My work",
     "me": "Me",
     "language": "Language",
-    "volunteer": "Volunteer"
+    "volunteer": "Volunteer",
+    "search": "Search voter",
+    "places": "Zones · areas · booths",
+    "zoneSetup": "Zone setup",
+    "signOut": "Sign out",
+    "profile": "My profile",
+    "settings": "Settings"
   },
   "tips": {
     "label": "How to use the app",
@@ -1677,19 +1684,19 @@
       "poll": "This is polling day. The numbers show who has voted. Press a box to see who has not voted yet."
     },
     "booth": "Booth",
-    "section": "Section",
+    "section": "Locality",
     "house": "House",
     "houseNo": "House {{no}}",
-    "pickSection": "Pick a section",
+    "pickSection": "Pick a locality",
     "pickHouse": "Pick a house",
     "pickBooth": "Pick a booth",
-    "allSections": "All sections",
+    "allSections": "All localities",
     "nVoters": "{{n}} voters",
     "nHouses": "{{n}} houses",
     "nBooths": "{{n}} booths",
     "family": "{{name}}'s family",
-    "sectionN": "Section {{n}} · {{name}}",
-    "noSection": "No section",
+    "sectionN": "Locality {{n}} · {{name}}",
+    "noSection": "No locality",
     "voters": "Voters",
     "housesTitle": "Houses",
     "searchHouse": "House number or family name",
@@ -1704,7 +1711,6 @@
     "swingVoters": "Swing voters",
     "phones": "Phone numbers",
     "ourWithPhone": "Ours with phone",
-    "people": "People",
     "notLiving": "Not living here",
     "atBooth": "You are at Booth {{no}}",
     "awayFrom": "You are away from Booth {{no}}",
@@ -1719,7 +1725,7 @@
       "area": "Pick an area"
     },
     "boothNo": "Booth {{no}}",
-    "boothSec": "Booth {{no}} · Section {{sec}}",
+    "boothSec": "Booth {{no}} · Locality {{sec}}",
     "areaName": "Area: {{name}}",
     "wholeAc": "Whole assembly",
     "lead": {
@@ -1741,10 +1747,11 @@
       "voters": "Voters",
       "houses": "Houses",
       "phones": "Phone numbers",
-      "people": "People",
       "living": "Not living here",
       "team": "Team",
-      "last": "Last election"
+      "last": "Last election",
+      "age": "Age wise",
+      "gender": "Gender wise"
     },
     "age": "Age",
     "boothsHere": "Booths here · {{n}}",
@@ -1755,7 +1762,7 @@
     },
     "metWord": "met",
     "todayN": "Today {{n}}",
-    "sections": "Sections",
+    "sections": "Localities",
     "secLine": "{{n}} voters · {{our}} ours",
     "volsHere": "Volunteers here",
     "boothsBy": "Booths by {{what}}",
@@ -1783,7 +1790,7 @@
       "dailySub": "Voters met each day for two weeks",
       "vwork": "Volunteer work",
       "vworkSub": "Who met how many voters",
-      "people": "People",
+      "people": "Voters by age and gender",
       "peopleSub": "Age groups, men and women",
       "living": "Not living here",
       "livingSub": "Moved, died and not found, booth by booth"
@@ -1875,7 +1882,10 @@
         "addPhone": "Save a voter’s phone",
         "poll": "Mark voted on polling day"
       }
-    }
+    },
+    "sameAddress": "Same address voters ({{n}})",
+    "matrixMax": "Up to {{n}} booths in one table",
+    "firstN": "First {{n}}"
   },
   "em": {
     "m": {
@@ -1906,12 +1916,50 @@
       "female": "Women",
       "third": "Third gender",
       "helpNeeded": "Needs help to vote",
-      "moved": "Moved",
+      "moved": "Migrants",
       "died": "Died",
       "notFound": "Not found",
       "volunteers": "Volunteers",
       "metToday": "Met today",
       "lastMargin": "2022 result (votes)"
     }
+  },
+  "asearch": {
+    "title": "Search voter",
+    "sub": "Any voter of your assembly",
+    "byEpic": "EPIC",
+    "byName": "Name",
+    "epic": "EPIC number",
+    "epicPh": "e.g. PBX2034517",
+    "name": "Name",
+    "namePh": "At least 3 letters",
+    "address": "Address: house no. or locality (optional)",
+    "addressPh": "e.g. 12 or Gandhi Nagar",
+    "age": "Age (optional, ±2 years)",
+    "agePh": "e.g. 40",
+    "go": "Search",
+    "none": "No voter found",
+    "more": "Showing the first 50. Add address or age to narrow it down.",
+    "count": "{{n}} found",
+    "short": "Type at least 3 letters of the name.",
+    "epicShort": "Type the full EPIC number.",
+    "line": "Booth {{booth}} · House {{house}}"
+  },
+  "aprofile": {
+    "title": "My profile",
+    "mobile": "Mobile",
+    "email": "E-mail",
+    "role": "Role",
+    "team": "Team",
+    "ac": "Assembly"
+  },
+  "places": {
+    "zones": "Zones",
+    "areas": "Areas",
+    "booths": "Booths",
+    "row": "{{booths}} booths · {{voters}} voters · {{pct}}% met",
+    "noZone": "Without a zone",
+    "search": "Search by name or number",
+    "empty": "Nothing here yet. Make zones in Zone setup."
   }
 }

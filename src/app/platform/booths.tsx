@@ -59,7 +59,7 @@ export default function BoothLocations() {
         ) : null}
       </View>
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : wide ? (
         <DataTable columns={cols} rows={q.data.items} rowKey={(b) => String(b.no)} onRowPress={setEdit} empty={t('pd.b.none')} rowA11y={(b) => `${b.no} ${b.name}`} />
       ) : (

@@ -73,7 +73,7 @@ export function DashboardView({ booth }: { booth?: number }) {
       ) : null}
 
       {!d ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <>
           {/* spec usability-r2 H1: one summary card like Polling day */}

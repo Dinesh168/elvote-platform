@@ -20,7 +20,7 @@ export default function CustomerPolling() {
   return (
     <Screen back={c.data ? c.data.partyName : t('cms.customers')}>
       <LargeTitle title={t('pd.title')} subtitle={c.data ? `${c.data.partyName} · ${t('admin.acTitle', { no: c.data.acNo, name: c.data.acName })}` : undefined} />
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : <PollingView data={q.data} />}
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : <PollingView data={q.data} />}
     </Screen>
   );
 }

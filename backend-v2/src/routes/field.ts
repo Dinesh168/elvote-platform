@@ -54,18 +54,50 @@ export async function fieldRoutes(app: FastifyInstance) {
   /** Search across the member's scope by name, EPIC, house number or age. */
   app.get('/v1/m/:mid/search', async (req) => {
     const { mid } = parse(Mid, req.params);
-    const q = parse(z.object({ q: z.string().trim().min(1).max(60) }), req.query);
+    const q = parse(z.object({
+      q: z.string().trim().min(1).max(60).optional(),
+      // spec admin-fixes-r1 B1: structured search (EPIC, or name + optional address / age)
+      epic: z.string().trim().toUpperCase().min(4).max(20).optional(),
+      name: z.string().trim().min(3, 'Type at least 3 letters of the name.').max(60).optional(),
+      address: z.string().trim().min(1).max(60).optional(),
+      age: z.coerce.number().int().min(18).max(125).optional(),
+    }).refine((x) => !!x.q || !!x.epic || !!x.name, { message: 'Type an EPIC number or a name.' }), req.query);
     const m = await requireMembership(req.userId, mid);
     const pool = await statePool(m.stateCode);
+    if (!q.q) {
+      return inParty(pool, m.partyId, async (c) => {
+        const el = (await currentElectionId(c)) ?? '00000000-0000-0000-0000-000000000000';
+        const params: unknown[] = [m.partyId, el, m.acNo, m.role === 'admin', m.booths];
+        const conds: string[] = [];
+        const add = (v: unknown) => { params.push(v); return `$${params.length}`; };
+        if (q.epic) conds.push(`v.epic = ${add(q.epic)}`);
+        if (q.name) {
+          const p = add(`%${q.name.replace(/[%_\\]/g, '\\$&')}%`);
+          conds.push(`(v.name ILIKE ${p} OR v.name_local ILIKE ${p})`);
+        }
+        if (q.address) {
+          const h = add(q.address);
+          const p = add(`%${q.address.replace(/[%_\\]/g, '\\$&')}%`);
+          conds.push(`(v.house_no = ${h} OR v.section ILIKE ${p} OR v.section_local ILIKE ${p})`);
+        }
+        if (q.age) conds.push(`v.age BETWEEN ${add(q.age - 2)} AND ${add(q.age + 2)}`);
+        const r = await c.query<VoterRow>(
+          `${VOTER_SELECT} WHERE v.ac_no = $3 AND ($4::boolean OR v.part_no = ANY($5::smallint[])) AND v.${VISIBLE} AND ${conds.join(' AND ')}
+           ORDER BY v.part_no, v.sno LIMIT 51`, params);
+        const items = r.rows.slice(0, 50).map(voterFor(m.deny)).map((v) => ({ ...v, mobile: undefined }));
+        return { items, more: r.rows.length > 50 };
+      });
+    }
+    const text = q.q;
     return inParty(pool, m.partyId, async (c) => {
       const el = (await currentElectionId(c)) ?? '00000000-0000-0000-0000-000000000000';
       const params: unknown[] = [m.partyId, el, m.acNo, m.role === 'admin', m.booths];
       let cond: string;
-      if (/^\d{1,3}$/.test(q.q)) { params.push(Number(q.q)); params.push(q.q); cond = `(v.age = $6 OR v.house_no = $7)`; }
-      else if (/^[A-Za-z]{2,4}\d{3,}/.test(q.q)) { params.push(q.q.toUpperCase() + '%'); cond = `v.epic LIKE $6`; }
+      if (/^\d{1,3}$/.test(text)) { params.push(Number(text)); params.push(text); cond = `(v.age = $6 OR v.house_no = $7)`; }
+      else if (/^[A-Za-z]{2,4}\d{3,}/.test(text)) { params.push(text.toUpperCase() + '%'); cond = `v.epic LIKE $6`; }
       else {
         // L3: English or regional name, or relative's name
-        params.push(`%${q.q.replace(/[%_\\]/g, '\\$&')}%`);
+        params.push(`%${text.replace(/[%_\\]/g, '\\$&')}%`);
         cond = `(v.name ILIKE $6 OR v.name_local ILIKE $6 OR v.relative_name ILIKE $6 OR v.relative_name_local ILIKE $6)`;
       }
       const r = await c.query<VoterRow>(

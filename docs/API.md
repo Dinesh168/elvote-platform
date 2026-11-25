@@ -185,6 +185,7 @@ The server enforces super-admin with `validatePrivateUser(userId)` in `private.j
 
 ## Easy redesign (spec easy-redesign, 2026-11-25)
 - `GET /v1/m/:mid/booth-stats?zone=&area=&booth=` (admin) → `{ booths: [{ no, name, area, zoneId, zone, lat, lng, total, met, our, target, opp, moved, withMobile, ourMobile, …, died, notFound, volunteers, metToday, lastMargin }], days: [{ booth, day, contacted }] }` (14 days).
+- `GET /v1/m/:mid/search?epic=` or `?name=&address=&age=` (spec admin-fixes-r1 B1) → `{ items: Voter[] (no phone numbers), more }`, max 50. `name` ≥ 3 letters (422 otherwise); `address` = house number or locality; `age` ±2 years. Admin: whole assembly; volunteer: own booths. The old `?q=` form is unchanged (array, max 100).
 - `GET /v1/m/:mid/dashboard` also takes `area=`.
 - `PATCH /v1/admin/customers/:id` takes `featureWho: { <featureKey>: 'all' | 'admin' | 'volunteer' }`; customers return `featureWho`.
 - `PATCH /v1/admin/memberships/:id/access` (super-admin) `{ paused?, deny?: ('mark'|'phones'|'addPhone'|'poll')[] }` → `{ paused, deny }`.

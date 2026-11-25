@@ -36,7 +36,7 @@ export default function Parties() {
     <Screen width="medium" back={t('platform.title')}>
       <LargeTitle title={t('platform.parties')} />
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <Group>
           {q.data.map((p, i) => (

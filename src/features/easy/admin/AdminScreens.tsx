@@ -34,9 +34,12 @@ export function AdminPath({ title }: { title: string }) {
 export function AdminDashboard() {
   const { t } = useTranslation();
   const m = useActiveMembership();
-  const views = (m?.views ?? ['zone']).filter((v): v is GroupView => v === 'zone' || v === 'area');
-  const [scope, setScope] = useState<Scope>({ view: views[0] ?? 'zone' });
   const all = useAllBoothStats().data?.booths ?? [];
+  // spec admin-fixes-r1 A9: zones (made by the admin) and areas (from the super-admin's booth data) are separate; the
+  // Zone | Area switch shows when the team may view by both or the booth data has areas, and picks the one dropdown.
+  const allowed = (m?.views ?? ['zone']).filter((v): v is GroupView => v === 'zone' || v === 'area');
+  const views: GroupView[] = all.some((b) => b.area) && !allowed.includes('area') ? [...allowed, 'area'] : allowed;
+  const [scope, setScope] = useState<Scope>({ view: views[0] ?? 'zone' });
   const groups = groupsOf(all, scope.view);
   const [sheet, setSheet] = useState<'grp' | 'booth' | null>(null);
   const [bq, setBq] = useState('');
@@ -140,7 +143,7 @@ export function AdminBooths() {
         <AppText variant="callout" weight="bold" color={colors.textSecondary} style={{ paddingHorizontal: spacing.lg }}>{t('easy.nBooths', { n: rows.length })}</AppText>
         <Legend />
       </View>
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : rows.map((b) => {
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : rows.map((b) => {
         const l = leadOf(b);
         const v = metric.value(b);
         const pc = (n: number) => (b.total ? (n / b.total) * 100 : 0);

@@ -48,7 +48,7 @@ export default function RemindScreen() {
     <Screen back={t('admin.tabs.dashboard')}>
       <LargeTitle title={t('remind.title', { count: quiet.length })} subtitle={t('remind.sub')} />
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : !quiet.length ? (
         <AppText variant="callout" color={colors.textSecondary} align="center" style={s.empty}>{t('remind.none')}</AppText>
       ) : (

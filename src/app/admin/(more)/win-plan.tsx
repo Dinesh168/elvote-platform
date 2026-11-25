@@ -33,7 +33,7 @@ export default function WinPlanScreen() {
     <Screen back={t('admin.tabs.more')}>
       <LargeTitle title={t('win.title')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       {!d ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : d.needed === null ? (
         <AppText variant="callout" color={colors.textSecondary} align="center" style={s.empty}>{t('trend.none')}</AppText>
       ) : (

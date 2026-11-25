@@ -43,6 +43,21 @@ describe('side menu', () => {
     expect(screen.queryByLabelText('Voters')).toBeNull();
     expect(screen.queryByLabelText('Tasks')).toBeNull();
   });
+
+  it('TC-AF-U4 admin menu: no Quiet volunteers / Map rows; Search voter, Zones · areas · booths, Zone setup, Sign out', async () => {
+    mockMembership = { role: 'admin', partyName: 'JVP', features: {} };
+    await render(wrap(<SideMenu open onClose={jest.fn()} />));
+    expect(screen.queryByLabelText('Quiet volunteers')).toBeNull();
+    expect(screen.queryByLabelText('Map')).toBeNull();
+    expect(screen.getByLabelText('Search voter')).toBeTruthy();
+    expect(screen.getByLabelText('Zones · areas · booths')).toBeTruthy();
+    expect(screen.getByLabelText('Zone setup')).toBeTruthy();
+    expect(screen.getByLabelText('Sign out')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Search voter'));
+    expect(mockPush).toHaveBeenCalledWith('/admin/search');
+    await fireEvent.press(screen.getByLabelText(/My profile/));
+    expect(mockPush).toHaveBeenCalledWith('/admin/profile');
+  });
 });
 
 describe('picture tips', () => {
