@@ -42,7 +42,7 @@ export default function Requests() {
           options={[{ value: 'pending', label: t('requests.pending') }, { value: 'all', label: t('requests.all') }]} />
       </View>
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : !q.data.length ? (
         <AppText variant="body" color={colors.textSecondary} style={s.empty}>{t('requests.none')}</AppText>
       ) : (

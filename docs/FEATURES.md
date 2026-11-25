@@ -190,3 +190,9 @@ API: `POST/DELETE /v1/m/:mid/banner`; `POST /v1/admin/customers/:id/upload?kind=
 - Volunteer: Home (Go to a house, last house, where bar, shortcut groups), Voters | Houses list with search / Filter / Sort / chips, house page, tinted voter card with EPIC, Poll day location first, spoken help (feature `voice`).
 - Admin tabs: Dashboard (Group by Zone | Area, donut, 14-day line, shortcut groups, booths here) · Reports (Complete data table, Compare, Daily work, Volunteer work, People, Not living here) · Map · Poll day (when on) or Trend · Team. Pushed pages: `/admin/place`, `/admin/booths`, `/admin/avoters`, `/admin/ahouse`, reports `/admin/r-*`.
 - Super-admin: feature switches with "who gets it" (tap the row), per-person Access sheet (pause, mark, see phones, add phones, poll day).
+
+## Admin and volunteer fixes, round 1 (spec admin-fixes-r1, 2026-11-25)
+- Admin ☰ menu: **Search voter** (`/admin/search`, EPIC or name + address + age), **Zones · areas · booths** (`/admin/booths-all`, Zones | Areas | Booths switch), Win plan, Map & Trend, **Zone setup** (`/admin/zones`), Settings, **Sign out**; tap the name → **My profile** (`/admin/profile`). Quiet volunteers and Map rows removed. Pages under "More" open again (they were unreachable).
+- Dashboard / place pages / volunteer Home: Voters group has Needs help to vote + Migrants; Age wise and Gender wise groups (no "People"); no Polling day group. Zone | Area switch when areas exist.
+- Complete data opens with 10 booths, max 25. Every sheet scrolls. Errors say "No internet" only without a connection.
+- Volunteer: banner at the top of Home; "Section" is "Locality"; voter card "Same address voters (n)" opens the house.

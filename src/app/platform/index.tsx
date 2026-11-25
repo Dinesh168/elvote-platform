@@ -28,7 +28,7 @@ export default function PlatformHome() {
     <Screen>
       <LargeTitle title={t('platform.title')} subtitle={`${t('platform.subtitle')} · ${me?.user.name ?? ''}`} />
       {!o || !totals ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <>
           <TileRow>

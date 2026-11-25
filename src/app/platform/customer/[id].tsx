@@ -99,7 +99,7 @@ export default function CustomerPage() {
     }
   };
 
-  if (!d) return <Screen back={t('cms.customers')}><QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /></Screen>;
+  if (!d) return <Screen back={t('cms.customers')}><QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /></Screen>;
 
   const colourOk = !d.colour || /^#[0-9A-Fa-f]{6}$/.test(d.colour);
   const adjusted = d.colour && colourOk && accentFrom(d.colour) !== d.colour.toUpperCase();

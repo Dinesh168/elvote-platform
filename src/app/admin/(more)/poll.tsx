@@ -21,7 +21,7 @@ export default function AdminPoll() {
     <Screen width="medium" back={t('admin.tabs.more')}>
       <LargeTitle title={t('admin.poll')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       {!p ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <>
           <Group>

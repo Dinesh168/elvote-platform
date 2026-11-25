@@ -55,7 +55,7 @@ export default function AdminSurnames() {
         <SegmentedControl options={[{ value: 'count', label: t('asur.most') }, { value: 'az', label: t('asur.az') }]} value={sort} onChange={setSort} />
       </View>
       {!dataQ.data ? (
-        <QueryState loading={dataQ.isLoading} error={dataQ.isError} onRetry={() => void dataQ.refetch()} />
+        <QueryState loading={dataQ.isLoading} error={dataQ.isError} err={dataQ.error} onRetry={() => void dataQ.refetch()} />
       ) : (
         <FlatList
           data={rows}

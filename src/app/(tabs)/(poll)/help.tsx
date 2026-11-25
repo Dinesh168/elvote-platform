@@ -22,7 +22,7 @@ export default function Help() {
     <Screen width="medium" back={t('tabs.poll')} scroll>
       <LargeTitle title={t('help.title')} subtitle={t('help.sub', { no: booth })} />
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : houses.length === 0 ? (
         <View style={s.empty}>
           <Icon name="checkmark-circle" size={64} color={colors.success} />

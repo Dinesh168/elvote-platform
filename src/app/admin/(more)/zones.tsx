@@ -50,7 +50,7 @@ export default function Zones() {
     <Screen width="narrow" back={t('admin.tabs.more')}>
       <LargeTitle title={t('admin.zones')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       {!z ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <>
           <Group header={t('zez.auto')} footer={t('zez.autoHint', { n: z.allBooths.length })}>

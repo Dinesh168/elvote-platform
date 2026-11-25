@@ -153,7 +153,7 @@ export default function MapScreen() {
       </View>
 
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <View style={s.body}>
           <View style={[s.mapWrap, view !== 'map' && s.hidden]}>
@@ -203,14 +203,14 @@ export default function MapScreen() {
         </View>
       )}
 
-      <Sheet visible={zoneOpen} title={t('bmap.zone')} onClose={() => setZoneOpen(false)}>
+      <Sheet visible={zoneOpen} title={t('bmap.zone')} onClose={() => setZoneOpen(false)} scroll={false}>
         <ScrollView style={{ maxHeight: 420 }}>
           {[ALL, ...zones].map((z, i, arr) => (
             <ChoiceRow key={z} title={z === ALL ? t('bmap.allZones') : z} selected={zone === z} onPress={() => { setZone(z); setZoneOpen(false); }} last={i === arr.length - 1} />
           ))}
         </ScrollView>
       </Sheet>
-      <Sheet visible={missingOpen} title={t('bmap.missingTitle')} onClose={() => setMissingOpen(false)} footer={t('bmap.missingFoot')}>
+      <Sheet visible={missingOpen} title={t('bmap.missingTitle')} onClose={() => setMissingOpen(false)} footer={t('bmap.missingFoot')} scroll={false}>
         <ScrollView style={{ maxHeight: 420 }}>
           {missing.map((x, i) => (
             <Row key={x.no} title={`${x.no} · ${x.name}`} value={t('bmap.setLocation')} chevron onPress={() => startPlace(x)} last={i === missing.length - 1} />

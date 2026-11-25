@@ -17,7 +17,7 @@ import { QueryState } from '@/features/common/QueryState';
 import { TeamBar } from '@/features/shell/TeamBar';
 import { SyncBadge } from '@/features/sync/SyncBadge';
 import { useActiveMembership } from '@/stores/session';
-import { GROUP_ORDER, last14Days, leadOf, matrixRows, METRICS, metricOf, sumStats, type BoothStatRow, type Metric, type MetricGroup } from '../logic';
+import { defaultMatrixBooths, GROUP_ORDER, last14Days, MATRIX_MAX, leadOf, matrixRows, METRICS, metricOf, sumStats, type BoothStatRow, type Metric, type MetricGroup } from '../logic';
 import { AdminPath } from './AdminScreens';
 import { Legend, useMetricGo } from './PlaceView';
 import { scopeFromParams, scopeName, scopeParams, useAdminRoutes, useAllBoothStats, useBoothStats, type Scope, type ScopeParams } from './scope';
@@ -47,7 +47,7 @@ export function ReportsHub() {
   return (
     <Screen header={<TeamBar trailing={<SyncBadge />} say={t('easy.say.reports')} />} trailing={<SyncBadge />}>
       <View style={s.head}><AppText variant="largeTitle">{t('easy.reports')}</AppText><AppText variant="callout" color={colors.textSecondary}>{t('easy.reportsSub')}</AppText></View>
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : (
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : (
         <Card>
           <Donut a11y={t('easy.byGroup')} centre={`${tot.total ? Math.round((tot.met / tot.total) * 100) : 0}%`} centreSub={t('easy.metWord')}
             parts={[...(['our', 'target', 'opp'] as const).map((g) => ({ key: g, label: t(`groups.${g}`), value: tot[g], color: chart[g], onPress: () => go(metricOf(g)!) })),
@@ -83,12 +83,13 @@ export function MatrixReport() {
   const [sort, setSort] = useState<'no' | 'high' | 'low'>('no');
   const [sheet, setSheet] = useState<'pick' | 'sort' | null>(null);
   const [pq, setPq] = useState('');
-  const nos = picked ?? scopeRows.map((r) => r.no);
+  // spec admin-fixes-r1 A10: drawing every booth × every number froze the phone; open with 10, allow up to 25.
+  const nos = picked ?? defaultMatrixBooths(scopeRows.map((r) => r.no));
   const cols = allRows.filter((b) => nos.includes(b.no)).sort((a, b) => (sort === 'no' ? a.no - b.no : sort === 'high' ? b.total - a.total : a.total - b.total));
   const tot = sumStats(cols);
   const lines = matrixRows(hidden, q, (k) => t(k), pollOn);
   const title = t('easy.r.matrix');
-  if (!all.data) return <Screen><AdminPath title={title} /><QueryState loading={all.isLoading} error={all.isError} onRetry={() => void all.refetch()} /></Screen>;
+  if (!all.data) return <Screen><AdminPath title={title} /><QueryState loading={all.isLoading} error={all.isError} err={all.error} onRetry={() => void all.refetch()} /></Screen>;
   return (
     <Screen>
       <AdminPath title={title} />
@@ -146,18 +147,18 @@ export function MatrixReport() {
           </View>
         </ScrollView>
       </View>
-      <Sheet visible={sheet === 'pick'} title={t('easy.pickTable')} onClose={() => setSheet(null)}>
+      <Sheet visible={sheet === 'pick'} title={t('easy.pickTable')} onClose={() => setSheet(null)} footer={t('easy.matrixMax', { n: MATRIX_MAX })}>
         <View style={{ paddingVertical: spacing.sm }}><SearchBox value={pq} onChange={setPq} placeholder={t('easy.searchBooth')} /></View>
         <View style={{ paddingHorizontal: spacing.lg, paddingBottom: spacing.sm }}>
           <ChipRow chips={[
-            { key: 'all', label: t('easy.allBooths'), selected: false, onPress: () => setPicked(allRows.map((b) => b.no)) },
-            { key: 'scope', label: scopeName(t, scope, allRows), selected: false, onPress: () => setPicked(scopeRows.map((b) => b.no)) },
+            { key: 'all', label: t('easy.firstN', { n: MATRIX_MAX }), selected: false, onPress: () => setPicked(allRows.slice(0, MATRIX_MAX).map((b) => b.no)) },
+            { key: 'scope', label: scopeName(t, scope, allRows), selected: false, onPress: () => setPicked(scopeRows.slice(0, MATRIX_MAX).map((b) => b.no)) },
             { key: 'clear', label: t('easy.clearAll'), selected: false, onPress: () => setPicked([]) },
           ]} />
         </View>
         {allRows.filter((b) => !pq.trim() || String(b.no).startsWith(pq.trim()) || b.name.toLowerCase().includes(pq.trim().toLowerCase())).map((b) => {
           const on = nos.includes(b.no);
-          return <ChoiceRow key={b.no} title={t('easy.boothNo', { no: b.no })} subtitle={b.name} selected={on} onPress={() => setPicked(on ? nos.filter((x) => x !== b.no) : [...nos, b.no])} />;
+          return <ChoiceRow key={b.no} title={t('easy.boothNo', { no: b.no })} subtitle={b.name} selected={on} onPress={() => setPicked(on ? nos.filter((x) => x !== b.no) : nos.length >= MATRIX_MAX ? nos : [...nos, b.no])} />;
         })}
       </Sheet>
       <Sheet visible={sheet === 'sort'} title={t('easy.sort')} onClose={() => setSheet(null)}>
@@ -194,7 +195,7 @@ export function CompareReport() {
         <ToolRow sortWord={t(`easy.boothSort.${sort}`)} onSort={() => setSheet(true)} />
         {k === 'groups' ? <Legend /> : null}
       </View>
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : (
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : (
         <Card>
           {list.map((b) => {
             const v = mt.value(b);
@@ -232,7 +233,7 @@ export function DailyReport() {
   return (
     <Screen>
       <AdminPath title={title} />
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : (
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : (
         <>
           <Card>
             <AppText variant="callout" color={colors.textSecondary}>{t('easy.dailySub')}</AppText>
@@ -280,7 +281,7 @@ export function VolunteerWork() {
         <SearchBox value={qq} onChange={setQq} placeholder={t('easy.searchVol')} />
         <ToolRow sortWord={t(`easy.vsort.${sort}`)} onSort={() => setSheet(true)} />
       </View>
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : (
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : (
         <Card>
           {list.map((v) => (
             <BarLine key={v.membershipId} label={`${v.name} · ${v.booths.join(', ')}`} value={fmt(v.contactedTotal)} sub={t('easy.todayN', { n: v.contactedToday })}
@@ -306,7 +307,7 @@ export function PeopleReport() {
   return (
     <Screen>
       <AdminPath title={t('easy.r.people')} />
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : (
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : (
         <>
           <Card>
             <Donut a11y={t('easy.menWomen')} centre={fmt(tot.total)} centreSub={t('easy.voters')} parts={[
@@ -347,7 +348,7 @@ export function LivingReport() {
         <SearchBox value={qq} onChange={setQq} placeholder={t('easy.searchBooth')} />
         <ToolRow sortWord={t(`easy.boothSort.${sort}`)} onSort={() => setSheet(true)} />
       </View>
-      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} /> : list.map((b) => (
+      {!q.data ? <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} /> : list.map((b) => (
         <View key={b.no} style={s.living}>
           <View style={s.row}><AppText variant="headline" style={{ flex: 1 }} numberOfLines={1}>{`${b.no} · ${b.name}`}</AppText><AppText variant="headline" tabular>{lt(b)}</AppText></View>
           <View style={s.row}>

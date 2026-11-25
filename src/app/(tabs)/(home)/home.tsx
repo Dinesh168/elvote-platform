@@ -1,6 +1,6 @@
 /**
  * Volunteer Home (spec easy-redesign V2): one big "Go to a house" button, "Open last house", the where bar and the
- * shortcut numbers in groups (Voters, Houses, Phone numbers, People, Not living here). Every number opens its list.
+ * shortcut numbers in groups (Voters, Houses, Phone numbers, Age wise, Gender wise, Not living here). Every number opens its list.
  */
 import { router } from 'expo-router';
 import { useMemo } from 'react';
@@ -18,6 +18,7 @@ import { inWhere, useWhereFor, WhereBar } from '@/features/easy/WhereBar';
 import { ProgressCard } from '@/features/home/Progress';
 import { Tips } from '@/features/home/Tips';
 import { useFeature, useLook } from '@/features/session/customer';
+import { TeamBanner } from '@/features/shell/TeamBanner';
 import { TeamBar } from '@/features/shell/TeamBar';
 import { SyncBadge } from '@/features/sync/SyncBadge';
 import { usePrefs } from '@/stores/prefs';
@@ -51,6 +52,11 @@ export default function HomeScreen() {
 
   return (
     <Screen header={<TeamBar trailing={<SyncBadge />} say={t('easy.say.home')} />} trailing={<SyncBadge />}>
+      {/* spec admin-fixes-r1 V2: the team's welcome banner is the first thing on Home. */}
+      <TeamBanner />
+      {look?.candidateName && m ? (
+        <View style={s.bannerWrap}><CandidateBanner look={{ ...look, partyName: m.partyName }} /></View>
+      ) : null}
       <Tips />
       <WhereBar voters={all} />
       <ProgressCard booth={booth} />
@@ -69,15 +75,17 @@ export default function HomeScreen() {
       </View>
 
       {!votersQ.data ? (
-        <QueryState loading={votersQ.isLoading} error={votersQ.isError} onRetry={() => void votersQ.refetch()} />
+        <QueryState loading={votersQ.isLoading} error={votersQ.isError} err={votersQ.error} onRetry={() => void votersQ.refetch()} />
       ) : (
         <>
           <View style={s.wide}>
             <ShortcutTile icon="people" num={fmt(c.all)} word={t('easy.allVoters')} onPress={() => open('all')} big />
           </View>
+          {/* spec admin-fixes-r1 A6/A7: Needs help + Migrants with the voter groups; Age wise and Gender wise. */}
           <TileGroup title={t('easy.voters')} icon="people" cols={2}>
             {[tile('our', 'thumbs-up', t('easy.oursVoters'), 'our', true), tile('target', 'swap-horizontal', t('easy.swingVoters'), 'target', true),
-              tile('opp', 'thumbs-down', t('groups.opp'), 'opp', true), tile('none', 'help-circle', t('groups.none'), 'grey', true)]}
+              tile('opp', 'thumbs-down', t('groups.opp'), 'opp', true), tile('none', 'help-circle', t('groups.none'), 'grey', true),
+              tile('help', 'accessibility', t('easy.needsHelp'), 'blue', true), tile('moved', 'walk', t('em.m.moved'), 'grey', true)]}
           </TileGroup>
           <TileGroup title={t('easy.housesTitle')} icon="home">
             {[tile('houses', 'home', t('easy.allHouses')), tile('ourHouses', 'home', t('easy.houses.our'), 'our'), tile('targetHouses', 'home', t('easy.houses.target'), 'target'),
@@ -86,19 +94,17 @@ export default function HomeScreen() {
           <TileGroup title={t('easy.phones')} icon="call">
             {[tile('withPhone', 'call', t('easy.f.withPhone')), tile('noPhone', 'call-outline', t('easy.f.noPhone'), 'grey'), tile('ourWithPhone', 'call', t('easy.ourWithPhone'), 'our')]}
           </TileGroup>
-          <TileGroup title={t('easy.people')} icon="person">
-            {[tile('a1', 'star', t('easy.f.a1')), tile('a2', 'person', t('easy.f.a2')), tile('a3', 'person', t('easy.f.a3')), tile('a4', 'person', t('easy.f.a4')),
-              tile('men', 'man', t('easy.f.sexM')), tile('women', 'woman', t('easy.f.sexF')), tile('help', 'accessibility', t('easy.needsHelp'))]}
+          <TileGroup title={t('easy.g.age')} icon="calendar">
+            {[tile('a1', 'star', t('easy.f.a1')), tile('a2', 'person', t('easy.f.a2')), tile('a3', 'person', t('easy.f.a3')), tile('a4', 'person', t('easy.f.a4'))]}
+          </TileGroup>
+          <TileGroup title={t('easy.g.gender')} icon="male-female">
+            {[tile('men', 'man', t('easy.f.sexM')), tile('women', 'woman', t('easy.f.sexF'))]}
           </TileGroup>
           <TileGroup title={t('easy.notLiving')} icon="walk">
-            {[tile('moved', 'walk', t('voters.res.moved'), 'grey'), tile('died', 'person-remove', t('voters.res.died'), 'grey'), tile('notFound', 'help-buoy', t('voters.res.not_found'), 'grey')]}
+            {[tile('died', 'person-remove', t('voters.res.died'), 'grey'), tile('notFound', 'help-buoy', t('voters.res.not_found'), 'grey')]}
           </TileGroup>
         </>
       )}
-
-      {look?.candidateName && m ? (
-        <View style={s.bannerWrap}><CandidateBanner look={{ ...look, partyName: m.partyName }} /></View>
-      ) : null}
 
       {tasksOn || surnamesOn ? (
         <Group style={{ marginTop: spacing.lg }}>

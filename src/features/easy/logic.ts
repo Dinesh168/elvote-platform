@@ -170,7 +170,7 @@ export function leadOf(r: Pick<BoothStatRow, 'our' | 'opp' | 'total'>): GroupCod
   return 'target';
 }
 
-export type MetricGroup = 'poll' | 'voters' | 'houses' | 'phones' | 'people' | 'living' | 'team' | 'last';
+export type MetricGroup = 'poll' | 'voters' | 'houses' | 'phones' | 'age' | 'gender' | 'living' | 'team' | 'last';
 export type MetricKind = 'voter' | 'house' | 'team' | 'pct' | 'last';
 export interface Metric {
   key: string;
@@ -204,15 +204,17 @@ export const METRICS: Metric[] = [
   m('withMobile', 'phones', 'voter', 'call', (r) => r.withMobile, { mobile: 'with' }),
   m('withoutMobile', 'phones', 'voter', 'call-outline', (r) => r.total - r.withMobile, { mobile: 'without' }, 'grey'),
   m('ourMobile', 'phones', 'voter', 'call', (r) => r.ourMobile, { grp: 'our', mobile: 'with' }, 'our'),
-  m('firstTime', 'people', 'voter', 'star', (r) => r.firstTime, { age: 'a1' }),
-  m('young', 'people', 'voter', 'person', (r) => r.young, { age: 'a2' }),
-  m('mid', 'people', 'voter', 'person', (r) => r.mid, { age: 'a3' }),
-  m('senior', 'people', 'voter', 'person', (r) => r.senior, { age: 'a4' }),
-  m('male', 'people', 'voter', 'man', (r) => r.male, { sex: 'M' }),
-  m('female', 'people', 'voter', 'woman', (r) => r.female, { sex: 'F' }),
-  m('third', 'people', 'voter', 'person', (r) => r.third, { sex: 'T' }),
-  m('helpNeeded', 'people', 'voter', 'accessibility', (r) => r.helpNeeded, { help: 'yes' }),
-  m('moved', 'living', 'voter', 'walk', (r) => r.moved, { res: 'moved' }, 'grey'),
+  // spec admin-fixes-r1 A6: Needs help to vote and Migrants sit with the voter groups.
+  m('helpNeeded', 'voters', 'voter', 'accessibility', (r) => r.helpNeeded, { help: 'yes' }),
+  m('moved', 'voters', 'voter', 'walk', (r) => r.moved, { res: 'moved' }, 'grey'),
+  // spec admin-fixes-r1 A7: "People" split into Age wise and Gender wise.
+  m('firstTime', 'age', 'voter', 'star', (r) => r.firstTime, { age: 'a1' }),
+  m('young', 'age', 'voter', 'person', (r) => r.young, { age: 'a2' }),
+  m('mid', 'age', 'voter', 'person', (r) => r.mid, { age: 'a3' }),
+  m('senior', 'age', 'voter', 'person', (r) => r.senior, { age: 'a4' }),
+  m('male', 'gender', 'voter', 'man', (r) => r.male, { sex: 'M' }),
+  m('female', 'gender', 'voter', 'woman', (r) => r.female, { sex: 'F' }),
+  m('third', 'gender', 'voter', 'person', (r) => r.third, { sex: 'T' }),
   m('died', 'living', 'voter', 'person-remove', (r) => r.died, { res: 'died' }, 'grey'),
   m('notFound', 'living', 'voter', 'help-buoy', (r) => r.notFound, { res: 'not_found' }, 'grey'),
   m('volunteers', 'team', 'team', 'people-circle', (r) => r.volunteers),
@@ -220,7 +222,13 @@ export const METRICS: Metric[] = [
   m('lastMargin', 'last', 'last', 'trending-up', (r) => r.lastMargin ?? 0),
 ];
 export const metricOf = (k: string) => METRICS.find((x) => x.key === k);
-export const GROUP_ORDER: MetricGroup[] = ['poll', 'voters', 'houses', 'phones', 'people', 'living', 'team', 'last'];
+export const GROUP_ORDER: MetricGroup[] = ['poll', 'voters', 'houses', 'phones', 'age', 'gender', 'living', 'team', 'last'];
+/** spec admin-fixes-r1 A8: the shortcut groups of the Dashboard and place pages (no Polling day group there). */
+export const DASH_GROUPS: MetricGroup[] = GROUP_ORDER.filter((g) => g !== 'poll' && g !== 'last');
+
+/** spec admin-fixes-r1 A10: Complete data opens with the first 10 booths of the place; at most 25 in one table. */
+export const MATRIX_MAX = 25;
+export const defaultMatrixBooths = (nos: number[]) => nos.slice(0, 10);
 
 export type MatrixRow = { kind: 'group'; group: MetricGroup } | { kind: 'metric'; metric: Metric };
 /** Complete-data rows: groups the admin hid are dropped; a search keeps the numbers whose name contains it. */

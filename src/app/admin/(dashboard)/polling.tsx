@@ -29,7 +29,7 @@ export default function PollingDayScreen() {
     <Screen back={t('admin.tabs.dashboard')}>
       <LargeTitle title={t('pd.title')} subtitle={m ? t('admin.acTitle', { no: m.acNo, name: m.acName }) : undefined} />
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <PollingView
           data={q.data}

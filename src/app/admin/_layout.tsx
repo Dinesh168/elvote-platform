@@ -80,8 +80,10 @@ export default function AdminLayout() {
       <Tabs.Screen name="(pollday)" options={{ title: t('easy.pollDay'), href: pollTab ? undefined : null }} />
       <Tabs.Screen name="(trend)" options={{ title: t('trend.title'), href: !pollTab && f.trend ? undefined : null }} />
       <Tabs.Screen name="team" options={{ title: t('admin.tabs.team') }} />
-      <Tabs.Screen name="tasks" options={{ title: t('admin.tabs.tasks'), href: null }} />
-      <Tabs.Screen name="(more)" options={{ title: t('admin.tabs.more'), href: null }} />
+      {/* spec admin-fixes-r1 A2/A4: no button in the tab bar, but the pages stay reachable from the ☰ menu. `href: null`
+          made every page of these stacks unreachable (Win plan, Zone setup, Trend, Settings… did nothing). */}
+      <Tabs.Screen name="tasks" options={{ title: t('admin.tabs.tasks'), tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
+      <Tabs.Screen name="(more)" options={{ title: t('admin.tabs.more'), tabBarButton: () => null, tabBarItemStyle: { display: 'none' } }} />
     </Tabs>
   );
   // Phones: a "polling day is live" strip above every admin screen (opens the polling-day page).

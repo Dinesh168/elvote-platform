@@ -49,7 +49,7 @@ export default function Elections() {
         <Button label={t('pd.el.add')} onPress={() => setEdit('new')} />
       </View>
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : wide ? (
         <DataTable columns={cols} rows={list} rowKey={(e) => e.id} onRowPress={setEdit} empty={t('pd.el.none')}
           initialSort={{ key: 'date', dir: past ? 'desc' : 'asc' }} rowA11y={(e) => `${e.name}, ${date(e.date)}`} />

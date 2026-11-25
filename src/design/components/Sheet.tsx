@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { useWide } from '../layout';
 import { web } from '../tokens';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { colors, radius, spacing } from '../tokens';
@@ -9,11 +9,25 @@ import { AppText } from './AppText';
 import { Group, Row } from './Group';
 import { Icon } from './Icon';
 
-/** iOS sheet: grabber, centred title, Done. */
-export function Sheet({ visible, title, onClose, children, footer }: { visible: boolean; title: string; onClose: () => void; children: ReactNode; footer?: string }) {
+/**
+ * iOS sheet: grabber, centred title, Done. spec admin-fixes-r1 O1: the rows scroll when they are taller than the screen
+ * (title and Done stay put). Pass `scroll={false}` when the content has its own scrolling list.
+ */
+export function Sheet({ visible, title, onClose, children, footer, scroll = true }: { visible: boolean; title: string; onClose: () => void; children: ReactNode; footer?: string; scroll?: boolean }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const wide = useWide();
+  const { height } = useWindowDimensions();
+  const body = (
+    <Group style={{ marginTop: 0 }} footer={footer}>
+      {children}
+    </Group>
+  );
+  const rows = scroll ? (
+    <ScrollView testID="sheet-scroll" style={{ maxHeight: Math.round(height * (wide ? 0.7 : 0.75)) }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
+      {body}
+    </ScrollView>
+  ) : body;
   useEffect(() => {
     if (!wide || !visible || typeof window === 'undefined') return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -40,9 +54,7 @@ export function Sheet({ visible, title, onClose, children, footer }: { visible: 
                 <Icon name="close" size={20} color={colors.textSecondary} />
               </Pressable>
             </View>
-            <Group style={{ marginTop: 0 }} footer={footer}>
-              {children}
-            </Group>
+            {rows}
           </View>
         </View>
       </Modal>
@@ -64,9 +76,7 @@ export function Sheet({ visible, title, onClose, children, footer }: { visible: 
               </AppText>
             </Pressable>
           </View>
-          <Group style={{ marginTop: 0 }} footer={footer}>
-            {children}
-          </Group>
+          {rows}
         </View>
       </KeyboardAvoidingView>
     </Modal>

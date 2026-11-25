@@ -12,23 +12,26 @@ import { AppText, Icon } from '@/design/components';
 import { themed } from '@/design/theme';
 import { colors, radius, spacing } from '@/design/tokens';
 import { useActiveMembership, useSession } from '@/stores/session';
+import { useSignOut } from '@/features/session/useSignOut';
 
 type Item = { href: Href; label: string; icon: string; color: string; feature?: 'poll' | 'tasks' | 'surnames' | 'zones' | 'map' };
 type Section = { title: string; items: Item[] };
 
 function sections(role: 'admin' | 'volunteer', t: TFunction): Section[] {
   if (role === 'admin') {
+    // spec admin-fixes-r1 A1–A5: Search voter and Zones · areas · booths added; Quiet volunteers and Map removed (Map is a
+    // tab; quiet volunteers are on the Dashboard); Zones renamed Zone setup; Sign out at the bottom.
     return [
       { title: t('side.today'), items: [
         { href: '/admin/dashboard', label: t('admin.tabs.dashboard'), icon: 'speedometer', color: colors.accent },
-        { href: '/admin/remind', label: t('side.quiet'), icon: 'notifications', color: colors.iconTask },
+        { href: '/admin/search', label: t('side.search'), icon: 'search', color: colors.accent },
+        { href: '/admin/booths-all', label: t('side.places'), icon: 'list', color: colors.success },
         { href: '/admin/team', label: t('admin.tabs.team'), icon: 'people', color: colors.success },
         { href: '/admin/tasks', label: t('admin.tabs.tasks'), icon: 'flag', color: colors.iconTask, feature: 'tasks' },
       ] },
       { title: t('side.win'), items: [
         { href: '/admin/win-plan', label: t('win.title'), icon: 'trophy', color: colors.success },
         { href: '/admin/trend', label: t('trend.title'), icon: 'trending-up', color: colors.warning },
-        { href: '/admin/map', label: t('admin.tabs.map'), icon: 'location', color: colors.accent, feature: 'map' },
         { href: '/admin/surnames', label: t('asur.title'), icon: 'people-circle', color: colors.iconGender, feature: 'surnames' },
       ] },
       { title: t('side.polling'), items: [
@@ -36,11 +39,11 @@ function sections(role: 'admin' | 'volunteer', t: TFunction): Section[] {
         { href: '/admin/poll', label: t('admin.poll'), icon: 'checkbox', color: colors.success, feature: 'poll' },
       ] },
       { title: t('side.setup'), items: [
-        { href: '/admin/zones', label: t('admin.zones'), icon: 'grid', color: colors.accent, feature: 'zones' },
+        { href: '/admin/zones', label: t('side.zoneSetup'), icon: 'grid', color: colors.accent, feature: 'zones' },
         { href: '/admin/team-qr', label: t('qr.title'), icon: 'qr-code', color: colors.success },
         { href: '/admin/banner', label: t('banner.title'), icon: 'image', color: colors.accent },
         { href: '/admin/trace', label: t('trace.title'), icon: 'git-commit', color: colors.text },
-        { href: '/admin/more', label: t('admin.tabs.more'), icon: 'settings', color: colors.textSecondary },
+        { href: '/admin/more', label: t('side.settings'), icon: 'settings', color: colors.textSecondary },
       ] },
     ];
   }
@@ -67,20 +70,25 @@ export function SideMenu({ open, onClose }: { open: boolean; onClose: () => void
   const insets = useSafeAreaInsets();
   const m = useActiveMembership();
   const name = useSession((s) => s.me?.user.name) ?? '';
+  const signOut = useSignOut();
   if (!m) return null;
   const on = (f?: Item['feature']) => !f || m.features?.[f] !== false;
   const go = (href: Href) => { onClose(); router.push(href); };
   return (
+    <>
     <Modal transparent animationType="fade" visible={open} onRequestClose={onClose}>
       <View style={s.wrap}>
         <View style={[s.panel, { paddingTop: insets.top + spacing.md, paddingBottom: insets.bottom + spacing.md }]} accessibilityViewIsModal>
           <View style={s.head}>
-            <View style={s.flex}>
+            {/* spec admin-fixes-r1 A5: the admin's name opens My profile. */}
+            <Pressable style={s.flex} disabled={m.role !== 'admin'} accessibilityRole={m.role === 'admin' ? 'button' : undefined}
+              accessibilityLabel={m.role === 'admin' ? `${t('side.profile')}, ${name}` : undefined} onPress={() => go('/admin/profile')}>
               <AppText variant="headline" numberOfLines={1}>{name}</AppText>
               <AppText variant="footnote" color={colors.textSecondary} numberOfLines={1}>
                 {`${t(m.role === 'admin' ? 'web.roleAdmin' : 'side.volunteer')} · ${m.look?.appName || m.partyName}`}
               </AppText>
-            </View>
+              {m.role === 'admin' ? <AppText variant="footnote" weight="semibold" color={colors.accent}>{`${t('side.profile')} ›`}</AppText> : null}
+            </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel={t('side.close')} onPress={onClose} hitSlop={10} style={s.close}>
               <Icon name="close" size={24} color={colors.textSecondary} />
             </Pressable>
@@ -102,11 +110,22 @@ export function SideMenu({ open, onClose }: { open: boolean; onClose: () => void
                 </View>
               );
             })}
+            {m.role === 'admin' ? (
+              <View style={s.section}>
+                <Pressable accessibilityRole="button" accessibilityLabel={t('side.signOut')} onPress={() => { onClose(); signOut.ask(); }}
+                  style={({ pressed }) => [s.item, pressed && { backgroundColor: colors.pressed }]}>
+                  <View style={[s.icon, { backgroundColor: colors.danger }]}><Icon name="log-out-outline" size={18} color={colors.textOnAccent} /></View>
+                  <AppText variant="body" color={colors.danger} style={s.flex}>{t('side.signOut')}</AppText>
+                </Pressable>
+              </View>
+            ) : null}
           </ScrollView>
         </View>
         <Pressable style={s.flex} accessibilityRole="button" accessibilityLabel={t('side.close')} onPress={onClose} />
       </View>
     </Modal>
+    {signOut.dialog}
+    </>
   );
 }
 

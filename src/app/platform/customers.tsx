@@ -22,7 +22,7 @@ export default function Customers() {
     <Screen back={t('platform.title')}>
       <LargeTitle title={t('cms.customers')} subtitle={t('cms.customersSub')} />
       {!q.data ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : wide ? (
         <View style={s.table}>
           <DataTable

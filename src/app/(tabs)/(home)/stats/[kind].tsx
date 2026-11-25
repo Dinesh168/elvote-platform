@@ -71,7 +71,7 @@ export default function StatsDetail() {
     <Screen back={t('tabs.home')}>
       <LargeTitle title={t(def.title)} subtitle={`${t('common.booth', { no: booth })} · ${boothInfo?.name ?? ''}`} />
       {!stats ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <Group footer={t('home.tapRow')}>
           {def.lines.map((l, i) => {

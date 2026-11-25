@@ -17,7 +17,7 @@ export default function RollScreen() {
     <Screen width="medium" back={t('admin.tabs.dashboard')}>
       <LargeTitle title={t('roll.title')} subtitle={r ? rollLine(t, i18n.language, r.kind, r.publishedOn) ?? undefined : undefined} />
       {!r ? (
-        <QueryState loading={q.isLoading} error={q.isError} onRetry={() => void q.refetch()} />
+        <QueryState loading={q.isLoading} error={q.isError} err={q.error} onRetry={() => void q.refetch()} />
       ) : (
         <Group header={t('roll.notInRoll', { n: r.notInRoll })} footer={t('roll.notInRollHint')}>
           {r.notInRollList.length ? r.notInRollList.map((v, i, arr) => (

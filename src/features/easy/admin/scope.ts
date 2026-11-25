@@ -5,7 +5,7 @@
 import { useQuery } from '@tanstack/react-query';
 import type { TFunction } from 'i18next';
 import { createContext, useContext } from 'react';
-import { adminApi, type BoothStats } from '@/api/adminApi';
+import { adminApi, type BoothRow, type BoothStats } from '@/api/adminApi';
 import { ApiError } from '@/api/http';
 import { useActiveMembership } from '@/stores/session';
 import type { BoothStatRow } from '../logic';
@@ -40,22 +40,30 @@ export function useBoothStats(s: Pick<Scope, 'view' | 'key'>) {
 }
 /**
  * Older servers (before easy-redesign B2) have no booth-stats: fall back to the booth table (fewer numbers; the rest
- * show 0) so the app keeps working until the server is updated.
+ * show 0) so the app keeps working until the server is updated. spec admin-fixes-r1 A9: zone ids come from /zones
+ * (the booth table only has zone names, and the server wants the id), and the zone / area filter is applied here.
  */
 async function boothStatsOrTable(mid: string, zone?: string, area?: string): Promise<BoothStats> {
   try {
     return await adminApi.boothStats(mid, { zone, area });
   } catch (e) {
     if (!(e instanceof ApiError) || e.status !== 404) throw e;
-    const rows = (await adminApi.boothTable(mid, zone)).filter((b) => !area || b.area === area);
-    const zero = { moved: 0, ourMobile: 0, targetMobile: 0, oppMobile: 0, housesWithMobile: 0, ourHouses: 0, targetHouses: 0, oppHouses: 0, firstTime: 0, young: 0, mid: 0,
-      senior: 0, male: 0, female: 0, third: 0, helpNeeded: 0, voted: 0, ourVoted: 0, targetVoted: 0, oppVoted: 0, helpVoted: 0, died: 0, notFound: 0, metToday: 0, lastMargin: null };
-    return {
-      booths: rows.map((b) => ({ ...zero, no: b.no, name: b.name, area: b.area ?? null, zoneId: b.zone, zone: b.zone, lat: null, lng: null, total: b.total, met: b.met,
-        our: b.our, target: b.target, opp: b.opp, withMobile: b.withMobile, houses: b.houses, housesVisited: b.housesVisited, volunteers: b.workers })),
-      days: [],
-    };
+    const [table, zones] = await Promise.all([adminApi.boothTable(mid), adminApi.zones(mid).then((z) => z.zones).catch(() => [])]);
+    return fallbackStats(table, zones, zone, area);
   }
+}
+
+export function fallbackStats(table: BoothRow[], zones: { id: string; name: string; booths: number[] }[], zone?: string, area?: string): BoothStats {
+  const zoneOf = new Map<number, { id: string; name: string }>();
+  for (const z of zones) for (const no of z.booths) zoneOf.set(no, { id: z.id, name: z.name });
+  const zero = { moved: 0, ourMobile: 0, targetMobile: 0, oppMobile: 0, housesWithMobile: 0, ourHouses: 0, targetHouses: 0, oppHouses: 0, firstTime: 0, young: 0, mid: 0,
+    senior: 0, male: 0, female: 0, third: 0, helpNeeded: 0, voted: 0, ourVoted: 0, targetVoted: 0, oppVoted: 0, helpVoted: 0, died: 0, notFound: 0, metToday: 0, lastMargin: null };
+  const booths = table.map((b) => {
+    const z = zoneOf.get(b.no);
+    return { ...zero, no: b.no, name: b.name, area: b.area ?? null, zoneId: z?.id ?? null, zone: z?.name ?? b.zone, lat: null, lng: null, total: b.total, met: b.met,
+      our: b.our, target: b.target, opp: b.opp, withMobile: b.withMobile, houses: b.houses, housesVisited: b.housesVisited, volunteers: b.workers };
+  }).filter((b) => (!zone || b.zoneId === zone) && (!area || b.area === area));
+  return { booths: booths as BoothStats['booths'], days: [] };
 }
 
 /** All booths of the assembly (zone and area names for the pickers). */

@@ -81,6 +81,12 @@ export function VoterListScreen({ pushed, housePath, admin }: { pushed?: boolean
 
   const scoped = useMemo(() => (votersQ.data ?? []).filter((v) => v.booth === booth && inWhere(v, where) && matchesTask(v, task)), [votersQ.data, booth, where, task]);
   const noGrp = useMemo(() => withoutKey(f, 'grp'), [f]);
+  // spec admin-fixes-r1 V1: how many voters share each house number in this booth ("Same address voters (n)").
+  const perHouse = useMemo(() => {
+    const n = new Map<string, number>();
+    for (const v of votersQ.data ?? []) if (v.booth === booth && v.house) n.set(v.house, (n.get(v.house) ?? 0) + 1);
+    return n;
+  }, [votersQ.data, booth]);
   const voters = useMemo(() => sortVoters(scoped.filter((v) => matchVoter(v, f) && searchVoter(v, q)), sort), [scoped, f, q, sort]);
   const houses = useMemo(() => {
     const all = houseList(scoped).filter((h) => (hc === 'all' || h.colour === hc) && (!q.trim() || h.house.toLowerCase().startsWith(q.trim().toLowerCase()) || h.head.name.toLowerCase().includes(q.trim().toLowerCase())));
@@ -178,7 +184,7 @@ export function VoterListScreen({ pushed, housePath, admin }: { pushed?: boolean
       </View>
 
       {!votersQ.data ? (
-        <QueryState loading={votersQ.isLoading} error={votersQ.isError} onRetry={() => void votersQ.refetch()} />
+        <QueryState loading={votersQ.isLoading} error={votersQ.isError} err={votersQ.error} onRetry={() => void votersQ.refetch()} />
       ) : (
         <FlashList
           key={Platform.OS === 'web' ? `${mode}:${q.trim()}:${JSON.stringify(f)}:${hc}` : mode}
@@ -201,7 +207,9 @@ export function VoterListScreen({ pushed, housePath, admin }: { pushed?: boolean
               <SectionBand label={item.label} count={String(item.count)} />
             ) : item.kind === 'voter' ? (
               <View style={{ paddingTop: spacing.md }}>
-                <VoterRow voter={item.voter} open={item.voter.id === openId} onToggle={onToggle} onGroup={onGroup} onPatch={onPatch} />
+                <VoterRow voter={item.voter} open={item.voter.id === openId} onToggle={onToggle} onGroup={onGroup} onPatch={onPatch}
+                  sameCount={perHouse.get(item.voter.house) ?? 0}
+                  onSameAddress={(no) => router.push({ pathname: housePath as never, params: { no, from: title, ...(admin ? { booth: String(booth) } : {}) } })} />
               </View>
             ) : (
               <HouseBox h={item.house} onPress={() => router.push({ pathname: housePath as never, params: { no: item.house.house, from: title, ...(admin ? { booth: String(booth) } : {}) } })} />
